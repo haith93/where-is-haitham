@@ -103,14 +103,31 @@ function showBootError(message, { retry = true } = {}) {
       <p>${esc(message)}</p>
     </div>`;
   if (retry) {
-    const btn = el('button', {
+    host.append(el('button', {
       class: 'btn btn-primary btn-block',
       type: 'button',
       text: 'Reload',
       style: 'margin-top:12px',
       onclick: () => location.reload()
-    });
-    host.append(btn);
+    }));
+
+    // The reliable way out of a stuck session: drop the stored tokens and
+    // sign in again. Reloading alone cannot fix a bad refresh token.
+    host.append(el('button', {
+      class: 'btn btn-soft btn-block',
+      type: 'button',
+      text: 'Sign out and sign in again',
+      style: 'margin-top:8px',
+      onclick: async () => {
+        try { await signOut(); } catch { /* clearing local state is enough */ }
+        try {
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('sb-') || k === 'wih.auth')
+            .forEach(k => localStorage.removeItem(k));
+        } catch { /* private mode */ }
+        location.replace('login.html?mode=signin');
+      }
+    }));
   }
 }
 

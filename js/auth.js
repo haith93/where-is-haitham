@@ -12,18 +12,44 @@ let cachedProfile = null;
 let cachedUserId = null;
 const listeners = new Set();
 
+/**
+ * Nothing in the sign-in path may hang for ever.
+ *
+ * A refresh-token round trip, or the cross-tab lock supabase-js takes
+ * around the session, can occasionally never settle. Without a ceiling
+ * that leaves a page waiting on a promise that will never resolve, which
+ * shows up as a blank screen and no error at all. A timeout turns that
+ * into an ordinary failure the caller can recover from.
+ */
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms))
+  ]);
+}
+
+export class AuthTimeoutError extends Error {}
+
 /* ------------------------------------------------------------------ */
 /* Session + profile                                                   */
 /* ------------------------------------------------------------------ */
 
 export async function getSession() {
   if (!configured) return null;
-  const { data, error } = await sb.auth.getSession();
-  if (error) {
-    console.warn('getSession', error);
-    return null;
+  try {
+    const { data, error } = await withTimeout(sb.auth.getSession(), 8000, 'Reading your session');
+    if (error) {
+      console.warn('getSession', error);
+      return null;
+    }
+    return data.session ?? null;
+  } catch (err) {
+    console.warn('getSession', err);
+    // Treated as "no usable session": the caller sends the user to sign
+    // in again, which is recoverable. Hanging is not.
+    throw new AuthTimeoutError(err.message);
   }
-  return data.session ?? null;
 }
 
 /** The signed-in user's profile row, or null when signed out. */
@@ -36,11 +62,14 @@ export async function getProfile({ force = false } = {}) {
   }
   if (!force && cachedProfile && cachedUserId === session.user.id) return cachedProfile;
 
-  const { data, error } = await sb
-    .from('profiles')
-    .select('id, full_name, email, role, active, created_at')
-    .eq('id', session.user.id)
-    .maybeSingle();
+  const { data, error } = await withTimeout(
+    sb.from('profiles')
+      .select('id, full_name, email, role, active, created_at')
+      .eq('id', session.user.id)
+      .maybeSingle(),
+    10000,
+    'Loading your account'
+  );
 
   if (error) {
     console.error('profile load', error);
@@ -205,22 +234,34 @@ export function loginUrl(next = location.pathname + location.search + location.h
  * Returns the profile, or redirects and resolves to null.
  */
 export async function requireAuth({ admin = false } = {}) {
-  const session = await getSession();
+  let session;
+  try {
+    session = await getSession();
+  } catch (err) {
+    // Deliberately do NOT redirect here. The sign-in page would read the
+    // same broken session, bounce straight back, and the two pages would
+    // ping-pong for ever. Hand the failure to the caller, which shows an
+    // error with a "sign out and start again" way out.
+    throw new AuthTimeoutError(
+      'Your saved sign-in could not be read. Sign out and sign in again.');
+  }
+
   if (!session) {
-    location.replace(loginUrl());
+    location.replace(loginUrl());     // genuinely signed out: no loop possible
     return null;
   }
 
   let profile;
   try {
     profile = await getProfile({ force: true });
-  } catch {
-    location.replace(loginUrl());
-    return null;
+  } catch (err) {
+    console.warn('requireAuth: profile load failed', err);
+    throw new AuthTimeoutError(
+      err?.message || 'Your account could not be loaded. Sign out and sign in again.');
   }
 
   if (!profile) {
-    await sb.auth.signOut();
+    await sb.auth.signOut().catch(() => {});
     location.replace(`${loginUrl()}&reason=inactive`);
     return null;
   }
@@ -237,6 +278,7 @@ export async function requireAuth({ admin = false } = {}) {
     location.replace(`${loginUrl()}&reason=inactive`);
     return null;
   }
+
   if (admin && !isAdmin(profile)) {
     location.replace('index.html?denied=1');
     return null;
