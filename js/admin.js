@@ -21,7 +21,8 @@ import {
 import { requireAuth, signOut } from './auth.js';
 import {
   getBuildings, getTasks, addBuilding, addTask, updateBuilding, updateTask,
-  moveItem, getUsers, setUserActive, setUserRole, getSettings, saveSetting, getAuditLog
+  moveItem, getUsers, setUserActive, setUserRole, getSettings, saveSetting, getAuditLog,
+  getAccessOptions, setAccessCode, purgeUnclaimedGuests
 } from './data.js';
 import {
   getCurrentStatus, updateStatus, finishCurrentTask, setAvailableNow,
@@ -1318,6 +1319,59 @@ function wireSettings() {
     });
   });
 
+  $('#code-save').addEventListener('click', async event => {
+    const code = $('#set-code').value.trim();
+    const ok = await confirmAction(
+      `Set the employee access code to "${code}"? Anyone with this code and a name can join.`,
+      { title: 'Set access code', confirmText: 'Set code' });
+    if (!ok) return;
+
+    await withBusy(event.currentTarget, 'Saving…', async () => {
+      try {
+        await setAccessCode(code);
+        $('#set-code').value = '';
+        toastOk('Access code saved. Give it to your colleagues.');
+        await paintAccessState();
+      } catch (err) { toastError(err.message); }
+    });
+  });
+
+  // A readable code beats a random one: people will be typing it from a
+  // note on a staff-room wall, not pasting it.
+  $('#code-suggest').addEventListener('click', () => {
+    const words = ['SCHOOL', 'STAFF', 'CAMPUS', 'OFFICE', 'TEAM'];
+    const word = words[Math.floor(Math.random() * words.length)];
+    const digits = String(Math.floor(1000 + Math.random() * 9000));
+    $('#set-code').value = `${word}-${digits}`;
+    $('#set-code').focus();
+  });
+
+  $('#set-email-signup').addEventListener('change', async event => {
+    const value = event.target.checked;
+    try {
+      await saveSetting('allow_email_signup', value);
+      toastOk(value
+        ? 'E-mail sign-up is allowed again.'
+        : 'E-mail sign-up is off. The access code is now the only way in.');
+    } catch (err) {
+      event.target.checked = !value;
+      toastError(err.message);
+    }
+  });
+
+  $('#purge-guests').addEventListener('click', async event => {
+    const ok = await confirmAction(
+      'Remove guest accounts that never finished joining and have sent no requests? Nothing anyone has sent is affected.',
+      { title: 'Tidy up', confirmText: 'Remove' });
+    if (!ok) return;
+    await withBusy(event.currentTarget, 'Removing…', async () => {
+      try {
+        const removed = await purgeUnclaimedGuests();
+        toastOk(removed ? `Removed ${removed} unfinished account${removed === 1 ? '' : 's'}.` : 'Nothing to remove.');
+      } catch (err) { toastError(err.message); }
+    });
+  });
+
   $('#set-public').addEventListener('change', async event => {
     const value = event.target.checked;
     try {
@@ -1383,6 +1437,7 @@ async function paintSettings() {
   $('#admin-identity').textContent = `${state.profile.full_name} · ${state.profile.email ?? ''}`;
 
   paintPushState();
+  paintAccessState();
 
   try {
     const log = await getAuditLog(25);
@@ -1415,6 +1470,20 @@ function describeAudit(entry) {
     case 'user_deactivated': return `User deactivated: ${d.name ?? ''}`;
     case 'role_changed':     return `Role changed: ${d.name ?? ''} (${d.from} → ${d.to})`;
     default: return `${noun} ${entry.action}`;
+  }
+}
+
+async function paintAccessState() {
+  try {
+    const options = await getAccessOptions();
+    $('#set-email-signup').checked = options.allow_email_signup !== false;
+    $('#code-state').textContent = options.code_ready
+      ? 'An access code is set. Employees join with their name and that code.'
+      : 'No access code yet — employees cannot join until you set one.';
+    $('#code-state').className = options.code_ready ? 'small muted' : 'small' ;
+    $('#code-state').style.color = options.code_ready ? '' : 'var(--danger)';
+  } catch (err) {
+    $('#code-state').textContent = err.message;
   }
 }
 

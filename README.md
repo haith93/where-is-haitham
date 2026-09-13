@@ -161,7 +161,8 @@ where-is-haitham/
 │   ├── schema.sql          Tables, indexes, triggers, publication
 │   ├── functions.sql       Every write path, as RPCs
 │   ├── rls.sql             Policies + grants
-│   └── seed.sql            Settings, buildings, tasks
+│   ├── seed.sql            Settings, buildings, tasks
+│   └── access.sql          Join-with-a-code sign-up
 │
 ├── supabase/functions/send-push/   Optional Web Push sender
 └── .github/workflows/deploy.yml    Builds env.js and publishes Pages
@@ -183,6 +184,7 @@ where-is-haitham/
    | 2 | `sql/functions.sql` | The RPCs that perform every write |
    | 3 | `sql/rls.sql` | Row Level Security policies and grants |
    | 4 | `sql/seed.sql` | Settings, starter buildings and tasks |
+   | 5 | `sql/access.sql` | Join-with-a-code sign-up |
 
    Order matters: `rls.sql` revokes the grants that `functions.sql` works around,
    and `seed.sql` writes through the policies.
@@ -225,6 +227,32 @@ select full_name, email, role, active from public.profiles order by created_at;
 ```
 
 After that, Haitham can promote or deactivate anyone else from *Admin → Users*.
+
+### How everybody else joins
+
+Employees never touch e-mail or passwords. They open the site, tap **Join**, and
+enter their **name** plus one **access code** you hand out on a staff notice or in
+a group chat.
+
+Set the code once in *Admin → Settings → Employee access code*, and enable
+**Authentication → Providers → Anonymous sign-ins** in Supabase — that is what lets
+the app create an account with no e-mail attached.
+
+The code is verified inside the database, never in the browser. It is stored only
+as a bcrypt hash in a table with RLS on and no policies at all, so nothing holding
+the anon key can read it. Until the right code is given the account is inactive and
+can do nothing but read the same board a passer-by sees.
+
+Once your own account exists, turn **Allow sign-up with an e-mail address** off in
+the same screen. From then on the access code is the only way in.
+
+Rotating the code later does **not** sign anyone out — people who already joined
+stay joined, and a new code only affects people joining from then on. Rotate it when
+somebody leaves, and deactivate their name in *Admin → Users*.
+
+Identity is per device: a new phone means entering the name and code again, which
+creates a second account. Requests already sent keep the name they were sent with,
+so reports are unaffected.
 
 ---
 

@@ -16,7 +16,7 @@ import {
   startClock, toastOk, toastError, toast, withBusy, renderEmpty, renderError,
   renderSetupNeeded, confirmAction
 } from './ui.js';
-import { getProfile, isAdmin, signOut, updateMyName, onAuthChange, loginUrl } from './auth.js';
+import { getProfile, isAdmin, isJoined, signOut, updateMyName, onAuthChange, loginUrl } from './auth.js';
 import { getBuildings, getTasks, getSettings } from './data.js';
 import { getPublicStatus, describeStatus } from './status.js';
 import {
@@ -80,7 +80,7 @@ async function boot() {
 
   state.booted = true;
   const settings = await getSettings();
-  state.profile = await getProfile().catch(() => null);
+  state.profile = await loadJoinedProfile();
   applyAuthUI();
 
   // When the board is private, an unauthenticated visitor gets the
@@ -108,10 +108,20 @@ async function boot() {
 
   if (location.hash === '#request') openRequestSheet();
   onAuthChange(async (_event, profile) => {
-    state.profile = profile;
+    state.profile = isJoined(profile) ? profile : null;
     applyAuthUI();
-    if (profile) { refreshMine(); refreshUnread(); }
+    if (state.profile) { refreshMine(); refreshUnread(); }
   });
+}
+
+/**
+ * An anonymous account that has not presented the access code yet is
+ * inactive: it can see the board, and nothing else. Treat it as signed
+ * out so the UI offers the join screen rather than a broken account page.
+ */
+async function loadJoinedProfile() {
+  const profile = await getProfile().catch(() => null);
+  return isJoined(profile) ? profile : null;
 }
 
 function registerServiceWorker() {
@@ -683,7 +693,8 @@ function wireAccount() {
 function paintAccount() {
   if (!state.profile) return;
   $('#acct-name').textContent = state.profile.full_name;
-  $('#acct-email').textContent = state.profile.email ?? '';
+  $('#acct-email').textContent = state.profile.email
+    || 'Joined with an access code on this device';
   $('#acct-name-input').value = state.profile.full_name;
   const role = $('#acct-role');
   role.textContent = isAdmin(state.profile) ? 'Administrator' : 'Employee';

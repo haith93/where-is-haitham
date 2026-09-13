@@ -4,7 +4,10 @@
 import { configured, sb } from './supabase.js';
 import { $, esc } from './utils.js';
 import { initTheme, initThemeToggle, initOffline, renderSetupNeeded, toastOk, toastError, withBusy } from './ui.js';
-import { signIn, signUp, sendPasswordReset, updatePassword, getSession, getProfile, isAdmin } from './auth.js';
+import {
+  signIn, signUp, sendPasswordReset, updatePassword, getSession, getProfile,
+  isAdmin, isJoined, joinWithCode, accessOptions
+} from './auth.js';
 
 initTheme();
 initThemeToggle();
@@ -37,18 +40,54 @@ if (!configured) {
 async function boot() {
   showNotices();
 
+  const options = await accessOptions();
+  applyOptions(options);
+
   // Arriving from a "reset password" e-mail puts a recovery session in place.
   if (location.hash.includes('type=recovery')) {
     showPanel('recover');
   } else {
     const session = await getSession();
-    if (session) await goHome();
+    if (session) {
+      const profile = await getProfile().catch(() => null);
+      if (isJoined(profile)) {
+        await goHome();
+      } else {
+        // A session exists but the code was never accepted. Let them
+        // finish joining rather than stranding them.
+        showPanel('join');
+        if (profile?.full_name && profile.full_name !== 'Not named yet') {
+          $('#join-name').value = profile.full_name;
+        }
+      }
+    }
   }
 
   wireTabs();
+  wireJoin();
   wireSignIn();
   wireSignUp();
   wireRecover();
+}
+
+/**
+ * The sign-in page adapts to how the site is configured: no code set up
+ * yet (first run) means e-mail is the only way in, which is exactly what
+ * the administrator needs in order to bootstrap.
+ */
+function applyOptions(options) {
+  $('#to-signup').hidden = options.allow_email_signup === false;
+
+  if (!options.code_ready) {
+    $('#tab-join').hidden = true;
+    $('#tab-signin').className = 'btn btn-soft grow';
+    showPanel(options.allow_email_signup === false ? 'signin' : 'signup');
+    const notice = $('#auth-notice');
+    if (!notice.textContent) {
+      notice.textContent = 'No access code has been set up yet. Create the administrator account first, then set the code in Admin → Settings.';
+      notice.hidden = false;
+    }
+  }
 }
 
 function showNotices() {
@@ -69,24 +108,57 @@ function showNotices() {
 }
 
 function showPanel(which) {
-  const panels = { signin: '#panel-signin', signup: '#panel-signup', recover: '#panel-recover' };
+  const panels = {
+    join: '#panel-join',
+    signin: '#panel-signin',
+    signup: '#panel-signup',
+    recover: '#panel-recover'
+  };
   Object.entries(panels).forEach(([key, sel]) => { $(sel).hidden = key !== which; });
 
+  const joinTab = $('#tab-join');
   const signinTab = $('#tab-signin');
-  const signupTab = $('#tab-signup');
-  const showTabs = which !== 'recover';
-  signinTab.parentElement.hidden = !showTabs;
+  const showTabs = which !== 'recover' && which !== 'signup';
+  joinTab.parentElement.hidden = !showTabs;
 
+  joinTab.setAttribute('aria-selected', String(which === 'join'));
   signinTab.setAttribute('aria-selected', String(which === 'signin'));
-  signupTab.setAttribute('aria-selected', String(which === 'signup'));
+  joinTab.className = which === 'join' ? 'btn btn-soft grow' : 'btn btn-ghost grow';
   signinTab.className = which === 'signin' ? 'btn btn-soft grow' : 'btn btn-ghost grow';
-  signupTab.className = which === 'signup' ? 'btn btn-soft grow' : 'btn btn-ghost grow';
+
+  $(panels[which])?.querySelector('[data-autofocus], input')?.focus({ preventScroll: true });
 }
 
 function wireTabs() {
+  $('#tab-join').addEventListener('click', () => showPanel('join'));
   $('#tab-signin').addEventListener('click', () => showPanel('signin'));
-  $('#tab-signup').addEventListener('click', () => showPanel('signup'));
+  $('#to-signup').addEventListener('click', () => showPanel('signup'));
+  $('#back-to-join').addEventListener('click', () => showPanel('join'));
   if (params.get('mode') === 'signup') showPanel('signup');
+  if (params.get('mode') === 'signin') showPanel('signin');
+}
+
+function wireJoin() {
+  $('#panel-join').addEventListener('submit', async event => {
+    event.preventDefault();
+    fieldError('#join-error', '');
+
+    const name = $('#join-name').value.trim();
+    const code = $('#join-code').value.trim();
+    if (!name || !code) {
+      fieldError('#join-error', 'Enter your name and the access code.');
+      return;
+    }
+
+    await withBusy($('#join-submit'), 'Checking…', async () => {
+      try {
+        await joinWithCode(name, code);
+        await goHome();
+      } catch (err) {
+        fieldError('#join-error', err.message);
+      }
+    });
+  });
 }
 
 function fieldError(selector, message) {
@@ -197,6 +269,10 @@ function wireRecover() {
 }
 
 // Keep the tab in step if the session changes in another tab.
-sb?.auth.onAuthStateChange((event) => {
-  if (event === 'SIGNED_IN' && !location.hash.includes('type=recovery')) goHome();
+sb?.auth.onAuthStateChange(async (event) => {
+  if (event !== 'SIGNED_IN' || location.hash.includes('type=recovery')) return;
+  // An anonymous session created for a join attempt is not "signed in"
+  // until the code has actually been accepted.
+  const profile = await getProfile().catch(() => null);
+  if (isJoined(profile)) goHome();
 });

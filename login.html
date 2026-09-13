@@ -32,16 +32,42 @@
 
       <div id="auth-card" class="card" style="margin-top:18px">
         <div class="row" role="tablist" aria-label="Account" style="gap:6px;margin-bottom:18px">
-          <button class="btn btn-soft grow" type="button" id="tab-signin"
-                  role="tab" aria-selected="true" aria-controls="panel-signin">Sign in</button>
-          <button class="btn btn-ghost grow" type="button" id="tab-signup"
-                  role="tab" aria-selected="false" aria-controls="panel-signup">Create account</button>
+          <button class="btn btn-soft grow" type="button" id="tab-join"
+                  role="tab" aria-selected="true" aria-controls="panel-join">Join</button>
+          <button class="btn btn-ghost grow" type="button" id="tab-signin"
+                  role="tab" aria-selected="false" aria-controls="panel-signin">Staff sign-in</button>
         </div>
 
         <p id="auth-notice" class="notice notice-info" hidden></p>
 
-        <!-- ---------------- Sign in ---------------- -->
-        <form id="panel-signin" class="stack" role="tabpanel" aria-labelledby="tab-signin" novalidate>
+        <!-- ---------------- Join with the shared code ---------------- -->
+        <form id="panel-join" class="stack" role="tabpanel" aria-labelledby="tab-join" novalidate>
+          <p class="help">
+            Enter your name and the access code your school gave you. No e-mail,
+            no password.
+          </p>
+          <div class="field">
+            <label class="label" for="join-name">Your full name</label>
+            <input class="input" id="join-name" type="text" required autocomplete="name"
+                   maxlength="120" placeholder="Sarah Mansour" data-autofocus>
+            <p class="help">This is the name Haitham sees on your requests.</p>
+          </div>
+          <div class="field">
+            <label class="label" for="join-code">Access code</label>
+            <input class="input" id="join-code" type="text" required maxlength="64"
+                   autocomplete="one-time-code" autocapitalize="characters"
+                   spellcheck="false" placeholder="Ask your administrator">
+          </div>
+          <p class="error" id="join-error" role="alert" hidden></p>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="join-submit">Continue</button>
+          <p class="help">
+            You stay signed in on this device. On a new phone, just enter your name
+            and the code again.
+          </p>
+        </form>
+
+        <!-- ---------------- Sign in (administrators / e-mail accounts) ---------------- -->
+        <form id="panel-signin" class="stack" role="tabpanel" aria-labelledby="tab-signin" novalidate hidden>
           <div class="field">
             <label class="label" for="signin-email">E-mail</label>
             <input class="input" id="signin-email" name="email" type="email" required
@@ -55,6 +81,13 @@
           <p class="error" id="signin-error" role="alert" hidden></p>
           <button class="btn btn-primary btn-lg btn-block" type="submit" id="signin-submit">Sign in</button>
           <button class="btn btn-ghost btn-sm" type="button" id="forgot-btn">Forgot your password?</button>
+          <p class="help">
+            For administrators and anyone with an e-mail account. Employees should
+            use <strong>Join</strong> instead.
+          </p>
+          <button class="btn btn-ghost btn-sm" type="button" id="to-signup" hidden>
+            Create an e-mail account
+          </button>
         </form>
 
         <!-- ---------------- Sign up ---------------- -->
@@ -81,6 +114,7 @@
             New accounts are ordinary employee accounts. Administrator access is granted
             by the administrator only.
           </p>
+          <button class="btn btn-ghost btn-sm" type="button" id="back-to-join">← Back</button>
         </form>
 
         <!-- ---------------- Set a new password (arrives from e-mail link) ---------------- -->

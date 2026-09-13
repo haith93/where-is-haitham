@@ -197,6 +197,32 @@ export async function setUserRole(userId, role) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Employee access code                                                */
+/* ------------------------------------------------------------------ */
+
+/** Whether a code exists — never the code itself, which is only stored hashed. */
+export async function getAccessOptions() {
+  const { data, error } = await sb.rpc('access_options');
+  if (error) fail(error, 'Could not read the access settings.');
+  return data ?? { code_ready: false, allow_email_signup: true };
+}
+
+export async function setAccessCode(code, label = null) {
+  const clean = String(code ?? '').trim();
+  if (clean.length < 4) throw new Error('Choose a code of at least 4 characters.');
+  if (clean.length > 64) throw new Error('That code is too long (64 characters maximum).');
+
+  const { error } = await sb.rpc('set_staff_access_code', { p_code: clean, p_label: label });
+  if (error) fail(error, 'Could not save the access code.');
+}
+
+export async function purgeUnclaimedGuests() {
+  const { data, error } = await sb.rpc('purge_unclaimed_guests', { p_older_than: '2 days' });
+  if (error) fail(error, 'Could not remove the unfinished accounts.');
+  return data ?? 0;
+}
+
+/* ------------------------------------------------------------------ */
 /* Audit log                                                           */
 /* ------------------------------------------------------------------ */
 

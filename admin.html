@@ -390,6 +390,40 @@
           </div>
 
           <div class="card stack">
+            <h2 class="card-title">Employee access code</h2>
+            <p class="small muted" id="code-state">Checking…</p>
+            <div class="field">
+              <label class="label" for="set-code">New access code</label>
+              <input class="input" id="set-code" type="text" maxlength="64" autocomplete="off"
+                     spellcheck="false" placeholder="e.g. STMARY-2026">
+              <p class="help">
+                At least 4 characters. Employees type this once, with their name, to join.
+                Changing it does <strong>not</strong> sign anyone out — it only affects
+                people joining from now on.
+              </p>
+            </div>
+            <div class="row-wrap">
+              <button class="btn btn-primary" type="button" id="code-save">Save access code</button>
+              <button class="btn btn-soft" type="button" id="code-suggest">Suggest one</button>
+            </div>
+
+            <label class="row" style="gap:12px;cursor:pointer;margin-top:6px">
+              <input type="checkbox" id="set-email-signup" style="width:22px;height:22px;flex:none">
+              <span>
+                <strong>Also allow sign-up with an e-mail address</strong>
+                <span class="help" style="display:block">
+                  Turn this off once your own account exists, so the access code is the
+                  only way in. Existing accounts keep working.
+                </span>
+              </span>
+            </label>
+
+            <button class="btn btn-ghost btn-sm" type="button" id="purge-guests">
+              Remove unfinished guest accounts
+            </button>
+          </div>
+
+          <div class="card stack">
             <h2 class="card-title">Naming</h2>
             <div class="field">
               <label class="label" for="set-org">Organisation name</label>

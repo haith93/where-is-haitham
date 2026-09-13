@@ -54,6 +54,72 @@ export async function getProfile({ force = false } = {}) {
 
 export const isAdmin = profile => profile?.role === 'admin' && profile?.active === true;
 
+/**
+ * A profile only counts as "signed in" once it is active. An anonymous
+ * account that has not presented the access code yet is inactive, and is
+ * treated everywhere as not signed in.
+ */
+export const isJoined = profile => profile?.active === true;
+
+/** True when there is a session but the access code has not been accepted. */
+export async function needsClaim() {
+  const session = await getSession();
+  if (!session) return false;
+  const profile = await getProfile().catch(() => null);
+  return Boolean(profile) && profile.active !== true;
+}
+
+/* ------------------------------------------------------------------ */
+/* Joining with the shared access code                                 */
+/* ------------------------------------------------------------------ */
+
+/** What the sign-in page is allowed to know: is a code set up at all? */
+export async function accessOptions() {
+  const { data, error } = await sb.rpc('access_options');
+  if (error) {
+    console.warn('access_options', error);
+    return { code_ready: false, allow_email_signup: true };
+  }
+  return data ?? { code_ready: false, allow_email_signup: true };
+}
+
+/**
+ * Join with a name and the shared code — no e-mail, no password.
+ *
+ * Signs in anonymously (or reuses the anonymous session from a previous
+ * attempt, so retrying a mistyped code does not litter the user table),
+ * then asks the database to verify the code. The code is never checked
+ * in the browser: an inactive profile can do nothing at all until the
+ * server says the code was right.
+ */
+export async function joinWithCode(fullName, code) {
+  const name = String(fullName || '').trim();
+  if (name.length < 2) throw new Error('Please enter your full name.');
+  if (!String(code || '').trim()) throw new Error('Please enter the access code.');
+
+  let session = await getSession();
+  if (!session) {
+    const { error } = await sb.auth.signInAnonymously();
+    if (error) {
+      throw new Error(
+        /disabled|not enabled/i.test(error.message || '')
+          ? 'Joining with a code is not switched on for this site yet. Please tell the administrator.'
+          : errorMessage(error, 'Could not start a session. Please try again.')
+      );
+    }
+    session = await getSession();
+  }
+
+  const { error } = await sb.rpc('claim_staff_access', {
+    p_code: String(code).trim(),
+    p_name: name
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not verify that code.'));
+
+  cachedProfile = null;
+  return getProfile({ force: true });
+}
+
 /* ------------------------------------------------------------------ */
 /* Sign in / up / out                                                  */
 /* ------------------------------------------------------------------ */
@@ -153,7 +219,20 @@ export async function requireAuth({ admin = false } = {}) {
     return null;
   }
 
-  if (!profile || profile.active === false) {
+  if (!profile) {
+    await sb.auth.signOut();
+    location.replace(`${loginUrl()}&reason=inactive`);
+    return null;
+  }
+
+  if (profile.active === false) {
+    // An anonymous account that never presented the code is not a
+    // problem to report — it just has not finished joining. Keep the
+    // session so a retry does not create a second guest account.
+    if (!profile.email) {
+      location.replace(loginUrl());
+      return null;
+    }
     await sb.auth.signOut();
     location.replace(`${loginUrl()}&reason=inactive`);
     return null;
