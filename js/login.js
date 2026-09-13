@@ -281,10 +281,14 @@ function wireRecover() {
 }
 
 // Keep the tab in step if the session changes in another tab.
-sb?.auth.onAuthStateChange(async (event) => {
+// Synchronous by design: awaiting a Supabase call inside this callback
+// deadlocks the client's auth lock. Defer the work instead.
+sb?.auth.onAuthStateChange((event) => {
   if (event !== 'SIGNED_IN' || location.hash.includes('type=recovery')) return;
-  // An anonymous session created for a join attempt is not "signed in"
-  // until the code has actually been accepted.
-  const profile = await getProfile().catch(() => null);
-  if (isJoined(profile)) goHome();
+  setTimeout(async () => {
+    // An anonymous session created for a join attempt is not "signed in"
+    // until the code has actually been accepted.
+    const profile = await getProfile().catch(() => null);
+    if (isJoined(profile)) goHome();
+  }, 0);
 });

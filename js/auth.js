@@ -296,16 +296,34 @@ export function onAuthChange(callback) {
 }
 
 if (configured) {
-  sb.auth.onAuthStateChange(async (event) => {
+  /**
+   * CRITICAL: this callback must stay synchronous and must never await a
+   * Supabase call.
+   *
+   * supabase-js holds its auth lock while it dispatches these events (the
+   * dispatch happens inside _recoverAndRefresh during start-up). Calling
+   * getSession() from in here asks for the very lock the dispatcher is
+   * still holding, so the client deadlocks and every later auth call
+   * hangs for ever. That was the cause of the blank admin console.
+   *
+   * Anything that needs the network is pushed to a later task with
+   * setTimeout, by which point the lock has been released.
+   */
+  sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       cachedProfile = null;
       cachedUserId = null;
     }
-    if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+    if (event === 'SIGNED_IN' || event === 'USER_UPDATED' || event === 'TOKEN_REFRESHED') {
       cachedProfile = null;
     }
-    let profile = null;
-    try { profile = await getProfile(); } catch { /* surfaced by the caller */ }
-    listeners.forEach(fn => { try { fn(event, profile); } catch (e) { console.error(e); } });
+
+    setTimeout(async () => {
+      let profile = null;
+      if (session) {
+        try { profile = await getProfile(); } catch { /* surfaced by the caller */ }
+      }
+      listeners.forEach(fn => { try { fn(event, profile); } catch (e) { console.error(e); } });
+    }, 0);
   });
 }
