@@ -1,0 +1,21 @@
+# Local Supabase configuration — never commit real project keys here.
+js/env.js
+
+# Environment files
+.env
+.env.local
+*.local
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Dependencies (the frontend has none, but tooling may add some)
+node_modules/
+
+# Supabase CLI
+supabase/.branches/
+supabase/.temp/

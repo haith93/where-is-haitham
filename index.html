@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Where Is Haitham Now?</title>
+  <meta name="description" content="See where Haitham is, what he is doing and when he will be free — without phoning him.">
+  <meta name="theme-color" content="#f4f6fa">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Where Is Haitham">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= App bar ================= -->
+  <header class="appbar">
+    <div class="appbar-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true">📍</span>
+        <span class="grow">Where Is Haitham Now?</span>
+      </a>
+      <span class="grow"></span>
+
+      <nav class="desktop-nav" style="display:none" aria-label="Sections">
+        <button type="button" data-view="now" aria-current="page">Now</button>
+        <button type="button" data-view="mine" data-auth-only hidden>My requests</button>
+        <button type="button" data-view="account" data-auth-only hidden>Account</button>
+        <a href="admin.html" data-admin-only hidden>Admin</a>
+      </nav>
+
+      <span class="appbar-clock tabnum" id="clock" aria-label="Current time"></span>
+
+      <button class="btn btn-ghost btn-icon" type="button" id="bell" data-auth-only hidden
+              aria-label="Notifications" style="position:relative">🔔<span class="nav-dot" id="bell-dot" hidden>0</span></button>
+      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme">🌙</button>
+    </div>
+  </header>
+
+  <main class="container page" id="main">
+    <div id="setup-needed" hidden></div>
+
+    <!-- ================= NOW ================= -->
+    <section class="stack" id="view-now" data-view-panel="now" aria-labelledby="board-heading">
+      <h1 class="board-title" id="board-heading">Where is Haitham now?</h1>
+
+      <div id="hero-host">
+        <div class="skeleton" style="height:220px;border-radius:20px"></div>
+      </div>
+
+      <!-- Currently serving -->
+      <section class="card serving" id="serving-card" hidden aria-labelledby="serving-title">
+        <h2 class="card-title" id="serving-title">Currently serving</h2>
+        <div id="serving-body"></div>
+      </section>
+
+      <!-- Queue -->
+      <section class="card" id="queue-card" aria-labelledby="queue-title">
+        <div class="row-between" style="margin-bottom:10px">
+          <h2 class="card-title" id="queue-title" style="margin:0">Waiting for Haitham</h2>
+          <span class="badge badge-muted" id="queue-count">—</span>
+        </div>
+        <div id="queue-body">
+          <div class="skeleton" style="height:54px"></div>
+        </div>
+      </section>
+
+      <!-- Counters -->
+      <div class="counters" id="counters" hidden>
+        <div class="counter"><span class="n" id="c-waiting">0</span><span class="l">Waiting</span></div>
+        <div class="counter" data-tone="urgent"><span class="n" id="c-urgent">0</span><span class="l">Urgent</span></div>
+        <div class="counter" data-tone="danger"><span class="n" id="c-very">0</span><span class="l">Very urgent</span></div>
+      </div>
+
+      <!-- Primary action -->
+      <div class="cta-wrap">
+        <button class="btn btn-primary cta" type="button" id="request-btn">Request Haitham</button>
+      </div>
+
+      <p class="small faint" style="text-align:center">
+        This board replaces the phone call. Haitham updates it himself — there is no location tracking.
+      </p>
+    </section>
+
+    <!-- ================= MY REQUESTS ================= -->
+    <section class="stack" id="view-mine" data-view-panel="mine" hidden aria-labelledby="mine-heading">
+      <div class="row-between">
+        <h1 id="mine-heading" style="font-size:22px">My requests</h1>
+        <button class="btn btn-sm btn-soft" type="button" id="mine-new">+ New</button>
+      </div>
+      <div class="filters" role="group" aria-label="Filter my requests">
+        <button class="filter-pill" type="button" data-mine-filter="open" aria-pressed="true">Open</button>
+        <button class="filter-pill" type="button" data-mine-filter="all" aria-pressed="false">All</button>
+        <button class="filter-pill" type="button" data-mine-filter="completed" aria-pressed="false">Completed</button>
+      </div>
+      <div id="mine-body" class="stack-sm"></div>
+    </section>
+
+    <!-- ================= ACCOUNT ================= -->
+    <section class="stack" id="view-account" data-view-panel="account" hidden aria-labelledby="account-heading">
+      <h1 id="account-heading" style="font-size:22px">Account</h1>
+
+      <div class="card">
+        <h2 class="card-title">Signed in as</h2>
+        <p style="font-weight:700;font-size:17px" id="acct-name">—</p>
+        <p class="muted small" id="acct-email">—</p>
+        <p class="small" style="margin-top:8px"><span class="badge" id="acct-role">employee</span></p>
+
+        <div class="field" style="margin-top:16px">
+          <label class="label" for="acct-name-input">Display name</label>
+          <input class="input" id="acct-name-input" type="text" maxlength="120" autocomplete="name">
+          <p class="help">Haitham sees this name on your requests.</p>
+        </div>
+        <button class="btn btn-soft" type="button" id="acct-save-name">Save name</button>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Notifications</h2>
+        <p class="small muted" id="push-state">Checking…</p>
+        <div class="row-wrap" style="margin-top:12px">
+          <button class="btn btn-soft" type="button" id="push-enable">Turn on notifications</button>
+          <button class="btn btn-ghost" type="button" id="push-disable" hidden>Turn off</button>
+        </div>
+        <p class="help" style="margin-top:10px">
+          While the app is open you always get in-app alerts. Turning this on also delivers
+          them when the app is closed, where your browser supports it.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Session</h2>
+        <a class="btn btn-soft btn-block" href="admin.html" id="acct-admin-link" data-admin-only hidden>Open admin console</a>
+        <button class="btn btn-danger btn-block" type="button" id="signout-btn" style="margin-top:10px">Sign out</button>
+      </div>
+    </section>
+
+    <!-- Signed-out prompt shown inside Mine / Account -->
+    <section class="stack" id="view-signedout" hidden>
+      <div class="card" style="text-align:center">
+        <p class="empty-icon" aria-hidden="true">🔐</p>
+        <h2 style="font-size:19px;margin-bottom:8px">Sign in to continue</h2>
+        <p class="muted small" style="margin-bottom:16px">
+          You can read the board without an account. Sending a request needs one, so
+          Haitham knows who to come to.
+        </p>
+        <a class="btn btn-primary btn-block" href="login.html">Sign in</a>
+        <a class="btn btn-ghost btn-block" href="login.html?mode=signup" style="margin-top:8px">Create an account</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= Bottom navigation ================= -->
+  <nav class="bottomnav" aria-label="Main">
+    <button type="button" data-view="now" aria-current="page">
+      <span class="ico" aria-hidden="true">📍</span><span>Now</span>
+    </button>
+    <button type="button" data-view="mine">
+      <span class="ico" aria-hidden="true">📋</span><span>My requests</span>
+    </button>
+    <button type="button" data-view="account">
+      <span class="ico" aria-hidden="true">👤</span><span>Account</span>
+    </button>
+    <a href="admin.html" data-admin-only hidden>
+      <span class="ico" aria-hidden="true">🛠</span><span>Admin</span>
+    </a>
+  </nav>
+</div>
+
+<!-- ================= Request sheet ================= -->
+<dialog class="sheet" id="request-sheet" aria-labelledby="request-sheet-title">
+  <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="request-sheet-title">Request Haitham</h2>
+      <button class="sheet-close" type="button" data-close-sheet aria-label="Close">✕</button>
+    </div>
+
+    <form id="request-form" class="stack" novalidate>
+      <div class="field">
+        <span class="label">Your name</span>
+        <p class="chip" id="rq-name" style="width:fit-content">—</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="rq-location">Where are you?</label>
+        <select class="select" id="rq-location" required data-autofocus></select>
+      </div>
+      <div class="field" id="rq-location-custom-field" hidden>
+        <label class="label" for="rq-location-custom">Type the location</label>
+        <input class="input" id="rq-location-custom" type="text" maxlength="80" placeholder="e.g. Science Laboratory">
+      </div>
+
+      <div class="field">
+        <label class="label" for="rq-category">What do you need?</label>
+        <select class="select" id="rq-category" required></select>
+      </div>
+      <div class="field" id="rq-category-custom-field" hidden>
+        <label class="label" for="rq-category-custom">Type what you need</label>
+        <input class="input" id="rq-category-custom" type="text" maxlength="80" placeholder="e.g. Scanner not working">
+      </div>
+
+      <div class="field">
+        <label class="label" for="rq-description">Description</label>
+        <textarea class="textarea" id="rq-description" maxlength="1000"
+                  placeholder="Printer in room 204 is not printing."></textarea>
+        <p class="help"><span id="rq-desc-count">0</span>/1000 · Room numbers and machine names help a lot.</p>
+      </div>
+
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label">Priority</legend>
+        <div class="segmented" id="rq-priority">
+          <input type="radio" name="priority" id="pr-normal" value="normal" checked>
+          <label for="pr-normal">🟡 Normal</label>
+          <input type="radio" name="priority" id="pr-urgent" value="urgent">
+          <label for="pr-urgent">🟠 Urgent</label>
+          <input type="radio" name="priority" id="pr-very" value="very_urgent">
+          <label for="pr-very">🔴 Very urgent</label>
+        </div>
+        <p class="help">Please keep "Very urgent" for things that stop teaching or work right now.</p>
+      </fieldset>
+
+      <p class="error" id="rq-error" role="alert" hidden></p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit" id="rq-submit">Send request</button>
+    </form>
+
+    <div id="rq-success" hidden style="text-align:center;padding:10px 0 6px">
+      <p class="empty-icon" aria-hidden="true">✅</p>
+      <h3 style="font-size:19px">Request sent</h3>
+      <p class="muted small" style="margin-top:6px">Haitham has been notified. Your reference is</p>
+      <p class="mono" style="font-size:20px;font-weight:800;margin:8px 0" id="rq-number">—</p>
+      <p class="muted small" id="rq-eta"></p>
+      <button class="btn btn-primary btn-block" type="button" data-close-sheet style="margin-top:16px">Done</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ================= Request detail sheet ================= -->
+<dialog class="sheet" id="detail-sheet" aria-labelledby="detail-title">
+  <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="detail-title">Request</h2>
+      <button class="sheet-close" type="button" data-close-sheet aria-label="Close">✕</button>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+</dialog>
+
+<!-- ================= Notifications sheet ================= -->
+<dialog class="sheet" id="notif-sheet" aria-labelledby="notif-title">
+  <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="notif-title">Notifications</h2>
+      <div class="row">
+        <button class="btn btn-sm btn-ghost" type="button" id="notif-read-all">Mark all read</button>
+        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div id="notif-body" class="stack-sm"></div>
+  </div>
+</dialog>
+
+<script type="module" src="js/dashboard.js"></script>
+</body>
+</html>

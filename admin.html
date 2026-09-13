@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Admin · Where Is Haitham Now?</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f4f6fa">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="appbar">
+    <div class="appbar-inner">
+      <a class="brand" href="admin.html">
+        <span class="brand-mark" aria-hidden="true">🛠</span>
+        <span>Admin console</span>
+      </a>
+      <span class="grow"></span>
+      <span class="appbar-clock tabnum" id="clock" aria-label="Current time"></span>
+      <button class="btn btn-ghost btn-icon" type="button" id="bell" aria-label="Notifications" style="position:relative">
+        🔔<span class="nav-dot" id="bell-dot" hidden>0</span>
+      </button>
+      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme">🌙</button>
+    </div>
+  </header>
+
+  <main class="container page">
+    <div id="setup-needed" hidden></div>
+
+    <div class="admin-shell" id="shell" hidden>
+      <!-- ============ Desktop side navigation ============ -->
+      <aside class="admin-side">
+        <nav aria-label="Admin sections">
+          <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span>Dashboard</a>
+          <a href="#/status"><span class="ico" aria-hidden="true">📍</span>My status</a>
+          <a href="#/requests"><span class="ico" aria-hidden="true">📥</span>Requests<span class="badge badge-danger" id="side-queue-count" hidden>0</span></a>
+          <a href="#/buildings"><span class="ico" aria-hidden="true">🏢</span>Buildings</a>
+          <a href="#/tasks"><span class="ico" aria-hidden="true">🧰</span>Tasks</a>
+          <a href="#/users"><span class="ico" aria-hidden="true">👥</span>Users</a>
+          <a href="#/reports"><span class="ico" aria-hidden="true">📈</span>Reports</a>
+          <a href="#/history"><span class="ico" aria-hidden="true">🕘</span>History</a>
+          <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span>Settings</a>
+          <a href="index.html"><span class="ico" aria-hidden="true">👁</span>View public board</a>
+        </nav>
+      </aside>
+
+      <div id="sections">
+
+        <!-- ================= DASHBOARD ================= -->
+        <section class="admin-section is-active stack" id="s-dashboard" aria-labelledby="h-dashboard">
+          <div class="section-head">
+            <div>
+              <h1 id="h-dashboard">Dashboard</h1>
+              <p id="greeting">—</p>
+            </div>
+          </div>
+
+          <div id="now-host">
+            <div class="skeleton" style="height:120px;border-radius:20px"></div>
+          </div>
+
+          <div class="btn-grid">
+            <button class="btn btn-primary btn-lg" type="button" data-go="#/status">Update location / task</button>
+            <button class="btn btn-ok btn-lg" type="button" id="quick-available">I'm available now</button>
+            <button class="btn btn-lg" type="button" id="quick-finish">Finish current task</button>
+            <button class="btn btn-lg" type="button" data-go="#/requests">View requests</button>
+          </div>
+
+          <div class="counters">
+            <div class="counter" data-tone="danger"><span class="n" id="d-very">0</span><span class="l">Very urgent</span></div>
+            <div class="counter" data-tone="urgent"><span class="n" id="d-urgent">0</span><span class="l">Urgent</span></div>
+            <div class="counter"><span class="n" id="d-pending">0</span><span class="l">Pending</span></div>
+          </div>
+
+          <section class="card">
+            <div class="row-between" style="margin-bottom:10px">
+              <h2 class="card-title" style="margin:0">Next in the queue</h2>
+              <button class="btn btn-sm btn-ghost" type="button" data-go="#/requests">See all</button>
+            </div>
+            <div id="d-queue"><div class="skeleton" style="height:60px"></div></div>
+          </section>
+
+          <section class="card">
+            <h2 class="card-title">Today so far</h2>
+            <div class="stat-grid" id="d-today">
+              <div class="skeleton" style="height:68px"></div>
+              <div class="skeleton" style="height:68px"></div>
+              <div class="skeleton" style="height:68px"></div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ================= MY STATUS ================= -->
+        <section class="admin-section stack" id="s-status" aria-labelledby="h-status">
+          <div class="section-head">
+            <div>
+              <h1 id="h-status">Update my status</h1>
+              <p>Pick where, what and for how long. The times are worked out for you.</p>
+            </div>
+          </div>
+
+          <div id="status-now-host"></div>
+
+          <form class="card stack" id="status-form" novalidate>
+            <div class="field">
+              <span class="label">Status</span>
+              <div class="segmented" id="st-type">
+                <input type="radio" name="status_type" id="st-busy" value="busy" checked>
+                <label for="st-busy">🟡 Busy</label>
+                <input type="radio" name="status_type" id="st-serving" value="serving">
+                <label for="st-serving">🔵 With someone</label>
+                <input type="radio" name="status_type" id="st-traveling" value="traveling">
+                <label for="st-traveling">🚶 On the way</label>
+                <input type="radio" name="status_type" id="st-available" value="available">
+                <label for="st-available">🟢 Available</label>
+                <input type="radio" name="status_type" id="st-meeting" value="meeting">
+                <label for="st-meeting">📋 Meeting</label>
+                <input type="radio" name="status_type" id="st-break" value="break">
+                <label for="st-break">☕ Break</label>
+                <input type="radio" name="status_type" id="st-offsite" value="offsite">
+                <label for="st-offsite">🚗 Off site</label>
+                <input type="radio" name="status_type" id="st-done" value="done">
+                <label for="st-done">🌙 Finished</label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label" for="st-location">Location</label>
+              <select class="select" id="st-location"></select>
+            </div>
+            <div class="field" id="st-location-custom-field" hidden>
+              <label class="label" for="st-location-custom">Custom location</label>
+              <input class="input" id="st-location-custom" type="text" maxlength="80" placeholder="e.g. Science Laboratory">
+              <p class="help">Used for this update only. It is not added to the permanent list.</p>
+            </div>
+
+            <div class="field">
+              <label class="label" for="st-task">Task</label>
+              <select class="select" id="st-task"></select>
+            </div>
+            <div class="field" id="st-task-custom-field" hidden>
+              <label class="label" for="st-task-custom">Custom task</label>
+              <input class="input" id="st-task-custom" type="text" maxlength="80" placeholder="e.g. Replacing a projector lamp">
+              <p class="help">Used for this update only. It is not added to the permanent list.</p>
+            </div>
+
+            <div class="field">
+              <span class="label" id="duration-label">How long?</span>
+              <div class="duration-grid" id="st-durations" role="group" aria-labelledby="duration-label"></div>
+              <div class="row" style="margin-top:8px">
+                <button class="btn btn-sm btn-soft" type="button" id="st-custom-duration">Custom…</button>
+                <button class="btn btn-sm btn-ghost" type="button" id="st-no-duration">No fixed time</button>
+              </div>
+            </div>
+            <div class="field" id="st-custom-duration-field" hidden>
+              <label class="label" for="st-custom-minutes">Minutes</label>
+              <input class="input" id="st-custom-minutes" type="number" min="1" max="1440" step="1" inputmode="numeric" placeholder="e.g. 25">
+            </div>
+
+            <!-- The computed window. The user never types a clock time. -->
+            <div class="time-preview" id="st-preview" role="status">
+              <div class="k">This status will be</div>
+              <div class="v" id="st-preview-range">—</div>
+              <div class="sub" id="st-preview-sub">Current time is used automatically.</div>
+            </div>
+
+            <p class="error" id="st-error" role="alert" hidden></p>
+            <button class="btn btn-primary btn-lg btn-block" type="submit" id="st-submit">Update status</button>
+          </form>
+
+          <div class="card">
+            <h2 class="card-title">Shortcuts</h2>
+            <div id="st-recent" class="stack-sm"></div>
+          </div>
+        </section>
+
+        <!-- ================= REQUESTS ================= -->
+        <section class="admin-section stack" id="s-requests" aria-labelledby="h-requests">
+          <div class="section-head">
+            <div>
+              <h1 id="h-requests">Service queue</h1>
+              <p id="queue-summary">—</p>
+            </div>
+          </div>
+
+          <div class="filters" role="group" aria-label="Filter requests">
+            <button class="filter-pill" type="button" data-rq-filter="open" aria-pressed="true">Open</button>
+            <button class="filter-pill" type="button" data-rq-filter="pending" aria-pressed="false">Pending</button>
+            <button class="filter-pill" type="button" data-rq-filter="accepted" aria-pressed="false">Accepted</button>
+            <button class="filter-pill" type="button" data-rq-filter="in_progress" aria-pressed="false">In progress</button>
+            <button class="filter-pill" type="button" data-rq-filter="today" aria-pressed="false">Today (all)</button>
+            <button class="filter-pill" type="button" data-rq-filter="closed" aria-pressed="false">Recently closed</button>
+          </div>
+
+          <div id="queue-host" class="stack-sm"></div>
+        </section>
+
+        <!-- ================= BUILDINGS ================= -->
+        <section class="admin-section stack" id="s-buildings" aria-labelledby="h-buildings">
+          <div class="section-head">
+            <div>
+              <h1 id="h-buildings">Buildings</h1>
+              <p>Locations you can choose from. Disable instead of deleting so old reports keep their names.</p>
+            </div>
+          </div>
+
+          <form class="card row" id="building-form" style="gap:8px">
+            <label class="sr-only" for="building-name">New building name</label>
+            <input class="input grow" id="building-name" type="text" maxlength="80" placeholder="New building name" required>
+            <button class="btn btn-primary" type="submit" id="building-add">Add</button>
+          </form>
+
+          <div id="buildings-host" class="stack-sm"></div>
+        </section>
+
+        <!-- ================= TASKS ================= -->
+        <section class="admin-section stack" id="s-tasks" aria-labelledby="h-tasks">
+          <div class="section-head">
+            <div>
+              <h1 id="h-tasks">Tasks</h1>
+              <p>The kinds of work you do. Also used as the categories employees pick from.</p>
+            </div>
+          </div>
+
+          <form class="card row" id="task-form" style="gap:8px">
+            <label class="sr-only" for="task-name">New task name</label>
+            <input class="input grow" id="task-name" type="text" maxlength="80" placeholder="New task name" required>
+            <button class="btn btn-primary" type="submit" id="task-add">Add</button>
+          </form>
+
+          <div id="tasks-host" class="stack-sm"></div>
+        </section>
+
+        <!-- ================= USERS ================= -->
+        <section class="admin-section stack" id="s-users" aria-labelledby="h-users">
+          <div class="section-head">
+            <div>
+              <h1 id="h-users">Users</h1>
+              <p>Accounts are never deleted, because requests refer to them. Deactivate instead.</p>
+            </div>
+          </div>
+          <div class="field">
+            <label class="sr-only" for="user-search">Search users</label>
+            <input class="input" id="user-search" type="search" placeholder="Search by name or e-mail">
+          </div>
+          <div id="users-host" class="stack-sm"></div>
+        </section>
+
+        <!-- ================= REPORTS ================= -->
+        <section class="admin-section stack" id="s-reports" aria-labelledby="h-reports">
+          <div class="section-head">
+            <div>
+              <h1 id="h-reports">Reports</h1>
+              <p id="report-period">—</p>
+            </div>
+          </div>
+
+          <div class="filters" role="group" aria-label="Report period">
+            <button class="filter-pill" type="button" data-period="today" aria-pressed="true">Today</button>
+            <button class="filter-pill" type="button" data-period="yesterday" aria-pressed="false">Yesterday</button>
+            <button class="filter-pill" type="button" data-period="week" aria-pressed="false">This week</button>
+            <button class="filter-pill" type="button" data-period="month" aria-pressed="false">This month</button>
+            <button class="filter-pill" type="button" data-period="custom" aria-pressed="false">Custom range</button>
+          </div>
+
+          <div class="card row-wrap" id="custom-range" hidden style="gap:12px">
+            <div class="field grow">
+              <label class="label" for="range-from">From</label>
+              <input class="input" id="range-from" type="date">
+            </div>
+            <div class="field grow">
+              <label class="label" for="range-to">To</label>
+              <input class="input" id="range-to" type="date">
+            </div>
+            <button class="btn btn-primary" type="button" id="range-apply" style="align-self:flex-end">Apply</button>
+          </div>
+
+          <details class="card">
+            <summary style="cursor:pointer;font-weight:700">More filters</summary>
+            <div class="stack" style="margin-top:14px">
+              <div class="field">
+                <label class="label" for="f-building">Building</label>
+                <select class="select" id="f-building"></select>
+              </div>
+              <div class="field">
+                <label class="label" for="f-task">Task / category</label>
+                <select class="select" id="f-task"></select>
+              </div>
+              <div class="field">
+                <label class="label" for="f-priority">Priority</label>
+                <select class="select" id="f-priority">
+                  <option value="">Any priority</option>
+                  <option value="normal">Normal</option>
+                  <option value="urgent">Urgent</option>
+                  <option value="very_urgent">Very urgent</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="label" for="f-status">Request status</label>
+                <select class="select" id="f-status">
+                  <option value="">Any status</option>
+                  <option value="pending">Pending</option>
+                  <option value="accepted">Accepted</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="completed">Completed</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <button class="btn btn-soft" type="button" id="f-clear">Clear filters</button>
+            </div>
+          </details>
+
+          <div id="report-host">
+            <div class="skeleton" style="height:200px"></div>
+          </div>
+
+          <div class="card no-print">
+            <h2 class="card-title">Export</h2>
+            <div class="btn-grid">
+              <button class="btn btn-soft" type="button" id="ex-summary">Summary CSV</button>
+              <button class="btn btn-soft" type="button" id="ex-requests">Requests CSV</button>
+              <button class="btn btn-soft" type="button" id="ex-activity">Activity CSV</button>
+              <button class="btn btn-soft" type="button" id="ex-print">Print / save PDF</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= HISTORY ================= -->
+        <section class="admin-section stack" id="s-history" aria-labelledby="h-history">
+          <div class="section-head">
+            <div>
+              <h1 id="h-history">History</h1>
+              <p>Everywhere you have been, with the real time spent.</p>
+            </div>
+          </div>
+
+          <div class="card stack-sm">
+            <div class="row-wrap" style="gap:12px">
+              <div class="field grow">
+                <label class="label" for="hist-from">From</label>
+                <input class="input" id="hist-from" type="date">
+              </div>
+              <div class="field grow">
+                <label class="label" for="hist-to">To</label>
+                <input class="input" id="hist-to" type="date">
+              </div>
+            </div>
+            <div class="field">
+              <label class="sr-only" for="hist-search">Search history</label>
+              <input class="input" id="hist-search" type="search" placeholder="Search location or task">
+            </div>
+          </div>
+
+          <div id="history-host"></div>
+        </section>
+
+        <!-- ================= SETTINGS ================= -->
+        <section class="admin-section stack" id="s-settings" aria-labelledby="h-settings">
+          <div class="section-head">
+            <div>
+              <h1 id="h-settings">Settings</h1>
+              <p>Application configuration and this device's notifications.</p>
+            </div>
+          </div>
+
+          <div class="card stack">
+            <h2 class="card-title">Visibility</h2>
+            <label class="row" style="gap:12px;cursor:pointer">
+              <input type="checkbox" id="set-public" style="width:22px;height:22px;flex:none">
+              <span>
+                <strong>Show the board without signing in</strong>
+                <span class="help" style="display:block">
+                  When off, employees must sign in before they can see anything.
+                  Sending a request always needs an account.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div class="card stack">
+            <h2 class="card-title">Naming</h2>
+            <div class="field">
+              <label class="label" for="set-org">Organisation name</label>
+              <input class="input" id="set-org" type="text" maxlength="80">
+            </div>
+            <div class="field">
+              <label class="label" for="set-person">Tracked person</label>
+              <input class="input" id="set-person" type="text" maxlength="60">
+            </div>
+            <div class="field">
+              <label class="label" for="set-durations">Quick duration buttons (minutes, comma separated)</label>
+              <input class="input" id="set-durations" type="text" inputmode="numeric" placeholder="5, 10, 15, 20, 30, 45, 60, 120">
+            </div>
+            <button class="btn btn-primary" type="button" id="set-save">Save settings</button>
+          </div>
+
+          <div class="card stack">
+            <h2 class="card-title">Notifications on this device</h2>
+            <p class="small muted" id="push-state">Checking…</p>
+            <div class="row-wrap">
+              <button class="btn btn-soft" type="button" id="push-enable">Turn on notifications</button>
+              <button class="btn btn-ghost" type="button" id="push-disable" hidden>Turn off</button>
+              <button class="btn btn-ghost" type="button" id="push-test" hidden>Send a test</button>
+            </div>
+            <p class="help">
+              New requests always appear here instantly while the app is open. Turning
+              notifications on also alerts you when it is closed.
+            </p>
+          </div>
+
+          <div class="card stack">
+            <h2 class="card-title">Recent configuration changes</h2>
+            <div id="audit-host"><div class="skeleton" style="height:60px"></div></div>
+          </div>
+
+          <div class="card stack">
+            <h2 class="card-title">Session</h2>
+            <p class="small muted" id="admin-identity">—</p>
+            <button class="btn btn-danger btn-block" type="button" id="signout-btn">Sign out</button>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ Mobile bottom navigation ============ -->
+  <nav class="bottomnav" aria-label="Admin">
+    <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span><span>Home</span></a>
+    <a href="#/status"><span class="ico" aria-hidden="true">📍</span><span>Status</span></a>
+    <a href="#/requests" style="position:relative">
+      <span class="ico" aria-hidden="true">📥</span><span>Queue</span>
+      <span class="nav-dot" id="nav-queue-count" hidden>0</span>
+    </a>
+    <a href="#/reports"><span class="ico" aria-hidden="true">📈</span><span>Reports</span></a>
+    <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span><span>More</span></a>
+  </nav>
+</div>
+
+<!-- ================= Request action sheet ================= -->
+<dialog class="sheet" id="action-sheet" aria-labelledby="action-title">
+  <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="action-title">Request</h2>
+      <button class="sheet-close" type="button" data-close-sheet aria-label="Close">✕</button>
+    </div>
+    <div id="action-body"></div>
+  </div>
+</dialog>
+
+<!-- ================= Notifications sheet ================= -->
+<dialog class="sheet" id="notif-sheet" aria-labelledby="notif-title">
+  <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="notif-title">Notifications</h2>
+      <div class="row">
+        <button class="btn btn-sm btn-ghost" type="button" id="notif-read-all">Mark all read</button>
+        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div id="notif-body" class="stack-sm"></div>
+  </div>
+</dialog>
+
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

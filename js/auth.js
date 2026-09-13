@@ -1,0 +1,190 @@
+/**
+ * Authentication and the signed-in profile.
+ *
+ * Roles are read from `public.profiles`, never from anything the browser
+ * can set. The UI uses the role only to decide what to *show*; what a
+ * user may actually *do* is enforced by RLS and by the SECURITY DEFINER
+ * functions in the database.
+ */
+import { sb, configured, errorMessage } from './supabase.js';
+
+let cachedProfile = null;
+let cachedUserId = null;
+const listeners = new Set();
+
+/* ------------------------------------------------------------------ */
+/* Session + profile                                                   */
+/* ------------------------------------------------------------------ */
+
+export async function getSession() {
+  if (!configured) return null;
+  const { data, error } = await sb.auth.getSession();
+  if (error) {
+    console.warn('getSession', error);
+    return null;
+  }
+  return data.session ?? null;
+}
+
+/** The signed-in user's profile row, or null when signed out. */
+export async function getProfile({ force = false } = {}) {
+  const session = await getSession();
+  if (!session) {
+    cachedProfile = null;
+    cachedUserId = null;
+    return null;
+  }
+  if (!force && cachedProfile && cachedUserId === session.user.id) return cachedProfile;
+
+  const { data, error } = await sb
+    .from('profiles')
+    .select('id, full_name, email, role, active, created_at')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('profile load', error);
+    throw new Error(errorMessage(error, 'Could not load your account.'));
+  }
+
+  cachedProfile = data ?? null;
+  cachedUserId = session.user.id;
+  return cachedProfile;
+}
+
+export const isAdmin = profile => profile?.role === 'admin' && profile?.active === true;
+
+/* ------------------------------------------------------------------ */
+/* Sign in / up / out                                                  */
+/* ------------------------------------------------------------------ */
+
+export async function signIn(email, password) {
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: String(email || '').trim().toLowerCase(),
+    password
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not sign you in.'));
+
+  cachedProfile = null;
+  const profile = await getProfile({ force: true });
+  if (profile && profile.active === false) {
+    await sb.auth.signOut();
+    throw new Error('This account has been deactivated. Please contact the administrator.');
+  }
+  return data.user;
+}
+
+export async function signUp(email, password, fullName) {
+  const name = String(fullName || '').trim();
+  if (name.length < 2) throw new Error('Please enter your full name.');
+  if (String(password || '').length < 8) throw new Error('Choose a password of at least 8 characters.');
+
+  const { data, error } = await sb.auth.signUp({
+    email: String(email || '').trim().toLowerCase(),
+    password,
+    options: { data: { full_name: name } }
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not create the account.'));
+
+  // When e-mail confirmation is switched on there is no session yet.
+  return { user: data.user, needsConfirmation: !data.session };
+}
+
+export async function signOut() {
+  cachedProfile = null;
+  cachedUserId = null;
+  const { error } = await sb.auth.signOut();
+  if (error) throw new Error(errorMessage(error, 'Could not sign out.'));
+}
+
+export async function sendPasswordReset(email) {
+  const redirectTo = new URL('login.html', location.href).href;
+  const { error } = await sb.auth.resetPasswordForEmail(
+    String(email || '').trim().toLowerCase(),
+    { redirectTo }
+  );
+  if (error) throw new Error(errorMessage(error, 'Could not send the reset e-mail.'));
+}
+
+export async function updatePassword(newPassword) {
+  if (String(newPassword || '').length < 8) throw new Error('Choose a password of at least 8 characters.');
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  if (error) throw new Error(errorMessage(error, 'Could not change the password.'));
+}
+
+export async function updateMyName(fullName) {
+  const name = String(fullName || '').trim();
+  if (name.length < 2) throw new Error('Please enter your full name.');
+  const profile = await getProfile();
+  if (!profile) throw new Error('You are not signed in.');
+
+  const { error } = await sb.from('profiles').update({ full_name: name }).eq('id', profile.id);
+  if (error) throw new Error(errorMessage(error, 'Could not save your name.'));
+
+  cachedProfile = { ...profile, full_name: name };
+  return cachedProfile;
+}
+
+/* ------------------------------------------------------------------ */
+/* Guards                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Where to come back to after signing in. */
+export function loginUrl(next = location.pathname + location.search + location.hash) {
+  return `login.html?next=${encodeURIComponent(next)}`;
+}
+
+/**
+ * Blocks a page until a suitable user is present.
+ * Returns the profile, or redirects and resolves to null.
+ */
+export async function requireAuth({ admin = false } = {}) {
+  const session = await getSession();
+  if (!session) {
+    location.replace(loginUrl());
+    return null;
+  }
+
+  let profile;
+  try {
+    profile = await getProfile({ force: true });
+  } catch {
+    location.replace(loginUrl());
+    return null;
+  }
+
+  if (!profile || profile.active === false) {
+    await sb.auth.signOut();
+    location.replace(`${loginUrl()}&reason=inactive`);
+    return null;
+  }
+  if (admin && !isAdmin(profile)) {
+    location.replace('index.html?denied=1');
+    return null;
+  }
+  return profile;
+}
+
+/* ------------------------------------------------------------------ */
+/* Change notifications                                                */
+/* ------------------------------------------------------------------ */
+
+export function onAuthChange(callback) {
+  listeners.add(callback);
+  return () => listeners.delete(callback);
+}
+
+if (configured) {
+  sb.auth.onAuthStateChange(async (event) => {
+    if (event === 'SIGNED_OUT') {
+      cachedProfile = null;
+      cachedUserId = null;
+    }
+    if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+      cachedProfile = null;
+    }
+    let profile = null;
+    try { profile = await getProfile(); } catch { /* surfaced by the caller */ }
+    listeners.forEach(fn => { try { fn(event, profile); } catch (e) { console.error(e); } });
+  });
+}

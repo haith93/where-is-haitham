@@ -1,0 +1,86 @@
+name: Deploy to GitHub Pages
+
+# Publishes the static site and writes js/env.js from repository secrets,
+# so the Supabase URL and anon key never have to be committed.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL
+#   SUPABASE_ANON_KEY
+# Optional:
+#   VAPID_PUBLIC_KEY   (public half only — never the private key)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Fail early if the Supabase secrets are missing
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Add SUPABASE_URL and SUPABASE_ANON_KEY as repository secrets before deploying."
+            exit 1
+          fi
+
+      - name: Generate js/env.js
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+        run: |
+          cat > js/env.js <<EOF
+          // Generated at deploy time — do not edit, do not commit.
+          export const ENV = {
+            supabaseUrl: '${SUPABASE_URL}',
+            supabaseAnonKey: '${SUPABASE_ANON_KEY}',
+            vapidPublicKey: '${VAPID_PUBLIC_KEY}'
+          };
+          EOF
+          echo "Wrote js/env.js for ${SUPABASE_URL}"
+
+      - name: Guard against leaking a service-role key
+        run: |
+          if grep -rlE 'service_role|SERVICE_ROLE_KEY *= *[A-Za-z0-9]' --include='*.js' --include='*.html' --include='*.json' . ; then
+            echo "::error::A service-role key appears to be present in the published files. Aborting."
+            exit 1
+          fi
+
+      - name: Remove files that should not be published
+        run: rm -rf supabase sql .github .env.example js/env.example.js
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

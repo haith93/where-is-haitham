@@ -1,0 +1,133 @@
+/* =====================================================================
+   responsive.css
+   The base stylesheet is the phone layout. This file only widens it.
+   Breakpoints: 380 (small phone), 600 (large phone), 768 (tablet),
+                1024 (desktop), 1400 (large desktop).
+   ===================================================================== */
+
+/* ---------- Very small phones ---------------------------------------- */
+@media (max-width: 380px) {
+  :root { --tap: 46px; }
+  .container { padding: 12px; }
+  .hero { padding: 16px 14px 14px; }
+  .duration-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .counters { gap: 7px; }
+  .counter .n { font-size: 22px; }
+  .btn-lg { min-height: 54px; font-size: 16px; }
+}
+
+/* ---------- Large phones --------------------------------------------- */
+@media (min-width: 600px) {
+  .container { padding: 20px; }
+  .hero-facts { flex-direction: row; flex-wrap: wrap; gap: 20px; }
+  .fact { flex: 1 1 200px; }
+  .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .btn-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------- Tablet and up: side navigation replaces bottom bar ------- */
+@media (min-width: 768px) {
+  :root { --maxw: 900px; }
+
+  .bottomnav { display: none; }
+  .page { padding-bottom: 40px; }
+  .cta-wrap { position: static; }
+
+  .desktop-nav { display: flex !important; align-items: center; gap: 4px; }
+  .desktop-nav a, .desktop-nav button {
+    padding: 9px 13px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--text-muted);
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .desktop-nav a:hover, .desktop-nav button:hover {
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+  }
+  .desktop-nav [aria-current='page'] {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+
+  /* Must stay scoped to [open]: a bare `.sheet` rule would beat the
+     browser's own `dialog:not([open]) { display: none }` and leave every
+     closed sheet visible on desktop. */
+  .sheet[open] { display: grid; place-items: center; }
+  .sheet-panel {
+    position: relative;
+    inset: auto;
+    width: min(620px, 94vw);
+    max-height: 88dvh;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    padding: 10px 24px 24px;
+  }
+  .sheet-grip { display: none; }
+
+  .toasts { bottom: 20px; }
+
+  .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .duration-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+}
+
+/* ---------- Desktop: two-column admin -------------------------------- */
+@media (min-width: 1024px) {
+  :root { --maxw: 1180px; }
+
+  .admin-shell {
+    display: grid;
+    grid-template-columns: 228px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  .admin-side {
+    display: block;
+    position: sticky;
+    top: calc(var(--header-h) + 20px);
+  }
+  .admin-side nav { display: flex; flex-direction: column; gap: 2px; }
+  .admin-side a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-weight: 650;
+    font-size: 14.5px;
+  }
+  .admin-side a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+  .admin-side a[aria-current='page'] { background: var(--accent-soft); color: var(--accent-text); }
+  .admin-side .ico { font-size: 17px; width: 22px; text-align: center; }
+
+  .dash-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .counters  { max-width: 560px; }
+}
+
+/* ---------- Large desktop -------------------------------------------- */
+@media (min-width: 1400px) {
+  :root { --maxw: 1320px; }
+  .stat-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+/* ---------- Landscape phone: keep the hero compact ------------------- */
+@media (max-height: 480px) and (orientation: landscape) {
+  .hero { padding: 14px; }
+  .hero-status { font-size: 22px; }
+  .hero-facts { flex-direction: row; flex-wrap: wrap; }
+  .board-title { margin-bottom: 8px; }
+}
