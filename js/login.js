@@ -3,7 +3,10 @@
  */
 import { configured, sb } from './supabase.js';
 import { $, esc } from './utils.js';
-import { initTheme, initThemeToggle, initOffline, renderSetupNeeded, toastOk, toastError, withBusy } from './ui.js';
+import {
+  initTheme, initThemeToggle, initOffline, renderSetupNeeded,
+  toastOk, toastError, withBusy, registerServiceWorker
+} from './ui.js';
 import {
   signIn, signUp, sendPasswordReset, updatePassword, getSession, getProfile,
   isAdmin, isJoined, joinWithCode, accessOptions
@@ -12,6 +15,7 @@ import {
 initTheme();
 initThemeToggle();
 initOffline();
+registerServiceWorker();
 
 const params = new URLSearchParams(location.search);
 const nextUrl = sanitiseNext(params.get('next'));
@@ -34,7 +38,10 @@ if (!configured) {
   host.hidden = false;
   renderSetupNeeded(host);
 } else {
-  boot();
+  boot().catch(err => {
+    console.error(err);
+    toastError(err?.message || 'Could not load the sign-in page. Please refresh.');
+  });
 }
 
 async function boot() {
@@ -76,11 +83,14 @@ async function boot() {
  * the administrator needs in order to bootstrap.
  */
 function applyOptions(options) {
-  $('#to-signup').hidden = options.allow_email_signup === false;
+  const toSignup = $('#to-signup');
+  if (toSignup) toSignup.hidden = options.allow_email_signup === false;
 
   if (!options.code_ready) {
-    $('#tab-join').hidden = true;
-    $('#tab-signin').className = 'btn btn-soft grow';
+    const joinTab = $('#tab-join');
+    if (joinTab) joinTab.hidden = true;
+    const signinTab = $('#tab-signin');
+    if (signinTab) signinTab.className = 'btn btn-soft grow';
     showPanel(options.allow_email_signup === false ? 'signin' : 'signup');
     const notice = $('#auth-notice');
     if (!notice.textContent) {
@@ -119,21 +129,23 @@ function showPanel(which) {
   const joinTab = $('#tab-join');
   const signinTab = $('#tab-signin');
   const showTabs = which !== 'recover' && which !== 'signup';
-  joinTab.parentElement.hidden = !showTabs;
+  if (joinTab?.parentElement) joinTab.parentElement.hidden = !showTabs;
 
-  joinTab.setAttribute('aria-selected', String(which === 'join'));
-  signinTab.setAttribute('aria-selected', String(which === 'signin'));
-  joinTab.className = which === 'join' ? 'btn btn-soft grow' : 'btn btn-ghost grow';
-  signinTab.className = which === 'signin' ? 'btn btn-soft grow' : 'btn btn-ghost grow';
+  joinTab?.setAttribute('aria-selected', String(which === 'join'));
+  signinTab?.setAttribute('aria-selected', String(which === 'signin'));
+  if (joinTab) joinTab.className = which === 'join' ? 'btn btn-soft grow' : 'btn btn-ghost grow';
+  if (signinTab) signinTab.className = which === 'signin' ? 'btn btn-soft grow' : 'btn btn-ghost grow';
 
   $(panels[which])?.querySelector('[data-autofocus], input')?.focus({ preventScroll: true });
 }
 
 function wireTabs() {
-  $('#tab-join').addEventListener('click', () => showPanel('join'));
-  $('#tab-signin').addEventListener('click', () => showPanel('signin'));
-  $('#to-signup').addEventListener('click', () => showPanel('signup'));
-  $('#back-to-join').addEventListener('click', () => showPanel('join'));
+  // Optional chaining throughout: one missing node must never stop the
+  // remaining handlers from being attached.
+  $('#tab-join')?.addEventListener('click', () => showPanel('join'));
+  $('#tab-signin')?.addEventListener('click', () => showPanel('signin'));
+  $('#to-signup')?.addEventListener('click', () => showPanel('signup'));
+  $('#back-to-join')?.addEventListener('click', () => showPanel('join'));
   if (params.get('mode') === 'signup') showPanel('signup');
   if (params.get('mode') === 'signin') showPanel('signin');
 }

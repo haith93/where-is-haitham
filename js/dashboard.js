@@ -14,7 +14,7 @@ import {
 import {
   initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toastOk, toastError, toast, withBusy, renderEmpty, renderError,
-  renderSetupNeeded, confirmAction
+  renderSetupNeeded, confirmAction, registerServiceWorker
 } from './ui.js';
 import { getProfile, isAdmin, isJoined, signOut, updateMyName, onAuthChange, loginUrl } from './auth.js';
 import { getBuildings, getTasks, getSettings } from './data.js';
@@ -55,6 +55,7 @@ initOffline(online => { if (online && configured && state.booted) refreshBoard()
 initSheets();
 startClock('#clock');
 registerServiceWorker();
+wireNotificationNavigation();
 
 if (!configured) {
   $('#view-now').hidden = true;
@@ -124,11 +125,8 @@ async function loadJoinedProfile() {
   return isJoined(profile) ? profile : null;
 }
 
-function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js').catch(err => console.warn('SW', err));
-  });
+/** Notification clicks ask the open tab to navigate. */
+function wireNotificationNavigation() {
   navigator.serviceWorker?.addEventListener?.('message', event => {
     if (event.data?.type === 'navigate' && event.data.url) location.assign(event.data.url);
   });

@@ -16,7 +16,7 @@ import {
 import {
   initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toast, toastOk, toastError, withBusy, confirmAction, chooseAction,
-  renderEmpty, renderError, renderSetupNeeded
+  renderEmpty, renderError, renderSetupNeeded, registerServiceWorker
 } from './ui.js';
 import { requireAuth, signOut } from './auth.js';
 import {
@@ -76,9 +76,7 @@ initThemeToggle();
 initOffline(online => { if (online && configured && state.booted) refreshAll(); });
 initSheets();
 startClock('#clock');
-if ('serviceWorker' in navigator) {
-  addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(() => {}));
-}
+registerServiceWorker();
 
 if (!configured) {
   $('#setup-needed').hidden = false;

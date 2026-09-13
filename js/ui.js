@@ -283,6 +283,55 @@ export function renderError(container, message, onRetry) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Service worker                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Registers the service worker AND makes sure a new one takes over
+ * straight away.
+ *
+ * Without this, a returning visitor can end up running a cached copy of
+ * one file against a freshly downloaded copy of another — new HTML with
+ * old JavaScript, say — and the page breaks in ways that look nothing
+ * like a caching problem. Activating immediately and reloading once
+ * keeps the shell internally consistent.
+ */
+export function registerServiceWorker(path = 'service-worker.js') {
+  if (!('serviceWorker' in navigator)) return;
+
+  // If there is no controller yet this is a first install, and the
+  // claim that follows must NOT trigger a reload.
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloading = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloading) return;
+    reloading = true;
+    location.reload();
+  });
+
+  addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register(path);
+
+      // A newer worker left waiting by an earlier visit.
+      registration.waiting?.postMessage('skip-waiting');
+
+      registration.addEventListener('updatefound', () => {
+        const incoming = registration.installing;
+        incoming?.addEventListener('statechange', () => {
+          if (incoming.state === 'installed' && navigator.serviceWorker.controller) {
+            incoming.postMessage('skip-waiting');
+          }
+        });
+      });
+    } catch (err) {
+      console.warn('Service worker registration failed', err);
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Shared chrome                                                       */
 /* ------------------------------------------------------------------ */
 
