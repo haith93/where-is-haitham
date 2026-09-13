@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Staff sign-in · Where Is Haitham Now?</title>
+  <meta name="description" content="Sign in with an e-mail address and password.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f4f6fa">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <div class="app">
+    <header class="appbar">
+      <div class="appbar-inner">
+        <a class="brand" href="index.html">
+          <span class="brand-mark" aria-hidden="true">🛠</span>
+          <span>Staff sign-in</span>
+        </a>
+        <span class="grow"></span>
+        <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme">🌙</button>
+      </div>
+    </header>
+
+    <main class="container page" id="main">
+      <div id="setup-needed" hidden></div>
+
+      <div id="auth-card" class="card" style="margin-top:18px">
+        <h1 style="font-size:20px;margin-bottom:6px">Administrator sign-in</h1>
+        <p class="help" style="margin-bottom:18px">
+          For Haitham and anyone else with an e-mail account.
+          Colleagues sending a request should use the
+          <a href="login.html">join page</a> instead.
+        </p>
+
+        <p id="auth-notice" class="notice notice-info" hidden></p>
+
+        <!-- ---------------- Sign in ---------------- -->
+        <form id="panel-signin" class="stack" novalidate>
+          <div class="field">
+            <label class="label" for="signin-email">E-mail</label>
+            <input class="input" id="signin-email" name="email" type="email" required
+                   autocomplete="username" inputmode="email" placeholder="you@example.com" data-autofocus>
+          </div>
+          <div class="field">
+            <label class="label" for="signin-password">Password</label>
+            <input class="input" id="signin-password" name="password" type="password" required
+                   autocomplete="current-password" placeholder="Your password">
+          </div>
+          <p class="error" id="signin-error" role="alert" hidden></p>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="signin-submit">Sign in</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="forgot-btn">Forgot your password?</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="to-signup" hidden>Create an e-mail account</button>
+        </form>
+
+        <!-- ---------------- Create account ---------------- -->
+        <form id="panel-signup" class="stack" novalidate hidden>
+          <div class="field">
+            <label class="label" for="signup-name">Full name</label>
+            <input class="input" id="signup-name" name="full_name" type="text" required
+                   autocomplete="name" maxlength="120" placeholder="Haitham Khadra">
+          </div>
+          <div class="field">
+            <label class="label" for="signup-email">E-mail</label>
+            <input class="input" id="signup-email" name="email" type="email" required
+                   autocomplete="username" inputmode="email" placeholder="you@example.com">
+          </div>
+          <div class="field">
+            <label class="label" for="signup-password">Password</label>
+            <input class="input" id="signup-password" name="password" type="password" required
+                   autocomplete="new-password" minlength="8" placeholder="At least 8 characters">
+          </div>
+          <p class="error" id="signup-error" role="alert" hidden></p>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="signup-submit">Create account</button>
+          <p class="help">
+            New accounts are ordinary employee accounts. Administrator access is
+            granted by an existing administrator.
+          </p>
+          <button class="btn btn-ghost btn-sm" type="button" id="back-to-signin">← Back to sign in</button>
+        </form>
+
+        <!-- ---------------- New password (from the e-mail link) ---------------- -->
+        <form id="panel-recover" class="stack" hidden novalidate>
+          <h2 style="font-size:18px">Choose a new password</h2>
+          <div class="field">
+            <label class="label" for="recover-password">New password</label>
+            <input class="input" id="recover-password" type="password" required
+                   autocomplete="new-password" minlength="8" placeholder="At least 8 characters">
+          </div>
+          <p class="error" id="recover-error" role="alert" hidden></p>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="recover-submit">Save new password</button>
+        </form>
+      </div>
+
+      <p class="small muted" style="text-align:center;margin-top:18px">
+        <a href="index.html">← Back to the status board</a>
+      </p>
+    </main>
+  </div>
+
+  <script type="module" src="js/staff.js"></script>
+</body>
+</html>

@@ -20,7 +20,7 @@
 --  cannot read it, and cannot activate themselves without it.
 -- =====================================================================
 
-create extension if not exists "pgcrypto";
+create extension if not exists "pgcrypto" with schema extensions;
 
 -- ---------------------------------------------------------------------
 -- 1. THE CODE ITSELF
@@ -145,7 +145,9 @@ create or replace function public.claim_staff_access(p_code text, p_name text)
 returns public.profiles
 language plpgsql
 security definer
-set search_path = public
+-- `extensions` is where Supabase installs pgcrypto; without it crypt()
+-- and gen_salt() are not on the path and the call fails at run time.
+set search_path = public, extensions
 as $fn$
 declare
   v_uid      uuid := auth.uid();
@@ -224,7 +226,7 @@ create or replace function public.set_staff_access_code(p_code text, p_label tex
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $fn$
 declare
   v_code text := trim(coalesce(p_code, ''));
@@ -314,3 +316,7 @@ grant execute on function public.claim_staff_access(text, text)    to authentica
 grant execute on function public.set_staff_access_code(text, text) to authenticated;
 grant execute on function public.purge_unclaimed_guests(interval)  to authenticated;
 grant execute on function public.access_options()                  to anon, authenticated;
+
+-- Tell PostgREST to pick up the new functions immediately rather than
+-- waiting for its next schema refresh (otherwise an RPC can 404).
+notify pgrst, 'reload schema';

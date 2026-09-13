@@ -193,7 +193,7 @@ export async function signOut() {
 }
 
 export async function sendPasswordReset(email) {
-  const redirectTo = new URL('login.html', location.href).href;
+  const redirectTo = new URL('staff.html', location.href).href;
   const { error } = await sb.auth.resetPasswordForEmail(
     String(email || '').trim().toLowerCase(),
     { redirectTo }
@@ -224,9 +224,13 @@ export async function updateMyName(fullName) {
 /* Guards                                                              */
 /* ------------------------------------------------------------------ */
 
-/** Where to come back to after signing in. */
-export function loginUrl(next = location.pathname + location.search + location.hash) {
-  return `login.html?next=${encodeURIComponent(next)}`;
+/**
+ * Where to come back to after signing in.
+ * Staff go to the password page; everybody else to the join page, so an
+ * employee is never shown a form they have no credentials for.
+ */
+export function loginUrl(next = location.pathname + location.search + location.hash, { staff = false } = {}) {
+  return `${staff ? 'staff.html' : 'login.html'}?next=${encodeURIComponent(next)}`;
 }
 
 /**
@@ -247,7 +251,7 @@ export async function requireAuth({ admin = false } = {}) {
   }
 
   if (!session) {
-    location.replace(loginUrl());     // genuinely signed out: no loop possible
+    location.replace(loginUrl(undefined, { staff: admin }));  // no loop possible
     return null;
   }
 
@@ -262,7 +266,7 @@ export async function requireAuth({ admin = false } = {}) {
 
   if (!profile) {
     await sb.auth.signOut().catch(() => {});
-    location.replace(`${loginUrl()}&reason=inactive`);
+    location.replace(`${loginUrl(undefined, { staff: admin })}&reason=inactive`);
     return null;
   }
 
@@ -271,11 +275,11 @@ export async function requireAuth({ admin = false } = {}) {
     // problem to report — it just has not finished joining. Keep the
     // session so a retry does not create a second guest account.
     if (!profile.email) {
-      location.replace(loginUrl());
+      location.replace(loginUrl());              // finish joining
       return null;
     }
     await sb.auth.signOut();
-    location.replace(`${loginUrl()}&reason=inactive`);
+    location.replace(`${loginUrl(undefined, { staff: admin })}&reason=inactive`);
     return null;
   }
 

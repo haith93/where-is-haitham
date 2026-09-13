@@ -125,7 +125,7 @@ function showBootError(message, { retry = true } = {}) {
             .filter(k => k.startsWith('sb-') || k === 'wih.auth')
             .forEach(k => localStorage.removeItem(k));
         } catch { /* private mode */ }
-        location.replace('login.html?mode=signin');
+        location.replace('staff.html');
       }
     }));
   }
@@ -1552,11 +1552,19 @@ async function paintAccessState() {
 
 async function paintPushState() {
   const setup = await describePushSetup();
-  $('#push-state').textContent = setup.text;
-  $('#push-enable').hidden = setup.level === 'on';
+  // A greyed-out button that cannot ever be pressed just looks broken.
+  // Where the answer is "not possible here", hide the control and
+  // explain why instead.
+  const blocked = ['unsupported', 'not-configured', 'blocked'].includes(setup.level);
+
+  const state = $('#push-state');
+  state.textContent = setup.text;
+  state.className = blocked ? 'notice notice-warn' : 'small muted';
+
+  $('#push-enable').hidden = setup.level === 'on' || blocked;
+  $('#push-enable').disabled = false;
   $('#push-disable').hidden = setup.level !== 'on';
   $('#push-test').hidden = setup.level !== 'on';
-  $('#push-enable').disabled = ['unsupported', 'not-configured', 'blocked'].includes(setup.level);
 }
 
 /* ================================================================== */
