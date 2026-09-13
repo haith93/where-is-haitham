@@ -99,12 +99,25 @@ $fn$;
 create or replace function public.guard_profile_privileges()
 returns trigger
 language plpgsql
-security definer
 set search_path = public
 as $fn$
 declare
+  -- NOT SECURITY DEFINER on purpose: this function needs to see the role
+  -- the statement is really running as. A SECURITY DEFINER function would
+  -- report its owner (postgres) here and the check below would be useless.
+  --
+  -- PostgREST runs every API request as `anon` or `authenticated`, so those
+  -- are the only roles this guard applies to. A direct connection (the
+  -- Supabase SQL editor, psql, a migration, the service-role key) is a
+  -- database administrator and is trusted -- that is how the very first
+  -- admin gets promoted, since auth.uid() is NULL with no JWT present.
+  v_via_api  boolean := current_user in ('anon', 'authenticated');
   v_claiming boolean := coalesce(current_setting('app.claiming_access', true), '') = 'on';
 begin
+  if not v_via_api then
+    return new;
+  end if;
+
   if v_claiming and new.role is distinct from old.role then
     raise exception 'An access code can never change a role' using errcode = '42501';
   end if;
