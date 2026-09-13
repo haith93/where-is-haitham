@@ -20,7 +20,20 @@
 --  cannot read it, and cannot activate themselves without it.
 -- =====================================================================
 
-create extension if not exists "pgcrypto" with schema extensions;
+-- pgcrypto supplies crypt()/gen_salt(). Supabase usually installs it into
+-- an `extensions` schema, but not every project has one, and a hard-coded
+-- schema here would abort the whole script (the SQL editor runs it in a
+-- single transaction). Create the schema first, then install only if the
+-- extension is missing, wherever it may already live.
+create schema if not exists extensions;
+
+do $do$
+begin
+  if not exists (select 1 from pg_extension where extname = 'pgcrypto') then
+    execute 'create extension pgcrypto with schema extensions';
+  end if;
+end
+$do$;
 
 -- ---------------------------------------------------------------------
 -- 1. THE CODE ITSELF
@@ -145,8 +158,8 @@ create or replace function public.claim_staff_access(p_code text, p_name text)
 returns public.profiles
 language plpgsql
 security definer
--- `extensions` is where Supabase installs pgcrypto; without it crypt()
--- and gen_salt() are not on the path and the call fails at run time.
+-- The search_path is corrected at the end of this file, once we know
+-- which schema pgcrypto actually lives in.
 set search_path = public, extensions
 as $fn$
 declare
@@ -316,6 +329,31 @@ grant execute on function public.claim_staff_access(text, text)    to authentica
 grant execute on function public.set_staff_access_code(text, text) to authenticated;
 grant execute on function public.purge_unclaimed_guests(interval)  to authenticated;
 grant execute on function public.access_options()                  to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- 10. POINT THE HASHING FUNCTIONS AT pgcrypto, WHEREVER IT IS
+--     Hard-coding a schema breaks on projects that install extensions
+--     elsewhere, so look it up and set the search_path accordingly.
+-- ---------------------------------------------------------------------
+do $do$
+declare v_schema text;
+begin
+  select n.nspname into v_schema
+    from pg_extension e
+    join pg_namespace n on n.oid = e.extnamespace
+   where e.extname = 'pgcrypto';
+
+  if v_schema is null then
+    raise exception
+      'pgcrypto is not installed. Enable it in Dashboard -> Database -> Extensions, then run this file again.';
+  end if;
+
+  execute format('alter function public.set_staff_access_code(text, text) set search_path = public, %I', v_schema);
+  execute format('alter function public.claim_staff_access(text, text)    set search_path = public, %I', v_schema);
+
+  raise notice 'pgcrypto found in schema "%" - access code functions updated.', v_schema;
+end
+$do$;
 
 -- Tell PostgREST to pick up the new functions immediately rather than
 -- waiting for its next schema refresh (otherwise an RPC can 404).
