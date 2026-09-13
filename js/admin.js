@@ -9,7 +9,7 @@
 import { configured } from './supabase.js';
 import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META } from './config.js';
 import {
-  $, $$, esc, fmtTime, fmtDateTime, fmtDateLong, fmtDateShort, relativeTime,
+  $, $$, esc, el, fmtTime, fmtDateTime, fmtDateLong, fmtDateShort, relativeTime,
   durationText, dayKey, addDays, startOfWeek, startOfMonth, startOfDay, endOfDay,
   prefs, weekdayName
 } from './utils.js';
@@ -83,30 +83,78 @@ if (!configured) {
   renderSetupNeeded($('#setup-needed'));
 } else {
   boot().catch(err => {
-    console.error(err);
-    toastError(err.message || 'Could not start the admin console.');
+    console.error('[admin] boot failed', err);
+    showBootError(err?.message || 'Could not start the admin console.');
   });
 }
 
+/**
+ * A blank screen is never an acceptable outcome. If start-up fails, or
+ * simply never finishes, say so on the page instead of leaving an empty
+ * shell behind.
+ */
+function showBootError(message, { retry = true } = {}) {
+  const host = $('#setup-needed');
+  if (!host) return;
+  host.hidden = false;
+  host.innerHTML = `
+    <div class="notice notice-danger" style="margin-top:20px">
+      <p style="font-weight:700;margin-bottom:6px">The admin console could not start</p>
+      <p>${esc(message)}</p>
+    </div>`;
+  if (retry) {
+    const btn = el('button', {
+      class: 'btn btn-primary btn-block',
+      type: 'button',
+      text: 'Reload',
+      style: 'margin-top:12px',
+      onclick: () => location.reload()
+    });
+    host.append(btn);
+  }
+}
+
+/** Wiring one section must never be able to blank the whole console. */
+function safe(label, fn) {
+  try {
+    fn();
+  } catch (err) {
+    console.error(`[admin] could not wire ${label}`, err);
+    toastError(`The ${label} screen did not load correctly. Try reloading.`);
+  }
+}
+
 async function boot() {
-  state.profile = await requireAuth({ admin: true });
+  // If sign-in checks stall (an unreachable project, a blocked request),
+  // surface it rather than sitting on an empty page for ever.
+  const watchdog = setTimeout(() => {
+    if (!state.booted) {
+      showBootError('The server did not respond. Check your connection, then reload.');
+    }
+  }, 12000);
+
+  try {
+    state.profile = await requireAuth({ admin: true });
+  } finally {
+    clearTimeout(watchdog);
+  }
   if (!state.profile) return;                 // requireAuth already redirected
 
   state.booted = true;
   $('#shell').hidden = false;
   state.settings = await getSettings();
 
-  wireRouter();
-  wireDashboard();
-  wireStatusForm();
-  wireRequests();
-  wireBuildings();
-  wireTasks();
-  wireUsers();
-  wireReports();
-  wireHistory();
-  wireSettings();
-  wireNotifications();
+  safe('navigation', wireRouter);
+  safe('dashboard', wireDashboard);
+  safe('status', wireStatusForm);
+  safe('requests', wireRequests);
+  safe('buildings', wireBuildings);
+  safe('tasks', wireTasks);
+  safe('users', wireUsers);
+  safe('reports', wireReports);
+  safe('history', wireHistory);
+  safe('settings', wireSettings);
+  safe('notifications', wireNotifications);
 
   await refreshAll();
 
