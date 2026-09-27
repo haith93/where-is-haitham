@@ -64,7 +64,7 @@ jobs:
           fi
 
       - name: Remove files that should not be published
-        run: rm -rf supabase sql .github .env.example js/env.example.js
+        run: rm -rf supabase sql tools .github .env.example js/env.example.js
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
