@@ -10,8 +10,22 @@
  *    fixed number of hours anywhere.
  */
 import { CONFIG } from './config.js';
+import { getLocale, t } from './i18n.js';
 
 const TZ = CONFIG.timezone;
+
+/**
+ * Formatting locale, read live from i18n so a language switch takes
+ * effect without reloading.
+ *
+ * Arabic asks for `-u-nu-latn` so digits stay Latin: Lebanon writes times
+ * and dates with Western numerals, and Arabic-Indic digits inside tables
+ * of durations hurt more than they help.
+ */
+function activeLocale() {
+  const locale = getLocale();
+  return locale === 'ar-LB' ? 'ar-LB-u-nu-latn' : locale;
+}
 
 /* ------------------------------------------------------------------ */
 /* Formatting                                                          */
@@ -19,9 +33,10 @@ const TZ = CONFIG.timezone;
 
 const fmtCache = new Map();
 function formatter(options) {
-  const key = JSON.stringify(options);
+  const locale = activeLocale();
+  const key = locale + JSON.stringify(options);
   if (!fmtCache.has(key)) {
-    fmtCache.set(key, new Intl.DateTimeFormat('en-US', { timeZone: TZ, ...options }));
+    fmtCache.set(key, new Intl.DateTimeFormat(locale, { timeZone: TZ, ...options }));
   }
   return fmtCache.get(key);
 }
@@ -178,15 +193,15 @@ export function daysBetween(fromKey, toKey) {
 /* Durations                                                           */
 /* ------------------------------------------------------------------ */
 
-/** 85 -> "1h 25m", 45 -> "45m", 0 -> "0m" */
+/** 85 -> "1h 25m" / "1 س 25 د". Localised, so it reads correctly in Arabic. */
 export function durationText(minutes) {
   if (minutes == null || Number.isNaN(minutes)) return '—';
   const total = Math.max(0, Math.round(Number(minutes)));
   const h = Math.floor(total / 60);
   const m = total % 60;
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
+  if (h && m) return t('time.hourMin', { n: h, m });
+  if (h) return t('time.hour', { n: h });
+  return t('time.min', { n: m });
 }
 
 /** Whole minutes between two instants. */
@@ -197,15 +212,22 @@ export function minutesBetween(a, b) {
   return Math.round((to.getTime() - from.getTime()) / 60000);
 }
 
-/** "in 8 min" / "3 min ago" / "just now" */
+/** "in 8m" / "3m ago" / "just now", in the active language. */
 export function relativeTime(value, now = new Date()) {
   const d = toDate(value);
   if (!d) return '';
   const diffMin = Math.round((d.getTime() - now.getTime()) / 60000);
   const abs = Math.abs(diffMin);
-  if (abs < 1) return 'just now';
-  const unit = abs < 60 ? `${abs} min` : abs < 1440 ? durationText(abs) : `${Math.round(abs / 1440)} day${abs >= 2880 ? 's' : ''}`;
-  return diffMin > 0 ? `in ${unit}` : `${unit} ago`;
+  if (abs < 1) return t('time.justNow');
+
+  let unit;
+  if (abs < 1440) {
+    unit = durationText(abs);
+  } else {
+    const days = Math.round(abs / 1440);
+    unit = t(days === 1 ? 'time.day' : 'time.days', { n: days });
+  }
+  return t(diffMin > 0 ? 'time.in' : 'time.ago', { v: unit });
 }
 
 /* ------------------------------------------------------------------ */

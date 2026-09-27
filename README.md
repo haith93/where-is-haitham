@@ -124,7 +124,7 @@ an exact version from jsDelivr.
 where-is-haitham/
 ├── index.html              Public / employee board
 ├── admin.html              Haitham's console (hash-routed sections)
-├── login.html              Sign in, sign up, password reset
+├── staff.html              Administrator sign-in (employees never see it)
 ├── offline.html            Shown when the network is gone
 ├── 404.html                GitHub Pages fallback
 ├── manifest.json           PWA manifest
@@ -153,6 +153,7 @@ where-is-haitham/
 │   ├── charts.js           SVG bar charts, proportion bars
 │   ├── utils.js            Timezone-correct formatting, DOM helpers
 │   ├── ui.js               Toasts, sheets, busy states, theme
+│   ├── i18n.js             Arabic / English strings and RTL
 │   ├── dashboard.js        index.html controller
 │   ├── admin.js            admin.html controller
 │   └── login.js            login.html controller
@@ -162,7 +163,8 @@ where-is-haitham/
 │   ├── functions.sql       Every write path, as RPCs
 │   ├── rls.sql             Policies + grants
 │   ├── seed.sql            Settings, buildings, tasks
-│   └── access.sql          Join-with-a-code sign-up
+│   └── migration-public-requests.sql
+│                           Public submission + channels (one-time)
 │
 ├── supabase/functions/send-push/   Optional Web Push sender
 └── .github/workflows/deploy.yml    Builds env.js and publishes Pages
@@ -184,7 +186,7 @@ where-is-haitham/
    | 2 | `sql/functions.sql` | The RPCs that perform every write |
    | 3 | `sql/rls.sql` | Row Level Security policies and grants |
    | 4 | `sql/seed.sql` | Settings, starter buildings and tasks |
-   | 5 | `sql/access.sql` | Join-with-a-code sign-up |
+   | 5 | `sql/migration-public-requests.sql` | Public requests, channels, no employee login |
 
    Order matters: `rls.sql` revokes the grants that `functions.sql` works around,
    and `seed.sql` writes through the policies.
@@ -228,31 +230,43 @@ select full_name, email, role, active from public.profiles order by created_at;
 
 After that, Haitham can promote or deactivate anyone else from *Admin → Users*.
 
-### How everybody else joins
+### How everybody else asks for help
 
-Employees never touch e-mail or passwords. They open the site, tap **Join**, and
-enter their **name** plus one **access code** you hand out on a staff notice or in
-a group chat.
+They don't sign in. At all.
 
-Set the code once in *Admin → Settings → Employee access code*, and enable
-**Authentication → Providers → Anonymous sign-ins** in Supabase — that is what lets
-the app create an account with no e-mail attached.
+An employee opens the site, taps **Request Haitham**, and fills in four things:
+their name, where they are, what they need, and how urgent it is. That is the
+whole flow — no account, no password, no access code, no confirmation e-mail.
 
-The code is verified inside the database, never in the browser. It is stored only
-as a bcrypt hash in a table with RLS on and no policies at all, so nothing holding
-the anon key can read it. Until the right code is given the account is inactive and
-can do nothing but read the same board a passer-by sees.
+Submission goes through one narrowly scoped RPC, `create_public_request`.
+The `anon` role can execute exactly three functions (read the board, submit a
+request, follow/cancel its own request by token) and can read nothing else. It
+cannot see the requests table, cannot modify anything, and cannot reach any
+administrative function.
 
-Once your own account exists, turn **Allow sign-up with an e-mail address** off in
-the same screen. From then on the access code is the only way in.
+Because there is no login there is also no natural rate limit, so the RPC
+enforces its own: at most five requests per device per ten minutes, duplicate
+suppression on the same person/place/need within three minutes, and a global cap
+so a reset device id cannot be used to flood.
 
-Rotating the code later does **not** sign anyone out — people who already joined
-stay joined, and a new code only affects people joining from then on. Rotate it when
-somebody leaves, and deactivate their name in *Admin → Users*.
+Creation returns an unguessable token, kept in that browser's local storage, so
+the person can follow their own request under **My requests** — and cancel it —
+without an account. The token is what the database checks; local storage is
+only a convenience.
 
-Identity is per device: a new phone means entering the name and code again, which
-creates a second account. Requests already sent keep the name they were sent with,
-so reports are unaffected.
+### Requests that arrive some other way
+
+Not everyone will use the app. People will still phone, send a WhatsApp message,
+or stop Haitham in a corridor.
+
+**Admin → Requests → Record a request** captures those as the same standardised
+record, with the channel it arrived by (app, WhatsApp, phone, in person, other)
+and an optional note. Tick *I am handling this right now* and it is recorded and
+started in one step, moving his status to their location.
+
+Every request therefore lands in the same queue, the same history and the same
+reports, however it reached him — and *How requests arrived* in Reports shows
+the split.
 
 ---
 

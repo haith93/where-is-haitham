@@ -6,6 +6,7 @@
  * Colours come from CSS custom properties so dark mode works for free.
  */
 import { esc } from './utils.js';
+import { t } from './i18n.js';
 
 /**
  * Vertical bar chart, e.g. requests per day.
@@ -18,7 +19,7 @@ export function barChart(data, {
   valueFormat = v => String(v),
   ariaLabel = 'Bar chart'
 } = {}) {
-  if (!data.length) return '<p class="muted small">No data for this period.</p>';
+  if (!data.length) return `<p class="muted small">${esc(t('admin.noData'))}</p>`;
 
   const padTop = 22;
   const padBottom = 30;
@@ -53,7 +54,8 @@ export function barChart(data, {
  * wrap naturally.
  * @param {{label:string, value:number, display?:string, tone?:string}[]} rows
  */
-export function proportionBars(rows, { max = null, emptyText = 'No data for this period.' } = {}) {
+export function proportionBars(rows, { max = null, emptyText = null } = {}) {
+  emptyText = emptyText ?? t('admin.noData');
   if (!rows.length) return `<p class="muted small">${esc(emptyText)}</p>`;
   const peak = max ?? Math.max(1, ...rows.map(r => r.value));
 

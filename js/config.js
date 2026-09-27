@@ -9,6 +9,8 @@
  * of failing silently.
  */
 
+import { t } from './i18n.js';
+
 const DEFAULTS = {
   supabaseUrl: '',
   supabaseAnonKey: '',
@@ -57,28 +59,72 @@ export function isConfigured() {
 }
 
 /** Human readable labels for every status the system understands. */
-export const STATUS_META = Object.freeze({
-  available: { label: 'Available',  short: 'Available',  icon: '🟢', tone: 'ok',      hint: 'Free to help' },
-  busy:      { label: 'Busy',       short: 'Busy',       icon: '🟡', tone: 'warn',    hint: 'Working on a task' },
-  serving:   { label: 'With someone', short: 'Serving',  icon: '🔵', tone: 'info',    hint: 'Currently helping a colleague' },
-  traveling: { label: 'On the way',  short: 'Traveling', icon: '🚶', tone: 'info',    hint: 'Walking to another building' },
-  break:     { label: 'On break',    short: 'Break',     icon: '☕', tone: 'muted',   hint: 'Back shortly' },
-  meeting:   { label: 'In a meeting', short: 'Meeting',  icon: '📋', tone: 'warn',    hint: 'In a meeting' },
-  offsite:   { label: 'Off site',    short: 'Off site',  icon: '🚗', tone: 'muted',   hint: 'Away from the campus' },
-  done:      { label: 'Finished for the day', short: 'Finished', icon: '🌙', tone: 'muted', hint: 'Back tomorrow' }
-});
+/**
+ * Icon and colour tone are language-independent and live here. `label`
+ * and `hint` are getters that read from i18n, so every existing
+ * `meta.label` call site translates itself when the language changes.
+ */
+export const STATUS_META = Object.freeze(Object.fromEntries(
+  [
+    ['available', '🟢', 'ok'],
+    ['busy',      '🟡', 'warn'],
+    ['serving',   '🔵', 'info'],
+    ['traveling', '🚶', 'info'],
+    ['break',     '☕', 'muted'],
+    ['meeting',   '📋', 'warn'],
+    ['offsite',   '🚗', 'muted'],
+    ['done',      '🌙', 'muted']
+  ].map(([key, icon, tone]) => [key, Object.freeze({
+    icon, tone,
+    get label() { return t(`status.${key}`); },
+    get short() { return t(`status.${key}`); },
+    get hint()  { return t(`status.${key}.hint`); }
+  })])
+));
 
-export const PRIORITY_META = Object.freeze({
-  normal:      { label: 'Normal',      icon: '🟡', rank: 2, tone: 'warn' },
-  urgent:      { label: 'Urgent',      icon: '🟠', rank: 1, tone: 'urgent' },
-  very_urgent: { label: 'Very urgent', icon: '🔴', rank: 0, tone: 'danger' }
-});
+export const PRIORITY_META = Object.freeze(Object.fromEntries(
+  [
+    ['normal',      '🟡', 2, 'warn'],
+    ['urgent',      '🟠', 1, 'urgent'],
+    ['very_urgent', '🔴', 0, 'danger']
+  ].map(([key, icon, rank, tone]) => [key, Object.freeze({
+    icon, rank, tone,
+    get label() { return t(`priority.${key}`); }
+  })])
+));
 
-export const REQUEST_STATUS_META = Object.freeze({
-  pending:     { label: 'Pending',     icon: '⏳', tone: 'muted' },
-  accepted:    { label: 'Accepted',    icon: '👍', tone: 'info' },
-  in_progress: { label: 'In progress', icon: '🔧', tone: 'warn' },
-  completed:   { label: 'Completed',   icon: '✅', tone: 'ok' },
-  rejected:    { label: 'Rejected',    icon: '⛔', tone: 'danger' },
-  cancelled:   { label: 'Cancelled',   icon: '✖️', tone: 'muted' }
-});
+export const REQUEST_STATUS_META = Object.freeze(Object.fromEntries(
+  [
+    ['pending',     '⏳', 'muted'],
+    ['accepted',    '👍', 'info'],
+    ['in_progress', '🔧', 'warn'],
+    ['completed',   '✅', 'ok'],
+    ['rejected',    '⛔', 'danger'],
+    ['cancelled',   '✖️', 'muted']
+  ].map(([key, icon, tone]) => [key, Object.freeze({
+    icon, tone,
+    get label() { return t(`reqstatus.${key}`); }
+  })])
+));
+
+/* ------------------------------------------------------------------ */
+/* Display helpers                                                     */
+/*                                                                     */
+/* The META objects above keep the icon and the colour tone, which do   */
+/* not change between languages. Every visible label goes through i18n. */
+/* ------------------------------------------------------------------ */
+
+export const CHANNELS = Object.freeze(Object.fromEntries(
+  [
+    ['app',       '📱'],
+    ['whatsapp',  '💬'],
+    ['phone',     '📞'],
+    ['in_person', '🚶'],
+    ['other',     '📝']
+  ].map(([key, icon]) => [key, Object.freeze({
+    icon,
+    get label() { return t(`channel.${key}`); }
+  })])
+));
+
+export const CHANNEL_KEYS = Object.freeze(['app', 'whatsapp', 'phone', 'in_person', 'other']);

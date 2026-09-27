@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr" data-title-key="app.admin">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -25,14 +25,15 @@
     <div class="appbar-inner">
       <a class="brand" href="admin.html">
         <span class="brand-mark" aria-hidden="true">🛠</span>
-        <span>Admin console</span>
+        <span data-i18n="app.admin">Admin console</span>
       </a>
       <span class="grow"></span>
-      <span class="appbar-clock tabnum" id="clock" aria-label="Current time"></span>
-      <button class="btn btn-ghost btn-icon" type="button" id="bell" aria-label="Notifications" style="position:relative">
+      <span class="appbar-clock tabnum" id="clock" data-i18n-aria="common.time"></span>
+      <button class="btn btn-ghost btn-sm" type="button" data-lang-toggle lang="ar">العربية</button>
+      <button class="btn btn-ghost btn-icon" type="button" id="bell" aria-label="Notifications" data-i18n-aria="common.notifications" style="position:relative">
         🔔<span class="nav-dot" id="bell-dot" hidden>0</span>
       </button>
-      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme">🌙</button>
+      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme" data-i18n-aria="common.theme">🌙</button>
     </div>
   </header>
 
@@ -43,16 +44,16 @@
       <!-- ============ Desktop side navigation ============ -->
       <aside class="admin-side">
         <nav aria-label="Admin sections">
-          <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span>Dashboard</a>
-          <a href="#/status"><span class="ico" aria-hidden="true">📍</span>My status</a>
-          <a href="#/requests"><span class="ico" aria-hidden="true">📥</span>Requests<span class="badge badge-danger" id="side-queue-count" hidden>0</span></a>
-          <a href="#/buildings"><span class="ico" aria-hidden="true">🏢</span>Buildings</a>
-          <a href="#/tasks"><span class="ico" aria-hidden="true">🧰</span>Tasks</a>
-          <a href="#/users"><span class="ico" aria-hidden="true">👥</span>Users</a>
-          <a href="#/reports"><span class="ico" aria-hidden="true">📈</span>Reports</a>
-          <a href="#/history"><span class="ico" aria-hidden="true">🕘</span>History</a>
-          <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span>Settings</a>
-          <a href="index.html"><span class="ico" aria-hidden="true">👁</span>View public board</a>
+          <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span><span data-i18n="admin.dashboard">Dashboard</span></a>
+          <a href="#/status"><span class="ico" aria-hidden="true">📍</span><span data-i18n="admin.myStatus">My status</span></a>
+          <a href="#/requests"><span class="ico" aria-hidden="true">📥</span><span data-i18n="admin.requests">Requests</span><span class="badge badge-danger" id="side-queue-count" hidden>0</span></a>
+          <a href="#/buildings"><span class="ico" aria-hidden="true">🏢</span><span data-i18n="admin.buildings">Buildings</span></a>
+          <a href="#/tasks"><span class="ico" aria-hidden="true">🧰</span><span data-i18n="admin.tasks">Tasks</span></a>
+          <a href="#/users"><span class="ico" aria-hidden="true">👥</span><span data-i18n="admin.users">Users</span></a>
+          <a href="#/reports"><span class="ico" aria-hidden="true">📈</span><span data-i18n="admin.reports">Reports</span></a>
+          <a href="#/history"><span class="ico" aria-hidden="true">🕘</span><span data-i18n="admin.history">History</span></a>
+          <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span><span data-i18n="admin.settings">Settings</span></a>
+          <a href="index.html"><span class="ico" aria-hidden="true">👁</span><span data-i18n="admin.viewBoard">View public board</span></a>
         </nav>
       </aside>
 
@@ -62,7 +63,7 @@
         <section class="admin-section is-active stack" id="s-dashboard" aria-labelledby="h-dashboard">
           <div class="section-head">
             <div>
-              <h1 id="h-dashboard">Dashboard</h1>
+              <h1 id="h-dashboard" data-i18n="admin.dashboard">Dashboard</h1>
               <p id="greeting">—</p>
             </div>
           </div>
@@ -72,28 +73,28 @@
           </div>
 
           <div class="btn-grid">
-            <button class="btn btn-primary btn-lg" type="button" data-go="#/status">Update location / task</button>
-            <button class="btn btn-ok btn-lg" type="button" id="quick-available">I'm available now</button>
-            <button class="btn btn-lg" type="button" id="quick-finish">Finish current task</button>
-            <button class="btn btn-lg" type="button" data-go="#/requests">View requests</button>
+            <button class="btn btn-primary btn-lg" type="button" data-go="#/status" data-i18n="admin.updateStatus">Update location / task</button>
+            <button class="btn btn-ok btn-lg" type="button" id="quick-available" data-i18n="admin.availableNow">I'm available now</button>
+            <button class="btn btn-lg" type="button" id="quick-finish" data-i18n="admin.finishTask">Finish current task</button>
+            <button class="btn btn-lg" type="button" data-go="#/requests" data-i18n="admin.viewRequests">View requests</button>
           </div>
 
           <div class="counters">
-            <div class="counter" data-tone="danger"><span class="n" id="d-very">0</span><span class="l">Very urgent</span></div>
-            <div class="counter" data-tone="urgent"><span class="n" id="d-urgent">0</span><span class="l">Urgent</span></div>
-            <div class="counter"><span class="n" id="d-pending">0</span><span class="l">Pending</span></div>
+            <div class="counter" data-tone="danger"><span class="n" id="d-very">0</span><span class="l" data-i18n="priority.very_urgent">Very urgent</span></div>
+            <div class="counter" data-tone="urgent"><span class="n" id="d-urgent">0</span><span class="l" data-i18n="priority.urgent">Urgent</span></div>
+            <div class="counter"><span class="n" id="d-pending">0</span><span class="l" data-i18n="reqstatus.pending">Pending</span></div>
           </div>
 
           <section class="card">
             <div class="row-between" style="margin-bottom:10px">
-              <h2 class="card-title" style="margin:0">Next in the queue</h2>
-              <button class="btn btn-sm btn-ghost" type="button" data-go="#/requests">See all</button>
+              <h2 class="card-title" style="margin:0" data-i18n="admin.nextInQueue">Next in the queue</h2>
+              <button class="btn btn-sm btn-ghost" type="button" data-go="#/requests" data-i18n="action.seeAll">See all</button>
             </div>
             <div id="d-queue"><div class="skeleton" style="height:60px"></div></div>
           </section>
 
           <section class="card">
-            <h2 class="card-title">Today so far</h2>
+            <h2 class="card-title" data-i18n="admin.todaySoFar">Today so far</h2>
             <div class="stat-grid" id="d-today">
               <div class="skeleton" style="height:68px"></div>
               <div class="skeleton" style="height:68px"></div>
@@ -106,7 +107,7 @@
         <section class="admin-section stack" id="s-status" aria-labelledby="h-status">
           <div class="section-head">
             <div>
-              <h1 id="h-status">Update my status</h1>
+              <h1 id="h-status" data-i18n="admin.statusTitle">Update my status</h1>
               <p>Pick where, what and for how long. The times are worked out for you.</p>
             </div>
           </div>
@@ -115,7 +116,7 @@
 
           <form class="card stack" id="status-form" novalidate>
             <div class="field">
-              <span class="label">Status</span>
+              <span class="label" data-i18n="admin.status">Status</span>
               <div class="segmented" id="st-type">
                 <input type="radio" name="status_type" id="st-busy" value="busy" checked>
                 <label for="st-busy">🟡 Busy</label>
@@ -137,51 +138,51 @@
             </div>
 
             <div class="field">
-              <label class="label" for="st-location">Location</label>
+              <label class="label" for="st-location" data-i18n="admin.location">Location</label>
               <select class="select" id="st-location"></select>
             </div>
             <div class="field" id="st-location-custom-field" hidden>
-              <label class="label" for="st-location-custom">Custom location</label>
+              <label class="label" for="st-location-custom" data-i18n="admin.customLocation">Custom location</label>
               <input class="input" id="st-location-custom" type="text" maxlength="80" placeholder="e.g. Science Laboratory">
               <p class="help">Used for this update only. It is not added to the permanent list.</p>
             </div>
 
             <div class="field">
-              <label class="label" for="st-task">Task</label>
+              <label class="label" for="st-task" data-i18n="admin.task">Task</label>
               <select class="select" id="st-task"></select>
             </div>
             <div class="field" id="st-task-custom-field" hidden>
-              <label class="label" for="st-task-custom">Custom task</label>
+              <label class="label" for="st-task-custom" data-i18n="admin.customTask">Custom task</label>
               <input class="input" id="st-task-custom" type="text" maxlength="80" placeholder="e.g. Replacing a projector lamp">
               <p class="help">Used for this update only. It is not added to the permanent list.</p>
             </div>
 
             <div class="field">
-              <span class="label" id="duration-label">How long?</span>
+              <span class="label" id="duration-label" data-i18n="admin.howLong">How long?</span>
               <div class="duration-grid" id="st-durations" role="group" aria-labelledby="duration-label"></div>
               <div class="row" style="margin-top:8px">
-                <button class="btn btn-sm btn-soft" type="button" id="st-custom-duration">Custom…</button>
-                <button class="btn btn-sm btn-ghost" type="button" id="st-no-duration">No fixed time</button>
+                <button class="btn btn-sm btn-soft" type="button" id="st-custom-duration" data-i18n="admin.customDuration">Custom…</button>
+                <button class="btn btn-sm btn-ghost" type="button" id="st-no-duration" data-i18n="admin.noFixedTime">No fixed time</button>
               </div>
             </div>
             <div class="field" id="st-custom-duration-field" hidden>
-              <label class="label" for="st-custom-minutes">Minutes</label>
+              <label class="label" for="st-custom-minutes" data-i18n="admin.minutes">Minutes</label>
               <input class="input" id="st-custom-minutes" type="number" min="1" max="1440" step="1" inputmode="numeric" placeholder="e.g. 25">
             </div>
 
             <!-- The computed window. The user never types a clock time. -->
             <div class="time-preview" id="st-preview" role="status">
-              <div class="k">This status will be</div>
+              <div class="k" data-i18n="admin.willBe">This status will be</div>
               <div class="v" id="st-preview-range">—</div>
-              <div class="sub" id="st-preview-sub">Current time is used automatically.</div>
+              <div class="sub" id="st-preview-sub" data-i18n="admin.autoTime">Current time is used automatically.</div>
             </div>
 
             <p class="error" id="st-error" role="alert" hidden></p>
-            <button class="btn btn-primary btn-lg btn-block" type="submit" id="st-submit">Update status</button>
+            <button class="btn btn-primary btn-lg btn-block" type="submit" id="st-submit" data-i18n="admin.submitStatus">Update status</button>
           </form>
 
           <div class="card">
-            <h2 class="card-title">Shortcuts</h2>
+            <h2 class="card-title" data-i18n="admin.shortcuts">Shortcuts</h2>
             <div id="st-recent" class="stack-sm"></div>
           </div>
         </section>
@@ -190,18 +191,20 @@
         <section class="admin-section stack" id="s-requests" aria-labelledby="h-requests">
           <div class="section-head">
             <div>
-              <h1 id="h-requests">Service queue</h1>
+              <h1 id="h-requests" data-i18n="admin.queueTitle">Service queue</h1>
               <p id="queue-summary">—</p>
             </div>
+            <button class="btn btn-primary btn-sm" type="button" id="behalf-open"
+                    data-i18n="behalf.button">+ Record a request</button>
           </div>
 
           <div class="filters" role="group" aria-label="Filter requests">
-            <button class="filter-pill" type="button" data-rq-filter="open" aria-pressed="true">Open</button>
-            <button class="filter-pill" type="button" data-rq-filter="pending" aria-pressed="false">Pending</button>
-            <button class="filter-pill" type="button" data-rq-filter="accepted" aria-pressed="false">Accepted</button>
-            <button class="filter-pill" type="button" data-rq-filter="in_progress" aria-pressed="false">In progress</button>
-            <button class="filter-pill" type="button" data-rq-filter="today" aria-pressed="false">Today (all)</button>
-            <button class="filter-pill" type="button" data-rq-filter="closed" aria-pressed="false">Recently closed</button>
+            <button class="filter-pill" type="button" data-rq-filter="open" aria-pressed="true" data-i18n="admin.filterOpen">Open</button>
+            <button class="filter-pill" type="button" data-rq-filter="pending" aria-pressed="false" data-i18n="reqstatus.pending">Pending</button>
+            <button class="filter-pill" type="button" data-rq-filter="accepted" aria-pressed="false" data-i18n="reqstatus.accepted">Accepted</button>
+            <button class="filter-pill" type="button" data-rq-filter="in_progress" aria-pressed="false" data-i18n="reqstatus.in_progress">In progress</button>
+            <button class="filter-pill" type="button" data-rq-filter="today" aria-pressed="false" data-i18n="admin.filterToday">Today (all)</button>
+            <button class="filter-pill" type="button" data-rq-filter="closed" aria-pressed="false" data-i18n="admin.filterClosed">Recently closed</button>
           </div>
 
           <div id="queue-host" class="stack-sm"></div>
@@ -211,15 +214,15 @@
         <section class="admin-section stack" id="s-buildings" aria-labelledby="h-buildings">
           <div class="section-head">
             <div>
-              <h1 id="h-buildings">Buildings</h1>
+              <h1 id="h-buildings" data-i18n="admin.buildings">Buildings</h1>
               <p>Locations you can choose from. Disable instead of deleting so old reports keep their names.</p>
             </div>
           </div>
 
           <form class="card row" id="building-form" style="gap:8px">
-            <label class="sr-only" for="building-name">New building name</label>
-            <input class="input grow" id="building-name" type="text" maxlength="80" placeholder="New building name" required>
-            <button class="btn btn-primary" type="submit" id="building-add">Add</button>
+            <label class="sr-only" for="building-name" data-i18n="admin.newBuilding">New building name</label>
+            <input class="input grow" id="building-name" type="text" maxlength="80" placeholder="New building name" data-i18n-ph="admin.newBuilding" required>
+            <button class="btn btn-primary" type="submit" id="building-add" data-i18n="action.add">Add</button>
           </form>
 
           <div id="buildings-host" class="stack-sm"></div>
@@ -229,15 +232,15 @@
         <section class="admin-section stack" id="s-tasks" aria-labelledby="h-tasks">
           <div class="section-head">
             <div>
-              <h1 id="h-tasks">Tasks</h1>
+              <h1 id="h-tasks" data-i18n="admin.tasks">Tasks</h1>
               <p>The kinds of work you do. Also used as the categories employees pick from.</p>
             </div>
           </div>
 
           <form class="card row" id="task-form" style="gap:8px">
-            <label class="sr-only" for="task-name">New task name</label>
-            <input class="input grow" id="task-name" type="text" maxlength="80" placeholder="New task name" required>
-            <button class="btn btn-primary" type="submit" id="task-add">Add</button>
+            <label class="sr-only" for="task-name" data-i18n="admin.newTask">New task name</label>
+            <input class="input grow" id="task-name" type="text" maxlength="80" placeholder="New task name" data-i18n-ph="admin.newTask" required>
+            <button class="btn btn-primary" type="submit" id="task-add" data-i18n="action.add">Add</button>
           </form>
 
           <div id="tasks-host" class="stack-sm"></div>
@@ -247,13 +250,13 @@
         <section class="admin-section stack" id="s-users" aria-labelledby="h-users">
           <div class="section-head">
             <div>
-              <h1 id="h-users">Users</h1>
+              <h1 id="h-users" data-i18n="admin.users">Users</h1>
               <p>Accounts are never deleted, because requests refer to them. Deactivate instead.</p>
             </div>
           </div>
           <div class="field">
-            <label class="sr-only" for="user-search">Search users</label>
-            <input class="input" id="user-search" type="search" placeholder="Search by name or e-mail">
+            <label class="sr-only" for="user-search" data-i18n="admin.searchUsers">Search users</label>
+            <input class="input" id="user-search" type="search" placeholder="Search by name or e-mail" data-i18n-ph="admin.searchUsers">
           </div>
           <div id="users-host" class="stack-sm"></div>
         </section>
@@ -262,64 +265,75 @@
         <section class="admin-section stack" id="s-reports" aria-labelledby="h-reports">
           <div class="section-head">
             <div>
-              <h1 id="h-reports">Reports</h1>
+              <h1 id="h-reports" data-i18n="admin.reports">Reports</h1>
               <p id="report-period">—</p>
             </div>
           </div>
 
           <div class="filters" role="group" aria-label="Report period">
-            <button class="filter-pill" type="button" data-period="today" aria-pressed="true">Today</button>
-            <button class="filter-pill" type="button" data-period="yesterday" aria-pressed="false">Yesterday</button>
-            <button class="filter-pill" type="button" data-period="week" aria-pressed="false">This week</button>
-            <button class="filter-pill" type="button" data-period="month" aria-pressed="false">This month</button>
-            <button class="filter-pill" type="button" data-period="custom" aria-pressed="false">Custom range</button>
+            <button class="filter-pill" type="button" data-period="today" aria-pressed="true" data-i18n="admin.today">Today</button>
+            <button class="filter-pill" type="button" data-period="yesterday" aria-pressed="false" data-i18n="admin.yesterday">Yesterday</button>
+            <button class="filter-pill" type="button" data-period="week" aria-pressed="false" data-i18n="admin.thisWeek">This week</button>
+            <button class="filter-pill" type="button" data-period="month" aria-pressed="false" data-i18n="admin.thisMonth">This month</button>
+            <button class="filter-pill" type="button" data-period="custom" aria-pressed="false" data-i18n="admin.customRange">Custom range</button>
           </div>
 
           <div class="card row-wrap" id="custom-range" hidden style="gap:12px">
             <div class="field grow">
-              <label class="label" for="range-from">From</label>
+              <label class="label" for="range-from" data-i18n="admin.from">From</label>
               <input class="input" id="range-from" type="date">
             </div>
             <div class="field grow">
-              <label class="label" for="range-to">To</label>
+              <label class="label" for="range-to" data-i18n="admin.to">To</label>
               <input class="input" id="range-to" type="date">
             </div>
-            <button class="btn btn-primary" type="button" id="range-apply" style="align-self:flex-end">Apply</button>
+            <button class="btn btn-primary" type="button" id="range-apply" style="align-self:flex-end" data-i18n="admin.apply">Apply</button>
           </div>
 
           <details class="card">
-            <summary style="cursor:pointer;font-weight:700">More filters</summary>
+            <summary style="cursor:pointer;font-weight:700" data-i18n="admin.moreFilters">More filters</summary>
             <div class="stack" style="margin-top:14px">
               <div class="field">
-                <label class="label" for="f-building">Building</label>
+                <label class="label" for="f-building" data-i18n="admin.location">Building</label>
                 <select class="select" id="f-building"></select>
               </div>
               <div class="field">
-                <label class="label" for="f-task">Task / category</label>
+                <label class="label" for="f-task" data-i18n="admin.task">Task / category</label>
                 <select class="select" id="f-task"></select>
               </div>
               <div class="field">
-                <label class="label" for="f-priority">Priority</label>
-                <select class="select" id="f-priority">
-                  <option value="">Any priority</option>
-                  <option value="normal">Normal</option>
-                  <option value="urgent">Urgent</option>
-                  <option value="very_urgent">Very urgent</option>
+                <label class="label" for="f-channel" data-i18n="channel.label">How did it arrive?</label>
+                <select class="select" id="f-channel">
+                  <option value="" data-i18n="admin.anyChannel">Any channel</option>
+                  <option value="app" data-i18n="channel.app">App</option>
+                  <option value="whatsapp" data-i18n="channel.whatsapp">WhatsApp</option>
+                  <option value="phone" data-i18n="channel.phone">Phone</option>
+                  <option value="in_person" data-i18n="channel.in_person">In person</option>
+                  <option value="other" data-i18n="channel.other">Other</option>
                 </select>
               </div>
               <div class="field">
-                <label class="label" for="f-status">Request status</label>
-                <select class="select" id="f-status">
-                  <option value="">Any status</option>
-                  <option value="pending">Pending</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="in_progress">In progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="cancelled">Cancelled</option>
+                <label class="label" for="f-priority" data-i18n="form.priority">Priority</label>
+                <select class="select" id="f-priority">
+                  <option value="" data-i18n="admin.anyPriority">Any priority</option>
+                  <option value="normal" data-i18n="priority.normal">Normal</option>
+                  <option value="urgent" data-i18n="priority.urgent">Urgent</option>
+                  <option value="very_urgent" data-i18n="priority.very_urgent">Very urgent</option>
                 </select>
               </div>
-              <button class="btn btn-soft" type="button" id="f-clear">Clear filters</button>
+              <div class="field">
+                <label class="label" for="f-status" data-i18n="admin.anyStatus">Request status</label>
+                <select class="select" id="f-status">
+                  <option value="" data-i18n="admin.anyStatus">Any status</option>
+                  <option value="pending" data-i18n="reqstatus.pending">Pending</option>
+                  <option value="accepted" data-i18n="reqstatus.accepted">Accepted</option>
+                  <option value="in_progress" data-i18n="reqstatus.in_progress">In progress</option>
+                  <option value="completed" data-i18n="reqstatus.completed">Completed</option>
+                  <option value="rejected" data-i18n="reqstatus.rejected">Rejected</option>
+                  <option value="cancelled" data-i18n="reqstatus.cancelled">Cancelled</option>
+                </select>
+              </div>
+              <button class="btn btn-soft" type="button" id="f-clear" data-i18n="admin.clearFilters">Clear filters</button>
             </div>
           </details>
 
@@ -328,12 +342,12 @@
           </div>
 
           <div class="card no-print">
-            <h2 class="card-title">Export</h2>
+            <h2 class="card-title" data-i18n="admin.export">Export</h2>
             <div class="btn-grid">
-              <button class="btn btn-soft" type="button" id="ex-summary">Summary CSV</button>
-              <button class="btn btn-soft" type="button" id="ex-requests">Requests CSV</button>
-              <button class="btn btn-soft" type="button" id="ex-activity">Activity CSV</button>
-              <button class="btn btn-soft" type="button" id="ex-print">Print / save PDF</button>
+              <button class="btn btn-soft" type="button" id="ex-summary" data-i18n="admin.summaryCSV">Summary CSV</button>
+              <button class="btn btn-soft" type="button" id="ex-requests" data-i18n="admin.requestsCSV">Requests CSV</button>
+              <button class="btn btn-soft" type="button" id="ex-activity" data-i18n="admin.activityCSV">Activity CSV</button>
+              <button class="btn btn-soft" type="button" id="ex-print" data-i18n="admin.print">Print / save PDF</button>
             </div>
           </div>
         </section>
@@ -342,25 +356,25 @@
         <section class="admin-section stack" id="s-history" aria-labelledby="h-history">
           <div class="section-head">
             <div>
-              <h1 id="h-history">History</h1>
-              <p>Everywhere you have been, with the real time spent.</p>
+              <h1 id="h-history" data-i18n="admin.history">History</h1>
+              <p data-i18n="admin.historyIntro">Everywhere you have been, with the real time spent.</p>
             </div>
           </div>
 
           <div class="card stack-sm">
             <div class="row-wrap" style="gap:12px">
               <div class="field grow">
-                <label class="label" for="hist-from">From</label>
+                <label class="label" for="hist-from" data-i18n="admin.from">From</label>
                 <input class="input" id="hist-from" type="date">
               </div>
               <div class="field grow">
-                <label class="label" for="hist-to">To</label>
+                <label class="label" for="hist-to" data-i18n="admin.to">To</label>
                 <input class="input" id="hist-to" type="date">
               </div>
             </div>
             <div class="field">
-              <label class="sr-only" for="hist-search">Search history</label>
-              <input class="input" id="hist-search" type="search" placeholder="Search location or task">
+              <label class="sr-only" for="hist-search" data-i18n="admin.searchHistory">Search history</label>
+              <input class="input" id="hist-search" type="search" placeholder="Search location or task" data-i18n-ph="admin.searchHistory">
             </div>
           </div>
 
@@ -371,83 +385,48 @@
         <section class="admin-section stack" id="s-settings" aria-labelledby="h-settings">
           <div class="section-head">
             <div>
-              <h1 id="h-settings">Settings</h1>
-              <p>Application configuration and this device's notifications.</p>
+              <h1 id="h-settings" data-i18n="admin.settings">Settings</h1>
+              <p data-i18n="admin.settingsIntro">Application configuration and this device's notifications.</p>
             </div>
           </div>
 
           <div class="card stack">
-            <h2 class="card-title">Visibility</h2>
+            <h2 class="card-title" data-i18n="admin.session">Access</h2>
             <label class="row" style="gap:12px;cursor:pointer">
-              <input type="checkbox" id="set-public" style="width:22px;height:22px;flex:none">
-              <span>
-                <strong>Show the board without signing in</strong>
-                <span class="help" style="display:block">
-                  When off, employees must sign in before they can see anything.
-                  Sending a request always needs an account.
-                </span>
-              </span>
-            </label>
-          </div>
-
-          <div class="card stack">
-            <h2 class="card-title">Employee access code</h2>
-            <p class="small muted" id="code-state">Checking…</p>
-            <div class="field">
-              <label class="label" for="set-code">New access code</label>
-              <input class="input" id="set-code" type="text" maxlength="64" autocomplete="off"
-                     spellcheck="false" placeholder="e.g. STMARY-2026">
-              <p class="help">
-                At least 4 characters. Employees type this once, with their name, to join.
-                Changing it does <strong>not</strong> sign anyone out — it only affects
-                people joining from now on.
-              </p>
-            </div>
-            <div class="row-wrap">
-              <button class="btn btn-primary" type="button" id="code-save">Save access code</button>
-              <button class="btn btn-soft" type="button" id="code-suggest">Suggest one</button>
-            </div>
-
-            <label class="row" style="gap:12px;cursor:pointer;margin-top:6px">
               <input type="checkbox" id="set-email-signup" style="width:22px;height:22px;flex:none">
               <span>
-                <strong>Also allow sign-up with an e-mail address</strong>
-                <span class="help" style="display:block">
-                  Turn this off once your own account exists, so the access code is the
-                  only way in. Existing accounts keep working.
+                <strong data-i18n="admin.emailSignup">Allow new administrator sign-up by e-mail</strong>
+                <span class="help" style="display:block" data-i18n="admin.emailSignupHint">
+                  Leave this off unless you are adding another administrator.
                 </span>
               </span>
             </label>
-
-            <button class="btn btn-ghost btn-sm" type="button" id="purge-guests">
-              Remove unfinished guest accounts
-            </button>
           </div>
 
           <div class="card stack">
-            <h2 class="card-title">Naming</h2>
+            <h2 class="card-title" data-i18n="admin.naming">Naming</h2>
             <div class="field">
-              <label class="label" for="set-org">Organisation name</label>
+              <label class="label" for="set-org" data-i18n="admin.orgName">Organisation name</label>
               <input class="input" id="set-org" type="text" maxlength="80">
             </div>
             <div class="field">
-              <label class="label" for="set-person">Tracked person</label>
+              <label class="label" for="set-person" data-i18n="admin.trackedPerson">Tracked person</label>
               <input class="input" id="set-person" type="text" maxlength="60">
             </div>
             <div class="field">
-              <label class="label" for="set-durations">Quick duration buttons (minutes, comma separated)</label>
+              <label class="label" for="set-durations" data-i18n="admin.quickDurations">Quick duration buttons (minutes, comma separated)</label>
               <input class="input" id="set-durations" type="text" inputmode="numeric" placeholder="5, 10, 15, 20, 30, 45, 60, 120">
             </div>
-            <button class="btn btn-primary" type="button" id="set-save">Save settings</button>
+            <button class="btn btn-primary" type="button" id="set-save" data-i18n="admin.saveSettings">Save settings</button>
           </div>
 
           <div class="card stack">
-            <h2 class="card-title">Notifications on this device</h2>
+            <h2 class="card-title" data-i18n="admin.pushTitle">Notifications on this device</h2>
             <p class="small muted" id="push-state">Checking…</p>
             <div class="row-wrap">
-              <button class="btn btn-soft" type="button" id="push-enable">Turn on notifications</button>
-              <button class="btn btn-ghost" type="button" id="push-disable" hidden>Turn off</button>
-              <button class="btn btn-ghost" type="button" id="push-test" hidden>Send a test</button>
+              <button class="btn btn-soft" type="button" id="push-enable" data-i18n="admin.pushOn">Turn on notifications</button>
+              <button class="btn btn-ghost" type="button" id="push-disable" hidden data-i18n="admin.pushOff">Turn off</button>
+              <button class="btn btn-ghost" type="button" id="push-test" hidden data-i18n="admin.pushTest">Send a test</button>
             </div>
             <p class="help">
               New requests always appear here instantly while the app is open. Turning
@@ -456,14 +435,14 @@
           </div>
 
           <div class="card stack">
-            <h2 class="card-title">Recent configuration changes</h2>
+            <h2 class="card-title" data-i18n="admin.recentChanges">Recent configuration changes</h2>
             <div id="audit-host"><div class="skeleton" style="height:60px"></div></div>
           </div>
 
           <div class="card stack">
-            <h2 class="card-title">Session</h2>
+            <h2 class="card-title" data-i18n="admin.session">Session</h2>
             <p class="small muted" id="admin-identity">—</p>
-            <button class="btn btn-danger btn-block" type="button" id="signout-btn">Sign out</button>
+            <button class="btn btn-danger btn-block" type="button" id="signout-btn" data-i18n="admin.signOut">Sign out</button>
           </div>
         </section>
 
@@ -473,14 +452,14 @@
 
   <!-- ============ Mobile bottom navigation ============ -->
   <nav class="bottomnav" aria-label="Admin">
-    <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span><span>Home</span></a>
-    <a href="#/status"><span class="ico" aria-hidden="true">📍</span><span>Status</span></a>
+    <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span><span data-i18n="admin.home">Home</span></a>
+    <a href="#/status"><span class="ico" aria-hidden="true">📍</span><span data-i18n="admin.status">Status</span></a>
     <a href="#/requests" style="position:relative">
-      <span class="ico" aria-hidden="true">📥</span><span>Queue</span>
+      <span class="ico" aria-hidden="true">📥</span><span data-i18n="admin.queue">Queue</span>
       <span class="nav-dot" id="nav-queue-count" hidden>0</span>
     </a>
-    <a href="#/reports"><span class="ico" aria-hidden="true">📈</span><span>Reports</span></a>
-    <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span><span>More</span></a>
+    <a href="#/reports"><span class="ico" aria-hidden="true">📈</span><span data-i18n="admin.reports">Reports</span></a>
+    <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span><span data-i18n="admin.moreNav">More</span></a>
   </nav>
 </div>
 
@@ -489,10 +468,103 @@
   <div class="sheet-panel">
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
-      <h2 id="action-title">Request</h2>
-      <button class="sheet-close" type="button" data-close-sheet aria-label="Close">✕</button>
+      <h2 id="action-title" data-i18n="admin.requestsGroup">Request</h2>
+      <button class="sheet-close" type="button" data-close-sheet aria-label="Close" data-i18n-aria="action.close">✕</button>
     </div>
     <div id="action-body"></div>
+  </div>
+</dialog>
+
+<!-- ================= Record a request on behalf of someone ================= -->
+<dialog class="sheet" id="behalf-sheet" aria-labelledby="behalf-title">
+  <div class="sheet-panel">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="behalf-title" data-i18n="behalf.title">Record a request on behalf of someone</h2>
+      <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close">✕</button>
+    </div>
+
+    <form id="behalf-form" class="stack" novalidate>
+      <p class="help" data-i18n="behalf.intro">For calls, WhatsApp messages and corridor requests.</p>
+
+      <div class="field">
+        <label class="label" for="bh-name" data-i18n="behalf.who">Who asked?</label>
+        <input class="input" id="bh-name" type="text" required maxlength="120"
+               data-i18n-ph="behalf.whoPlaceholder" data-autofocus>
+      </div>
+
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label" data-i18n="channel.label">How did it arrive?</legend>
+        <div class="segmented" id="bh-channel">
+          <input type="radio" name="channel" id="ch-phone" value="phone" checked>
+          <label for="ch-phone">📞 <span data-i18n="channel.phone">Phone</span></label>
+          <input type="radio" name="channel" id="ch-whatsapp" value="whatsapp">
+          <label for="ch-whatsapp">💬 <span data-i18n="channel.whatsapp">WhatsApp</span></label>
+          <input type="radio" name="channel" id="ch-inperson" value="in_person">
+          <label for="ch-inperson">🚶 <span data-i18n="channel.in_person">In person</span></label>
+          <input type="radio" name="channel" id="ch-other" value="other">
+          <label for="ch-other">📝 <span data-i18n="channel.other">Other</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="bh-location" data-i18n="admin.location">Location</label>
+        <select class="select" id="bh-location" required></select>
+      </div>
+      <div class="field" id="bh-location-custom-field" hidden>
+        <label class="label" for="bh-location-custom" data-i18n="form.typeLocation">Type the location</label>
+        <input class="input" id="bh-location-custom" type="text" maxlength="80"
+               data-i18n-ph="form.locationPlaceholder">
+      </div>
+
+      <div class="field">
+        <label class="label" for="bh-category" data-i18n="behalf.what">What do they need?</label>
+        <select class="select" id="bh-category" required></select>
+      </div>
+      <div class="field" id="bh-category-custom-field" hidden>
+        <label class="label" for="bh-category-custom" data-i18n="form.typeNeed">Type what they need</label>
+        <input class="input" id="bh-category-custom" type="text" maxlength="80"
+               data-i18n-ph="form.needPlaceholder">
+      </div>
+
+      <div class="field">
+        <label class="label" for="bh-description" data-i18n="form.description">Description</label>
+        <textarea class="textarea" id="bh-description" maxlength="1000"
+                  data-i18n-ph="form.descPlaceholder"></textarea>
+      </div>
+
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label" data-i18n="form.priority">How urgent?</legend>
+        <div class="segmented" id="bh-priority">
+          <input type="radio" name="bh_priority" id="bp-normal" value="normal" checked>
+          <label for="bp-normal">🟡 <span data-i18n="priority.normal">Normal</span></label>
+          <input type="radio" name="bh_priority" id="bp-urgent" value="urgent">
+          <label for="bp-urgent">🟠 <span data-i18n="priority.urgent">Urgent</span></label>
+          <input type="radio" name="bh_priority" id="bp-very" value="very_urgent">
+          <label for="bp-very">🔴 <span data-i18n="priority.very_urgent">Very urgent</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="bh-notes" data-i18n="behalf.notes">Notes (optional)</label>
+        <input class="input" id="bh-notes" type="text" maxlength="1000"
+               data-i18n-ph="behalf.notesPlaceholder">
+      </div>
+
+      <label class="row" style="gap:12px;cursor:pointer">
+        <input type="checkbox" id="bh-start-now" style="width:22px;height:22px;flex:none">
+        <span>
+          <strong data-i18n="behalf.startNow">I am handling this right now</strong>
+          <span class="help" style="display:block" data-i18n="behalf.startNowHint">
+            Records it and starts the work in one step.
+          </span>
+        </span>
+      </label>
+
+      <p class="error" id="bh-error" role="alert" hidden></p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit" id="bh-submit"
+              data-i18n="behalf.submit">Record request</button>
+    </form>
   </div>
 </dialog>
 
@@ -501,10 +573,10 @@
   <div class="sheet-panel">
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
-      <h2 id="notif-title">Notifications</h2>
+      <h2 id="notif-title" data-i18n="common.notifications">Notifications</h2>
       <div class="row">
-        <button class="btn btn-sm btn-ghost" type="button" id="notif-read-all">Mark all read</button>
-        <button class="sheet-close" type="button" data-close-sheet aria-label="Close">✕</button>
+        <button class="btn btn-sm btn-ghost" type="button" id="notif-read-all" data-i18n="common.markAllRead">Mark all read</button>
+        <button class="sheet-close" type="button" data-close-sheet aria-label="Close" data-i18n-aria="action.close">✕</button>
       </div>
     </div>
     <div id="notif-body" class="stack-sm"></div>

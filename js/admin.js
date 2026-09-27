@@ -7,7 +7,8 @@
  * GitHub Pages can serve.
  */
 import { configured } from './supabase.js';
-import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META } from './config.js';
+import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META, CHANNELS } from './config.js';
+import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
 import {
   $, $$, esc, el, fmtTime, fmtDateTime, fmtDateLong, fmtDateShort, relativeTime,
   durationText, dayKey, addDays, startOfWeek, startOfMonth, startOfDay, endOfDay,
@@ -21,8 +22,7 @@ import {
 import { requireAuth, signOut } from './auth.js';
 import {
   getBuildings, getTasks, addBuilding, addTask, updateBuilding, updateTask,
-  moveItem, getUsers, setUserActive, setUserRole, getSettings, saveSetting, getAuditLog,
-  getAccessOptions, setAccessCode, purgeUnclaimedGuests
+  moveItem, getUsers, setUserActive, setUserRole, getSettings, saveSetting, getAuditLog
 } from './data.js';
 import {
   getCurrentStatus, updateStatus, finishCurrentTask, setAvailableNow,
@@ -31,7 +31,8 @@ import {
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
   completeRequest, rejectRequest, setPriority, saveQueueOrder, sortQueue,
-  requestLocation, requestCategory, getRequestTimeline, OPEN_STATUSES
+  requestLocation, requestCategory, requestChannel, adminCreateRequest,
+  getRequestTimeline, OPEN_STATUSES
 } from './requests.js';
 import {
   subscribeAllRequests, subscribeCurrentStatus, subscribeConfig,
@@ -71,8 +72,10 @@ let previewTimer = null;
 /* Boot                                                               */
 /* ================================================================== */
 
+applyDocument();
 initTheme();
 initThemeToggle();
+initLangToggle();
 initOffline(online => { if (online && configured && state.booted) refreshAll(); });
 initSheets();
 startClock('#clock');
@@ -99,7 +102,7 @@ function showBootError(message, { retry = true } = {}) {
   host.hidden = false;
   host.innerHTML = `
     <div class="notice notice-danger" style="margin-top:20px">
-      <p style="font-weight:700;margin-bottom:6px">The admin console could not start</p>
+      <p style="font-weight:700;margin-bottom:6px">${esc(t('error.bootTitle'))}</p>
       <p>${esc(message)}</p>
     </div>`;
   if (retry) {
@@ -161,6 +164,15 @@ async function boot() {
   $('#shell').hidden = false;
   state.settings = await getSettings();
 
+  // Re-render everything JavaScript drew when the language changes.
+  onLangChange(() => {
+    applyI18n(document);
+    paintCurrent();
+    paintQueue();
+    if (state.section === 'reports' && state.report) paintReport(state.report);
+    if (state.section === 'history') paintHistory();
+  });
+
   safe('navigation', wireRouter);
   safe('dashboard', wireDashboard);
   safe('status', wireStatusForm);
@@ -171,6 +183,7 @@ async function boot() {
   safe('reports', wireReports);
   safe('history', wireHistory);
   safe('settings', wireSettings);
+  safe('record a request', wireBehalf);
   safe('notifications', wireNotifications);
 
   await refreshAll();
@@ -254,18 +267,17 @@ function paintCurrent() {
 
   const html = `
     <div class="now-card" data-tone="${esc(view.meta.tone)}">
-      <p class="now-status">${esc(view.known ? view.meta.label : 'No status posted yet')}</p>
+      <p class="now-status">${esc(view.known ? view.meta.label : t('admin.noStatusYet'))}</p>
       ${view.location ? `<p class="now-line">📍 ${esc(view.location)}</p>` : ''}
       ${view.task ? `<p class="now-line">🛠️ ${esc(view.task)}</p>` : ''}
       ${view.startedAt ? `<p class="now-time">${esc(view.rangeText)}</p>` : ''}
       ${view.expired ? `
         <p class="expired-note" style="margin-top:12px">
           <span aria-hidden="true">⏰</span>
-          <span>Expected end passed ${esc(durationText(view.minutesOver))} ago.
-          Post an update so everyone sees where you really are.</span>
+          <span>${esc(t('admin.expiredNudge', { ago: durationText(view.minutesOver) }))}</span>
         </p>` : ''}
       ${view.startedAt ? `<p class="small faint" style="margin-top:8px">
-          Updated ${esc(relativeTime(view.updatedAt))}${view.isFree ? '' : ` · here ${esc(view.elapsedText)}`}
+          ${esc(t('admin.updatedAgo', { ago: relativeTime(view.updatedAt) }))}${view.isFree ? '' : ` · ${esc(t('board.here'))} ${esc(view.elapsedText)}`}
         </p>` : ''}
     </div>`;
 
@@ -273,8 +285,8 @@ function paintCurrent() {
   if (mirror) mirror.innerHTML = html;
 
   $('#greeting').textContent = view.known
-    ? `You are marked as "${view.meta.label}".`
-    : 'Post your first status so everyone can stop calling.';
+    ? t('admin.greetingSet', { status: view.meta.label })
+    : t('admin.greetingNone');
 }
 
 /* ================================================================== */
@@ -324,7 +336,7 @@ async function paintDashboardExtras() {
   const host = $('#d-queue');
   const next = queue.filter(r => r.status !== 'in_progress').slice(0, 3);
   if (!next.length) {
-    renderEmpty(host, '🎉', 'Nobody is waiting');
+    renderEmpty(host, '🎉', t('board.nobodyWaiting'));
   } else {
     host.innerHTML = next.map(queueCardHTML).join('');
     wireQueueCards(host);
@@ -340,11 +352,13 @@ async function paintDashboardExtras() {
     const completedToday = await getRequestsBetween(startOfDay(today), endOfDay(today));
 
     $('#d-today').innerHTML = `
-      <div class="stat"><div class="n">${esc(durationText(worked))}</div><div class="l">Working time</div></div>
-      <div class="stat"><div class="n">${rows.length}</div><div class="l">Activities</div></div>
+      <div class="stat"><div class="n">${esc(durationText(worked))}</div>
+        <div class="l">${esc(t('admin.workingTime'))}</div></div>
+      <div class="stat"><div class="n">${rows.length}</div>
+        <div class="l">${esc(t('admin.activities'))}</div></div>
       <div class="stat"><div class="n">${completedToday.filter(r => r.status === 'completed').length}</div>
-        <div class="l">Requests done</div>
-        <div class="sub">${completedToday.length} received</div></div>`;
+        <div class="l">${esc(t('admin.requestsDone'))}</div>
+        <div class="sub">${esc(t('admin.received', { n: completedToday.length }))}</div></div>`;
   } catch (err) {
     $('#d-today').innerHTML = `<p class="muted small">${esc(err.message)}</p>`;
   }
@@ -372,7 +386,7 @@ function wireStatusForm() {
     input.addEventListener('change', () => {
       // "Available" and "Finished" do not need a place, a task or a length.
       const relaxed = ['available', 'done', 'break', 'offsite'].includes(input.value);
-      $('#duration-label').textContent = relaxed ? 'How long? (optional)' : 'How long?';
+      $('#duration-label').textContent = relaxed ? t('admin.howLongOpt') : t('admin.howLong');
       updatePreview();
     }));
 
@@ -477,10 +491,10 @@ function updatePreview() {
   if (state.duration) {
     const end = new Date(now.getTime() + state.duration * 60000);
     rangeNode.textContent = `${fmtTime(now)} → ${fmtTime(end)}`;
-    subNode.textContent = `Starts now and runs for ${durationText(state.duration)}. You never type a time.`;
+    subNode.textContent = t('admin.runsFor', { duration: durationText(state.duration) });
   } else {
-    rangeNode.textContent = `${fmtTime(now)} → open ended`;
-    subNode.textContent = 'Starts now, with no expected finish time.';
+    rangeNode.textContent = `${fmtTime(now)} → ${t('board.openEnded')}`;
+    subNode.textContent = t('admin.openEndedSub');
   }
 }
 
@@ -515,7 +529,7 @@ async function onSubmitStatus(event) {
       await updateStatus(payload);
       rememberShortcut(payload);
       await refreshCurrent();
-      toastOk('Status updated. Everyone can see it now.');
+      toastOk(t('admin.statusUpdated'));
       location.hash = '#/dashboard';
     } catch (err) {
       errorNode.textContent = err.message;
@@ -547,7 +561,7 @@ function renderShortcuts() {
   const list = prefs.get('shortcuts', []);
   const host = $('#st-recent');
   if (!list.length) {
-    host.innerHTML = '<p class="muted small">Your most-used combinations will appear here after a few updates.</p>';
+    host.innerHTML = `<p class="muted small">${esc(t('admin.shortcutsHint'))}</p>`;
     return;
   }
   host.innerHTML = list.map((s, i) => `
@@ -559,7 +573,7 @@ function renderShortcuts() {
     btn.addEventListener('click', () => {
       const s = list[Number(btn.dataset.shortcut)];
       applyShortcut(s);
-      toast('Filled in. Check it, then tap "Update status".', 'info');
+      toast(t('admin.shortcutFilled'), 'info');
     }));
 }
 
@@ -638,8 +652,8 @@ function paintQueueBadges() {
 
   const urgent = state.openRequests.filter(r => r.priority !== 'normal').length;
   $('#queue-summary').textContent = waiting === 0
-    ? 'Nobody is waiting right now.'
-    : `${waiting} waiting${urgent ? `, ${urgent} marked urgent` : ''}.`;
+    ? t('admin.nobodyWaitingNow')
+    : t('admin.waitingSummary', { n: waiting }) + (urgent ? t('admin.urgentSuffix', { n: urgent }) : '') + '.';
 }
 
 function paintQueue() {
@@ -656,8 +670,8 @@ function paintQueue() {
 
   if (!rows.length) {
     renderEmpty(host, filter === 'open' ? '🎉' : '📭',
-      filter === 'open' ? 'The queue is empty' : 'Nothing to show',
-      filter === 'open' ? 'Enjoy the quiet.' : 'Try another filter.');
+      filter === 'open' ? t('admin.queueEmpty') : t('admin.nothingToShow'),
+      filter === 'open' ? t('admin.queueEmptyHint') : t('admin.tryAnotherFilter'));
     return;
   }
 
@@ -665,8 +679,8 @@ function paintQueue() {
   const waiting = rows.filter(r => r.status !== 'in_progress');
 
   host.innerHTML = [
-    inProgress.length ? `<p class="queue-group-title">Working on now</p>${inProgress.map(queueCardHTML).join('')}` : '',
-    waiting.length ? `<p class="queue-group-title">${filter === 'open' ? 'Waiting' : 'Requests'}</p>${waiting.map(queueCardHTML).join('')}` : ''
+    inProgress.length ? `<p class="queue-group-title">${esc(t('admin.workingNow'))}</p>${inProgress.map(queueCardHTML).join('')}` : '',
+    waiting.length ? `<p class="queue-group-title">${esc(filter === 'open' ? t('admin.waitingGroup') : t('admin.requestsGroup'))}</p>${waiting.map(queueCardHTML).join('')}` : ''
   ].join('');
 
   wireQueueCards(host);
@@ -680,13 +694,13 @@ function queueCardHTML(r) {
   const actions = closed ? '' : `
     <div class="acts">
       ${r.status === 'pending' ? `
-        <button class="btn btn-ok btn-sm" type="button" data-act="accept" data-id="${esc(r.id)}">Accept</button>
-        <button class="btn btn-danger btn-sm" type="button" data-act="reject" data-id="${esc(r.id)}">Reject</button>` : ''}
+        <button class="btn btn-ok btn-sm" type="button" data-act="accept" data-id="${esc(r.id)}">${esc(t('admin.accept'))}</button>
+        <button class="btn btn-danger btn-sm" type="button" data-act="reject" data-id="${esc(r.id)}">${esc(t('admin.reject'))}</button>` : ''}
       ${r.status === 'accepted' ? `
-        <button class="btn btn-primary btn-sm" type="button" data-act="start" data-id="${esc(r.id)}">Start now</button>` : ''}
+        <button class="btn btn-primary btn-sm" type="button" data-act="start" data-id="${esc(r.id)}">${esc(t('admin.startNow'))}</button>` : ''}
       ${r.status === 'in_progress' ? `
-        <button class="btn btn-ok btn-sm" type="button" data-act="complete" data-id="${esc(r.id)}">Complete</button>` : ''}
-      <button class="btn btn-soft btn-sm" type="button" data-act="more" data-id="${esc(r.id)}">More…</button>
+        <button class="btn btn-ok btn-sm" type="button" data-act="complete" data-id="${esc(r.id)}">${esc(t('admin.complete'))}</button>` : ''}
+      <button class="btn btn-soft btn-sm" type="button" data-act="more" data-id="${esc(r.id)}">${esc(t('action.more'))}</button>
     </div>`;
 
   return `
@@ -701,13 +715,21 @@ function queueCardHTML(r) {
       </div>
       <p class="who" style="margin-top:8px">${esc(r.requester_name_snapshot)}</p>
       <p class="where">📍 ${esc(requestLocation(r))} · <span class="mono">${esc(r.request_number)}</span></p>
+      <p class="where">${channelBadge(r)}</p>
       <p class="what">🔧 ${esc(requestCategory(r))}</p>
       ${r.description ? `<p class="desc">${esc(r.description)}</p>` : ''}
       <p class="small faint" style="margin-top:6px">
-        Sent ${esc(fmtTime(r.created_at))} · ${esc(relativeTime(r.created_at))}
+        ${esc(t('admin.sentAt', { time: fmtTime(r.created_at) }))} · ${esc(relativeTime(r.created_at))}
       </p>
       ${actions}
     </article>`;
+}
+
+/** Shows how a request reached Haitham, e.g. "💬 WhatsApp". */
+function channelBadge(request) {
+  const key = requestChannel(request);
+  const meta = CHANNELS[key] ?? CHANNELS.other;
+  return `<span aria-hidden="true">${meta.icon}</span> ${esc(meta.label)}`;
 }
 
 function wireQueueCards(root) {
@@ -731,23 +753,21 @@ async function onQueueAction(action, id, button) {
     // Three real choices. Dismissing the sheet accepts nothing, so a
     // stray tap can never silently commit you to a request.
     const when = await chooseAction(
-      `${request.requester_name_snapshot} needs help in ${requestLocation(request)}.`,
+      t('admin.needsHelp', { name: request.requester_name_snapshot, place: requestLocation(request) }),
       [
-        { value: 'now',   label: '🚶 Going there now',  style: 'btn-primary' },
-        { value: 'after', label: '⏭ After my current task' }
+        { value: 'now',   label: t('admin.goingNow'), style: 'btn-primary' },
+        { value: 'after', label: t('admin.afterCurrent') }
       ],
-      { title: 'Accept request' });
+      { title: t('admin.accept') });
     if (!when) return;
 
-    await withBusy(button, 'Accepting…', async () => {
+    await withBusy(button, t('admin.accepting'), async () => {
       try {
         await acceptRequest(id, {
           travelNow: when === 'now',
           durationMinutes: when === 'now' ? state.duration : null
         });
-        toastOk(when === 'now'
-          ? 'Accepted. You are shown as on the way.'
-          : 'Accepted. It stays in the queue as your next job.');
+        toastOk(when === 'now' ? t('admin.acceptedTravel') : t('admin.acceptedNext'));
         await Promise.all([refreshQueue(), refreshCurrent()]);
       } catch (err) { toastError(err.message); }
     });
@@ -758,7 +778,7 @@ async function onQueueAction(action, id, button) {
     await withBusy(button, 'Starting…', async () => {
       try {
         await startRequest(id, state.duration);
-        toastOk('Started. Your status now shows who you are with.');
+        toastOk(t('admin.startedToast'));
         await Promise.all([refreshQueue(), refreshCurrent()]);
       } catch (err) { toastError(err.message); }
     });
@@ -769,7 +789,7 @@ async function onQueueAction(action, id, button) {
     await withBusy(button, 'Completing…', async () => {
       try {
         await completeRequest(id);
-        toastOk('Request completed.');
+        toastOk(t('admin.completedToast'));
         await Promise.all([refreshQueue(), refreshCurrent()]);
       } catch (err) { toastError(err.message); }
     });
@@ -778,8 +798,8 @@ async function onQueueAction(action, id, button) {
 
   if (action === 'reject') {
     const ok = await confirmAction(
-      'Reject this request? The person will be told it was not accepted.',
-      { title: 'Reject request', confirmText: 'Reject', danger: true });
+      t('admin.rejectConfirm'),
+      { title: t('admin.reject'), confirmText: t('admin.reject'), danger: true });
     if (!ok) return;
     await withBusy(button, 'Rejecting…', async () => {
       try {
@@ -810,7 +830,7 @@ async function openRequestActions(request) {
     </div>
 
     <div class="field" style="margin-top:18px">
-      <span class="label">Change priority</span>
+      <span class="label">${esc(t('admin.changePriority'))}</span>
       <div class="row-wrap" id="pri-buttons">
         ${Object.entries(PRIORITY_META).map(([key, meta]) => `
           <button class="btn btn-sm ${request.priority === key ? 'btn-primary' : 'btn-soft'}"
@@ -819,12 +839,12 @@ async function openRequestActions(request) {
     </div>
 
     <div class="field" style="margin-top:18px">
-      <span class="label">Move in the queue</span>
+      <span class="label">${esc(t('admin.moveInQueue'))}</span>
       <div class="row-wrap">
-        <button class="btn btn-sm btn-soft" type="button" data-move="up">↑ Earlier</button>
-        <button class="btn btn-sm btn-soft" type="button" data-move="down">↓ Later</button>
+        <button class="btn btn-sm btn-soft" type="button" data-move="up">${esc(t('admin.earlier'))}</button>
+        <button class="btn btn-sm btn-soft" type="button" data-move="down">${esc(t('admin.later'))}</button>
       </div>
-      <p class="help">The order is yours to choose — nothing is decided automatically.</p>
+      <p class="help">${esc(t('admin.orderHint'))}</p>
     </div>
 
     <div id="action-timeline" style="margin-top:18px"></div>`;
@@ -857,7 +877,7 @@ async function openRequestActions(request) {
   try {
     const timeline = await getRequestTimeline(request.id);
     $('#action-timeline').innerHTML = timeline.length ? `
-      <span class="label">History</span>
+      <span class="label">${esc(t('admin.requestHistory'))}</span>
       <ol class="timeline">${timeline.map(t => `
         <li>
           <strong>${esc(REQUEST_STATUS_META[t.new_status]?.label ?? t.new_status ?? 'Updated')}</strong>
@@ -956,11 +976,11 @@ async function paintConfigList({ host, load, table, update, noun }) {
         </span>
         <span class="grow">
           <span class="cfg-name">${esc(row.name)}</span>
-          <span class="cfg-sub">${row.active ? 'Active' : 'Disabled'} · position ${index + 1}</span>
+          <span class="cfg-sub">${esc(row.active ? t('admin.active') : t('admin.disabled'))} · ${esc(t('admin.position', { n: index + 1 }))}</span>
         </span>
-        <button class="btn btn-sm btn-soft" type="button" data-edit aria-label="Rename ${esc(row.name)}">Edit</button>
+        <button class="btn btn-sm btn-soft" type="button" data-edit aria-label="Rename ${esc(row.name)}">${esc(t('action.edit'))}</button>
         <button class="btn btn-sm ${row.active ? 'btn-ghost' : 'btn-ok'}" type="button" data-toggle>
-          ${row.active ? 'Disable' : 'Enable'}
+          ${esc(row.active ? t('action.disable') : t('action.enable'))}
         </button>
       </div>`).join('');
 
@@ -1024,7 +1044,7 @@ async function paintUsers() {
       : users;
 
     if (!rows.length) {
-      renderEmpty(host, '👥', 'No matching users');
+      renderEmpty(host, '👥', t('admin.noChanges'));
       return;
     }
 
@@ -1035,13 +1055,13 @@ async function paintUsers() {
           <span class="cfg-sub">${esc(u.email ?? 'no e-mail')} · joined ${esc(fmtDateShort(u.created_at))}</span>
         </span>
         <span class="badge ${u.role === 'admin' ? 'badge-info' : 'badge-muted'}">
-          ${u.role === 'admin' ? 'Admin' : 'Employee'}
+          ${esc(u.role === 'admin' ? t('app.admin') : 'Employee')}
         </span>
         <button class="btn btn-sm btn-soft" type="button" data-role>
-          ${u.role === 'admin' ? 'Make employee' : 'Make admin'}
+          ${esc(u.role === 'admin' ? t('admin.makeEmployee') : t('admin.makeAdmin'))}
         </button>
         <button class="btn btn-sm ${u.active ? 'btn-ghost' : 'btn-ok'}" type="button" data-active>
-          ${u.active ? 'Deactivate' : 'Activate'}
+          ${esc(u.active ? t('admin.deactivate') : t('admin.activate'))}
         </button>
       </div>`).join('');
 
@@ -1112,19 +1132,20 @@ function wireReports() {
     runReport();
   });
 
-  ['#f-building', '#f-task', '#f-priority', '#f-status'].forEach(sel =>
+  ['#f-building', '#f-task', '#f-priority', '#f-status', '#f-channel'].forEach(sel =>
     $(sel).addEventListener('change', () => {
       state.reportFilters = {
         buildingId: $('#f-building').value || null,
         taskId: $('#f-task').value || null,
         priority: $('#f-priority').value || null,
-        status: $('#f-status').value || null
+        status: $('#f-status').value || null,
+        channel: $('#f-channel').value || null
       };
       runReport();
     }));
 
   $('#f-clear').addEventListener('click', () => {
-    ['#f-building', '#f-task', '#f-priority', '#f-status'].forEach(sel => { $(sel).value = ''; });
+    ['#f-building', '#f-task', '#f-priority', '#f-status', '#f-channel'].forEach(sel => { $(sel).value = ''; });
     state.reportFilters = {};
     runReport();
   });
@@ -1173,91 +1194,95 @@ function paintReport(report) {
   $('#report-host').innerHTML = `
     <div class="stack">
       <div class="stat-grid">
-        <div class="stat"><div class="n">${report.counts.total}</div><div class="l">Requests</div>
-          <div class="sub">${multiDay ? `${report.perDay} per day` : 'today'}</div></div>
-        <div class="stat"><div class="n">${report.counts.completed}</div><div class="l">Completed</div>
-          <div class="sub">${report.counts.total ? Math.round((report.counts.completed / report.counts.total) * 100) : 0}% of total</div></div>
+        <div class="stat"><div class="n">${report.counts.total}</div><div class="l">${esc(t('admin.requestsLabel'))}</div>
+          <div class="sub">${esc(multiDay ? t('admin.perDay', { n: report.perDay }) : t('admin.todayLower'))}</div></div>
+        <div class="stat"><div class="n">${report.counts.completed}</div><div class="l">${esc(t('admin.completed'))}</div>
+          <div class="sub">${esc(t('admin.ofTotal', { n: report.counts.total ? Math.round((report.counts.completed / report.counts.total) * 100) : 0 }))}</div></div>
         <div class="stat"><div class="n">${report.counts.pending + report.counts.accepted + report.counts.inProgress}</div>
-          <div class="l">Still open</div>
-          <div class="sub">${report.counts.pending} pending</div></div>
-        <div class="stat"><div class="n">${report.counts.urgent + report.counts.veryUrgent}</div><div class="l">Urgent</div>
-          <div class="sub">${report.counts.veryUrgent} very urgent</div></div>
-        <div class="stat"><div class="n">${esc(durationText(report.time.workingMinutes))}</div><div class="l">Working time</div>
-          <div class="sub">${esc(durationText(report.time.trackedMinutes))} tracked</div></div>
+          <div class="l">${esc(t('admin.stillOpen'))}</div>
+          <div class="sub">${esc(t('admin.pendingSub', { n: report.counts.pending }))}</div></div>
+        <div class="stat"><div class="n">${report.counts.urgent + report.counts.veryUrgent}</div><div class="l">${esc(t('counters.urgent'))}</div>
+          <div class="sub">${esc(t('admin.veryUrgentSub', { n: report.counts.veryUrgent }))}</div></div>
+        <div class="stat"><div class="n">${esc(durationText(report.time.workingMinutes))}</div><div class="l">${esc(t('admin.workingTime'))}</div>
+          <div class="sub">${esc(t('admin.tracked', { d: durationText(report.time.trackedMinutes) }))}</div></div>
         <div class="stat"><div class="n">${report.avgCompletion != null ? esc(durationText(report.avgCompletion)) : '—'}</div>
-          <div class="l">Avg. completion</div>
-          <div class="sub">${report.avgResponse != null ? `${esc(durationText(report.avgResponse))} to accept` : 'no data'}</div></div>
+          <div class="l">${esc(t('admin.avgCompletion'))}</div>
+          <div class="sub">${report.avgResponse != null ? esc(t('admin.toAccept', { d: durationText(report.avgResponse) })) : esc(t('admin.noDataShort'))}</div></div>
       </div>
 
       ${multiDay ? `
         <section class="card">
-          <h2 class="card-title">Requests per day</h2>
+          <h2 class="card-title">${esc(t('admin.requestsPerDay'))}</h2>
           <div class="table-wrap">${dayChart}</div>
         </section>` : ''}
 
       <section class="card">
-        <h2 class="card-title">Time by location</h2>
+        <h2 class="card-title">${esc(t('admin.timeByLocation'))}</h2>
         ${proportionBars(report.time.byLocation.map(r => ({
           label: r.label, value: r.value, display: durationText(r.value)
-        })), { emptyText: 'No activity recorded in this period.' })}
+        })), { emptyText: t('admin.noActivity') })}
       </section>
 
       <section class="card">
-        <h2 class="card-title">Time by task</h2>
+        <h2 class="card-title">${esc(t('admin.timeByTask'))}</h2>
         ${proportionBars(report.time.byTaskDuration.map(r => ({
           label: r.label, value: r.value, display: durationText(r.value), tone: 'info'
-        })), { emptyText: 'No activity recorded in this period.' })}
+        })), { emptyText: t('admin.noActivity') })}
       </section>
 
       <section class="card">
-        <h2 class="card-title">Tasks by count</h2>
+        <h2 class="card-title">${esc(t('admin.tasksByCount'))}</h2>
         ${proportionBars(report.time.byTaskCount.map(r => ({
           label: r.label, value: r.value, display: `${r.value}×`, tone: 'ok'
-        })), { emptyText: 'No activity recorded in this period.' })}
+        })), { emptyText: t('admin.noActivity') })}
       </section>
 
       <section class="card">
-        <h2 class="card-title">Requests by category</h2>
-        ${proportionBars(report.breakdown.byCategory, { emptyText: 'No requests in this period.' })}
+        <h2 class="card-title">${esc(t('admin.byCategory'))}</h2>
+        ${proportionBars(report.breakdown.byCategory, { emptyText: t('admin.noRequests') })}
       </section>
 
       <section class="card">
-        <h2 class="card-title">Requests by building</h2>
-        ${proportionBars(report.breakdown.byLocation, { emptyText: 'No requests in this period.' })}
+        <h2 class="card-title">${esc(t('admin.byBuilding'))}</h2>
+        ${proportionBars(report.breakdown.byLocation, { emptyText: t('admin.noRequests') })}
       </section>
 
       <section class="card">
-        <h2 class="card-title">Requests by priority</h2>
+        <h2 class="card-title">${esc(t('admin.byChannel'))}</h2>
+        ${proportionBars(report.breakdown.byChannel, { emptyText: t('admin.noData') })}
+        <p class="help" style="margin-top:10px">${esc(t('admin.recordedNote'))}</p>
+      </section>
+
+      <section class="card">
+        <h2 class="card-title">${esc(t('admin.byPriority'))}</h2>
         ${proportionBars(report.breakdown.byPriority.filter(p => p.value > 0),
-          { emptyText: 'No requests in this period.' })}
+          { emptyText: t('admin.noRequests') })}
       </section>
 
       <section class="card">
-        <h2 class="card-title">Expected vs actual</h2>
+        <h2 class="card-title">${esc(t('admin.expectedActual'))}</h2>
         ${exp.comparableCount ? `
           <div class="stat-grid">
-            <div class="stat"><div class="n">${esc(durationText(exp.avgExpected))}</div><div class="l">Avg. planned</div></div>
-            <div class="stat"><div class="n">${esc(durationText(exp.avgActual))}</div><div class="l">Avg. actual</div></div>
-            <div class="stat"><div class="n">${exp.overrunCount}</div><div class="l">Ran over</div>
-              <div class="sub">of ${exp.comparableCount} finished</div></div>
+            <div class="stat"><div class="n">${esc(durationText(exp.avgExpected))}</div><div class="l">${esc(t('admin.avgPlanned'))}</div></div>
+            <div class="stat"><div class="n">${esc(durationText(exp.avgActual))}</div><div class="l">${esc(t('admin.avgActual'))}</div></div>
+            <div class="stat"><div class="n">${exp.overrunCount}</div><div class="l">${esc(t('admin.ranOver'))}</div>
+              <div class="sub">${esc(t('admin.ofFinished', { n: exp.comparableCount }))}</div></div>
           </div>
-          <p class="help" style="margin-top:10px">
-            The duration you pick is only an expectation. Actual time comes from when you
-            really changed status, which is why these two numbers differ.
-          </p>` : '<p class="muted small">Not enough finished activities with a chosen duration yet.</p>'}
+          <p class="help" style="margin-top:10px">${esc(t('admin.expectedNote'))}</p>`
+          : `<p class="muted small">${esc(t('admin.notEnough'))}</p>`}
       </section>
 
       ${report.highlights.mostCommonTask || report.highlights.mostActiveLocation ? `
         <section class="card">
-          <h2 class="card-title">Highlights</h2>
+          <h2 class="card-title">${esc(t('admin.highlights'))}</h2>
           <ul class="stack-sm" style="list-style:none;padding:0;margin:0">
-            ${report.highlights.mostCommonTask ? `<li>🔧 Most common task:
+            ${report.highlights.mostCommonTask ? `<li>🔧 ${esc(t('admin.mostCommonTask'))}:
               <strong>${esc(report.highlights.mostCommonTask.label)}</strong>
               (${report.highlights.mostCommonTask.value}×)</li>` : ''}
-            ${report.highlights.mostActiveLocation ? `<li>📍 Most time spent at:
+            ${report.highlights.mostActiveLocation ? `<li>📍 ${esc(t('admin.mostTimeAt'))}:
               <strong>${esc(report.highlights.mostActiveLocation.label)}</strong>
               (${esc(durationText(report.highlights.mostActiveLocation.value))})</li>` : ''}
-            ${report.highlights.busiestDay && report.highlights.busiestDay.value > 0 ? `<li>📈 Busiest day:
+            ${report.highlights.busiestDay && report.highlights.busiestDay.value > 0 ? `<li>📈 ${esc(t('admin.busiestDay'))}:
               <strong>${esc(fmtDateLong(startOfDay(report.highlights.busiestDay.key)))}</strong>
               (${report.highlights.busiestDay.value} requests)</li>` : ''}
           </ul>
@@ -1303,7 +1328,7 @@ function paintHistory() {
   });
 
   if (!rows.length) {
-    renderEmpty(host, '🕘', 'Nothing recorded', 'Try a wider date range.');
+    renderEmpty(host, '🕘', t('admin.nothingRecorded'), t('admin.widerRange'));
     return;
   }
 
@@ -1321,7 +1346,7 @@ function paintHistory() {
 
     return `
       <section>
-        <h2 class="day-head">${esc(fmtDateLong(startOfDay(key)))} · ${esc(durationText(worked))} working</h2>
+        <h2 class="day-head">${esc(fmtDateLong(startOfDay(key)))} · ${esc(t('admin.working', { d: durationText(worked) }))}</h2>
         ${dayRows.map(historyRowHTML).join('')}
       </section>`;
   }).join('');
@@ -1335,8 +1360,8 @@ function historyRowHTML(row) {
 
   const diff = actual != null && planned != null ? Math.round(actual - planned) : null;
   const diffText = diff == null ? '' :
-    diff > 2 ? ` · ${durationText(diff)} over plan` :
-    diff < -2 ? ` · ${durationText(Math.abs(diff))} under plan` : ' · on plan';
+    diff > 2 ? ` · ${t('admin.overPlan', { d: durationText(diff) })}` :
+    diff < -2 ? ` · ${t('admin.underPlan', { d: durationText(Math.abs(diff)) })}` : ` · ${t('admin.onPlan')}`;
 
   return `
     <div class="hist-item">
@@ -1348,8 +1373,8 @@ function historyRowHTML(row) {
         <div class="hist-what">${meta.icon} ${esc(historyTask(row) ?? meta.label)}</div>
         <div class="hist-where">📍 ${esc(historyLocation(row))}</div>
         <div class="hist-dur">
-          ${open ? 'Still open' : esc(durationText(actual ?? 0))}${esc(diffText)}
-          ${planned ? ` · planned ${esc(durationText(planned))}` : ''}
+          ${open ? esc(t('admin.stillOpenRow')) : esc(durationText(actual ?? 0))}${esc(diffText)}
+          ${planned ? ` · ${esc(t('admin.planned', { d: durationText(planned) }))}` : ''}
         </div>
       </div>
     </div>`;
@@ -1382,67 +1407,13 @@ function wireSettings() {
     });
   });
 
-  $('#code-save').addEventListener('click', async event => {
-    const code = $('#set-code').value.trim();
-    const ok = await confirmAction(
-      `Set the employee access code to "${code}"? Anyone with this code and a name can join.`,
-      { title: 'Set access code', confirmText: 'Set code' });
-    if (!ok) return;
-
-    await withBusy(event.currentTarget, 'Saving…', async () => {
-      try {
-        await setAccessCode(code);
-        $('#set-code').value = '';
-        toastOk('Access code saved. Give it to your colleagues.');
-        await paintAccessState();
-      } catch (err) { toastError(err.message); }
-    });
-  });
-
-  // A readable code beats a random one: people will be typing it from a
-  // note on a staff-room wall, not pasting it.
-  $('#code-suggest').addEventListener('click', () => {
-    const words = ['SCHOOL', 'STAFF', 'CAMPUS', 'OFFICE', 'TEAM'];
-    const word = words[Math.floor(Math.random() * words.length)];
-    const digits = String(Math.floor(1000 + Math.random() * 9000));
-    $('#set-code').value = `${word}-${digits}`;
-    $('#set-code').focus();
-  });
-
   $('#set-email-signup').addEventListener('change', async event => {
     const value = event.target.checked;
     try {
       await saveSetting('allow_email_signup', value);
       toastOk(value
-        ? 'E-mail sign-up is allowed again.'
-        : 'E-mail sign-up is off. The access code is now the only way in.');
-    } catch (err) {
-      event.target.checked = !value;
-      toastError(err.message);
-    }
-  });
-
-  $('#purge-guests').addEventListener('click', async event => {
-    const ok = await confirmAction(
-      'Remove guest accounts that never finished joining and have sent no requests? Nothing anyone has sent is affected.',
-      { title: 'Tidy up', confirmText: 'Remove' });
-    if (!ok) return;
-    await withBusy(event.currentTarget, 'Removing…', async () => {
-      try {
-        const removed = await purgeUnclaimedGuests();
-        toastOk(removed ? `Removed ${removed} unfinished account${removed === 1 ? '' : 's'}.` : 'Nothing to remove.');
-      } catch (err) { toastError(err.message); }
-    });
-  });
-
-  $('#set-public').addEventListener('change', async event => {
-    const value = event.target.checked;
-    try {
-      await saveSetting('public_dashboard', value);
-      state.settings = await getSettings({ force: true });
-      toastOk(value
-        ? 'The board is now visible without signing in.'
-        : 'The board now requires an employee account.');
+        ? 'New administrators may sign up by e-mail.'
+        : 'E-mail sign-up is off.');
     } catch (err) {
       event.target.checked = !value;
       toastError(err.message);
@@ -1478,7 +1449,7 @@ function wireSettings() {
   });
 
   $('#signout-btn').addEventListener('click', async event => {
-    const ok = await confirmAction('Sign out of the admin console?', { confirmText: 'Sign out' });
+    const ok = await confirmAction(t('admin.signOutConfirm'), { confirmText: t('admin.signOut') });
     if (!ok) return;
     await withBusy(event.currentTarget, 'Signing out…', async () => {
       try {
@@ -1493,20 +1464,19 @@ async function paintSettings() {
   const settings = await getSettings({ force: true });
   state.settings = settings;
 
-  $('#set-public').checked = settings.public_dashboard !== false;
   $('#set-org').value = settings.org_name ?? '';
   $('#set-person').value = settings.tracked_person ?? '';
   $('#set-durations').value = (settings.quick_durations ?? []).join(', ');
   $('#admin-identity').textContent = `${state.profile.full_name} · ${state.profile.email ?? ''}`;
 
+  $('#set-email-signup').checked = settings.allow_email_signup !== false;
   paintPushState();
-  paintAccessState();
 
   try {
     const log = await getAuditLog(25);
     const host = $('#audit-host');
     if (!log.length) {
-      renderEmpty(host, '🗂', 'No changes recorded yet');
+      renderEmpty(host, '🗂', t('admin.noChanges'));
     } else {
       host.innerHTML = log.map(entry => `
         <p class="small" style="padding:8px 0;border-bottom:1px solid var(--border)">
@@ -1536,20 +1506,6 @@ function describeAudit(entry) {
   }
 }
 
-async function paintAccessState() {
-  try {
-    const options = await getAccessOptions();
-    $('#set-email-signup').checked = options.allow_email_signup !== false;
-    $('#code-state').textContent = options.code_ready
-      ? 'An access code is set. Employees join with their name and that code.'
-      : 'No access code yet — employees cannot join until you set one.';
-    $('#code-state').className = options.code_ready ? 'small muted' : 'small' ;
-    $('#code-state').style.color = options.code_ready ? '' : 'var(--danger)';
-  } catch (err) {
-    $('#code-state').textContent = err.message;
-  }
-}
-
 async function paintPushState() {
   const setup = await describePushSetup();
   // A greyed-out button that cannot ever be pressed just looks broken.
@@ -1565,6 +1521,92 @@ async function paintPushState() {
   $('#push-enable').disabled = false;
   $('#push-disable').hidden = setup.level !== 'on';
   $('#push-test').hidden = setup.level !== 'on';
+}
+
+/* ================================================================== */
+/* Recording a request on someone's behalf                            */
+/*                                                                    */
+/* Phone calls, WhatsApp messages and corridor requests become the    */
+/* same standardised record as an app request, so the queue, history  */
+/* and reports stay complete however someone got in touch.            */
+/* ================================================================== */
+
+function wireBehalf() {
+  $('#behalf-open').addEventListener('click', openBehalfSheet);
+
+  $('#bh-location').addEventListener('change', event => {
+    const custom = event.target.value === CUSTOM;
+    $('#bh-location-custom-field').hidden = !custom;
+    if (custom) $('#bh-location-custom').focus();
+  });
+  $('#bh-category').addEventListener('change', event => {
+    const custom = event.target.value === CUSTOM;
+    $('#bh-category-custom-field').hidden = !custom;
+    if (custom) $('#bh-category-custom').focus();
+  });
+
+  $('#behalf-form').addEventListener('submit', onSubmitBehalf);
+}
+
+async function openBehalfSheet() {
+  $('#bh-error').hidden = true;
+  try {
+    const [buildings, tasks] = await Promise.all([
+      getBuildings({ activeOnly: true }),
+      getTasks({ activeOnly: true })
+    ]);
+    fillSelect($('#bh-location'), buildings, t('form.selectLocation'), t('admin.customLocation'));
+    fillSelect($('#bh-category'), tasks, t('form.selectNeed'), t('admin.customTask'));
+  } catch (err) {
+    toastError(err.message);
+    return;
+  }
+  openSheet('#behalf-sheet');
+}
+
+async function onSubmitBehalf(event) {
+  event.preventDefault();
+  const errorNode = $('#bh-error');
+  errorNode.hidden = true;
+
+  const locationValue = $('#bh-location').value;
+  const categoryValue = $('#bh-category').value;
+  const startNow = $('#bh-start-now').checked;
+
+  const payload = {
+    requesterName: $('#bh-name').value,
+    channel: $('#bh-channel input:checked')?.value ?? 'phone',
+    buildingId: locationValue && locationValue !== CUSTOM ? locationValue : null,
+    customLocation: locationValue === CUSTOM ? $('#bh-location-custom').value : null,
+    taskId: categoryValue && categoryValue !== CUSTOM ? categoryValue : null,
+    customCategory: categoryValue === CUSTOM ? $('#bh-category-custom').value : null,
+    description: $('#bh-description').value,
+    priority: $('#bh-priority input:checked')?.value ?? 'normal',
+    notes: $('#bh-notes').value,
+    startNow,
+    // If he is already on it, reuse the duration he last picked.
+    durationMinutes: startNow ? state.duration : null
+  };
+
+  await withBusy($('#bh-submit'), t('action.saving'), async () => {
+    try {
+      const created = await adminCreateRequest(payload);
+      toastOk(startNow
+        ? t('behalf.savedStarted')
+        : t('behalf.saved', { number: created.request_number }));
+
+      $('#behalf-form').reset();
+      $('#bh-location-custom-field').hidden = true;
+      $('#bh-category-custom-field').hidden = true;
+      closeSheet('#behalf-sheet');
+
+      await Promise.all([refreshQueue(), refreshCurrent()]);
+    } catch (err) {
+      errorNode.textContent = err.message;
+      errorNode.hidden = false;
+      errorNode.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  });
 }
 
 /* ================================================================== */

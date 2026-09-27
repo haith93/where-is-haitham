@@ -6,14 +6,16 @@
  * row directly — those grants are revoked in rls.sql.
  */
 import { sb, errorMessage } from './supabase.js';
-import { PRIORITY_META } from './config.js';
+import { PRIORITY_META, CHANNEL_KEYS } from './config.js';
+import { prefs } from './utils.js';
 
 const REQUEST_COLUMNS = `
   id, request_number, requester_id, requester_name_snapshot,
   location_building_id, custom_location, location_name_snapshot,
   category_task_id, custom_category, category_name_snapshot,
   description, priority, status, queue_position, assigned_to,
-  created_at, accepted_at, started_at, completed_at, cancelled_at, updated_at
+  created_at, accepted_at, started_at, completed_at, cancelled_at, updated_at,
+  channel, notes, created_by
 `;
 
 export const OPEN_STATUSES = ['pending', 'accepted', 'in_progress'];
@@ -23,46 +25,134 @@ export const CLOSED_STATUSES = ['completed', 'rejected', 'cancelled'];
 /* Create                                                              */
 /* ------------------------------------------------------------------ */
 
-export async function createRequest(input) {
+/**
+ * Submit a request as an anonymous visitor.
+ *
+ * No account, no session. The RPC validates everything, rate-limits by
+ * device, and returns only what the requester needs — including a token
+ * that lets this device follow the request afterwards.
+ */
+export async function createPublicRequest(input) {
+  const name = String(input.requesterName ?? '').trim().replace(/\s+/g, ' ');
   const customLocation = trimOrNull(input.customLocation);
   const customCategory = trimOrNull(input.customCategory);
   const description = trimOrNull(input.description);
   const priority = String(input.priority || 'normal');
 
+  if (name.length < 2) throw new Error('Please enter your name.');
+  if (name.length > 120) throw new Error('That name is too long.');
   if (!PRIORITY_META[priority]) throw new Error('Please choose a priority.');
   if (!input.buildingId && !customLocation) throw new Error('Please choose where you are.');
   if (!input.taskId && !customCategory) throw new Error('Please choose what you need.');
-  if (customLocation && customLocation.length > 80) throw new Error('That location name is too long (80 characters maximum).');
-  if (customCategory && customCategory.length > 80) throw new Error('That description is too long (80 characters maximum).');
   if (description && description.length > 1000) throw new Error('Please shorten the description (1000 characters maximum).');
 
-  const { data, error } = await sb.rpc('create_service_request', {
+  const { data, error } = await sb.rpc('create_public_request', {
+    p_requester_name:  name,
     p_building_id:     customLocation ? null : (input.buildingId || null),
     p_custom_location: customLocation,
     p_task_id:         customCategory ? null : (input.taskId || null),
     p_custom_category: customCategory,
     p_description:     description,
-    p_priority:        priority
+    p_priority:        priority,
+    p_device_id:       deviceId()
   });
   if (error) throw new Error(errorMessage(error, 'Your request could not be submitted. Please try again.'));
   return data;
 }
 
+/**
+ * Record a request that arrived by phone, WhatsApp or in person.
+ * Produces exactly the same kind of record as an app request.
+ */
+export async function adminCreateRequest(input) {
+  const name = String(input.requesterName ?? '').trim().replace(/\s+/g, ' ');
+  if (name.length < 2) throw new Error('Please enter who asked for help.');
+  if (!CHANNEL_KEYS.includes(input.channel)) throw new Error('Please choose how the request arrived.');
+
+  const customLocation = trimOrNull(input.customLocation);
+  const customCategory = trimOrNull(input.customCategory);
+
+  if (!input.buildingId && !customLocation) throw new Error('Please choose a location.');
+  if (!input.taskId && !customCategory) throw new Error('Please choose what they need.');
+
+  const { data, error } = await sb.rpc('admin_create_request', {
+    p_requester_name:   name,
+    p_channel:          input.channel,
+    p_building_id:      customLocation ? null : (input.buildingId || null),
+    p_custom_location:  customLocation,
+    p_task_id:          customCategory ? null : (input.taskId || null),
+    p_custom_category:  customCategory,
+    p_description:      trimOrNull(input.description),
+    p_priority:         String(input.priority || 'normal'),
+    p_notes:            trimOrNull(input.notes),
+    p_start_now:        Boolean(input.startNow),
+    p_duration_minutes: input.durationMinutes ?? null
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not record that request.'));
+  return data;
+}
+
+/* ------------------------------------------------------------------ */
+/* Following your own requests, with no account                        */
+/*                                                                     */
+/* Creation returns an unguessable token. We keep the tokens for this  */
+/* device in localStorage — a convenience, not a security boundary:    */
+/* the token itself is what the database checks.                      */
+/* ------------------------------------------------------------------ */
+
+const TOKENS_KEY = 'myRequests';
+
+export function rememberRequest(result) {
+  if (!result?.public_token) return;
+  const list = prefs.get(TOKENS_KEY, []);
+  const next = [
+    { token: result.public_token, number: result.request_number, at: result.created_at },
+    ...list.filter(r => r.token !== result.public_token)
+  ].slice(0, 20);
+  prefs.set(TOKENS_KEY, next);
+}
+
+export function forgetRequest(token) {
+  prefs.set(TOKENS_KEY, prefs.get(TOKENS_KEY, []).filter(r => r.token !== token));
+}
+
+export function rememberedRequests() {
+  return prefs.get(TOKENS_KEY, []);
+}
+
+/** Live status of every request this device has sent. */
+export async function getMyDeviceRequests() {
+  const stored = rememberedRequests();
+  if (!stored.length) return [];
+
+  const results = await Promise.all(stored.map(async entry => {
+    const { data, error } = await sb.rpc('get_request_by_token', { p_token: entry.token });
+    if (error || !data) return null;
+    return { ...data, token: entry.token };
+  }));
+
+  return results.filter(Boolean);
+}
+
+export async function cancelMyRequest(token) {
+  const { data, error } = await sb.rpc('cancel_request_by_token', { p_token: token });
+  if (error) throw new Error(errorMessage(error, 'Could not cancel that request.'));
+  return data;
+}
+
+/** Stable per-browser id used only for rate limiting. */
+function deviceId() {
+  let id = prefs.get('deviceId');
+  if (!id) {
+    id = (crypto.randomUUID?.() ?? `d-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    prefs.set('deviceId', id);
+  }
+  return id;
+}
+
 /* ------------------------------------------------------------------ */
 /* Read                                                                */
 /* ------------------------------------------------------------------ */
-
-/** The signed-in employee's own requests (RLS restricts this to them). */
-export async function getMyRequests(userId, { limit = 50 } = {}) {
-  const { data, error } = await sb
-    .from('service_requests')
-    .select(REQUEST_COLUMNS)
-    .eq('requester_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(errorMessage(error, 'Could not load your requests.'));
-  return data ?? [];
-}
 
 /** Everything still open, for Haitham's queue. */
 export async function getOpenRequests() {
@@ -187,6 +277,7 @@ export function completionMinutes(request) {
 
 export const requestLocation = r => r.location_name_snapshot || r.custom_location || 'Not stated';
 export const requestCategory = r => r.category_name_snapshot || r.custom_category || 'Not stated';
+export const requestChannel  = r => r.channel || 'app';
 
 const trimOrNull = v => {
   const s = String(v ?? '').trim();

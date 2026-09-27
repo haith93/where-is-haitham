@@ -6,17 +6,22 @@
  */
 import { configured, sb } from './supabase.js';
 import { $, esc } from './utils.js';
+import { applyDocument, initLangToggle, apply as applyI18n, onLangChange } from './i18n.js';
+import { getSettings } from './data.js';
 import {
   initTheme, initThemeToggle, initOffline, renderSetupNeeded,
   toastOk, toastError, withBusy, registerServiceWorker
 } from './ui.js';
 import {
   signIn, signUp, sendPasswordReset, updatePassword,
-  getSession, getProfile, isAdmin, isJoined, accessOptions
+  getSession, getProfile, isAdmin
 } from './auth.js';
 
+applyDocument();
 initTheme();
 initThemeToggle();
+initLangToggle();
+onLangChange(() => applyI18n(document));
 initOffline();
 registerServiceWorker();
 
@@ -50,18 +55,14 @@ if (!configured) {
 async function boot() {
   showNotices();
 
-  // Offer account creation only while it is actually allowed. Before the
-  // very first administrator exists this is the only way in.
+  // Offer account creation only while an administrator has left it open.
+  // Before the very first administrator exists it is the only way in.
   try {
-    const options = await accessOptions();
+    const settings = await getSettings();
     const toSignup = $('#to-signup');
-    if (toSignup) toSignup.hidden = options.allow_email_signup === false;
-    if (!options.code_ready && options.allow_email_signup !== false) {
-      showNotice('No administrator account exists yet. Create one below, then set the employee access code in Admin → Settings.');
-      showPanel('signup');
-    }
+    if (toSignup) toSignup.hidden = settings.allow_email_signup === false;
   } catch (err) {
-    console.warn('accessOptions', err);
+    console.warn('settings', err);
   }
 
   if (location.hash.includes('type=recovery')) {
@@ -70,7 +71,7 @@ async function boot() {
     const session = await getSession().catch(() => null);
     if (session) {
       const profile = await getProfile().catch(() => null);
-      if (isJoined(profile)) await goHome();
+      if (profile?.active) await goHome();
     }
   }
 
@@ -211,6 +212,6 @@ sb?.auth.onAuthStateChange((event) => {
   if (event !== 'SIGNED_IN' || location.hash.includes('type=recovery')) return;
   setTimeout(async () => {
     const profile = await getProfile().catch(() => null);
-    if (isJoined(profile)) goHome();
+    if (profile?.active) goHome();
   }, 0);
 });

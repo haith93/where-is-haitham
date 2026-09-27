@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr" data-title-key="app.staffSignIn">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -22,10 +22,10 @@
       <div class="appbar-inner">
         <a class="brand" href="index.html">
           <span class="brand-mark" aria-hidden="true">🛠</span>
-          <span>Staff sign-in</span>
+          <span data-i18n="app.staffSignIn">Staff sign-in</span>
         </a>
         <span class="grow"></span>
-        <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme">🌙</button>
+        <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme" data-i18n-aria="common.theme">🌙</button>
       </div>
     </header>
 
@@ -33,11 +33,11 @@
       <div id="setup-needed" hidden></div>
 
       <div id="auth-card" class="card" style="margin-top:18px">
-        <h1 style="font-size:20px;margin-bottom:6px">Administrator sign-in</h1>
+        <h1 style="font-size:20px;margin-bottom:6px" data-i18n="staff.title">Administrator sign-in</h1>
         <p class="help" style="margin-bottom:18px">
           For Haitham and anyone else with an e-mail account.
           Colleagues sending a request should use the
-          <a href="login.html">join page</a> instead.
+          <a href="index.html">status board</a> instead.
         </p>
 
         <p id="auth-notice" class="notice notice-info" hidden></p>
@@ -45,35 +45,35 @@
         <!-- ---------------- Sign in ---------------- -->
         <form id="panel-signin" class="stack" novalidate>
           <div class="field">
-            <label class="label" for="signin-email">E-mail</label>
+            <label class="label" for="signin-email" data-i18n="staff.email">E-mail</label>
             <input class="input" id="signin-email" name="email" type="email" required
                    autocomplete="username" inputmode="email" placeholder="you@example.com" data-autofocus>
           </div>
           <div class="field">
-            <label class="label" for="signin-password">Password</label>
+            <label class="label" for="signin-password" data-i18n="staff.password">Password</label>
             <input class="input" id="signin-password" name="password" type="password" required
                    autocomplete="current-password" placeholder="Your password">
           </div>
           <p class="error" id="signin-error" role="alert" hidden></p>
-          <button class="btn btn-primary btn-lg btn-block" type="submit" id="signin-submit">Sign in</button>
-          <button class="btn btn-ghost btn-sm" type="button" id="forgot-btn">Forgot your password?</button>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="signin-submit" data-i18n="staff.signIn">Sign in</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="forgot-btn" data-i18n="staff.forgot">Forgot your password?</button>
           <button class="btn btn-ghost btn-sm" type="button" id="to-signup" hidden>Create an e-mail account</button>
         </form>
 
         <!-- ---------------- Create account ---------------- -->
         <form id="panel-signup" class="stack" novalidate hidden>
           <div class="field">
-            <label class="label" for="signup-name">Full name</label>
+            <label class="label" for="signup-name" data-i18n="staff.fullName">Full name</label>
             <input class="input" id="signup-name" name="full_name" type="text" required
                    autocomplete="name" maxlength="120" placeholder="Haitham Khadra">
           </div>
           <div class="field">
-            <label class="label" for="signup-email">E-mail</label>
+            <label class="label" for="signup-email" data-i18n="staff.email">E-mail</label>
             <input class="input" id="signup-email" name="email" type="email" required
                    autocomplete="username" inputmode="email" placeholder="you@example.com">
           </div>
           <div class="field">
-            <label class="label" for="signup-password">Password</label>
+            <label class="label" for="signup-password" data-i18n="staff.password">Password</label>
             <input class="input" id="signup-password" name="password" type="password" required
                    autocomplete="new-password" minlength="8" placeholder="At least 8 characters">
           </div>
@@ -83,19 +83,19 @@
             New accounts are ordinary employee accounts. Administrator access is
             granted by an existing administrator.
           </p>
-          <button class="btn btn-ghost btn-sm" type="button" id="back-to-signin">← Back to sign in</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="back-to-signin" data-i18n="staff.back">← Back to sign in</button>
         </form>
 
         <!-- ---------------- New password (from the e-mail link) ---------------- -->
         <form id="panel-recover" class="stack" hidden novalidate>
-          <h2 style="font-size:18px">Choose a new password</h2>
+          <h2 style="font-size:18px" data-i18n="staff.choosePassword">Choose a new password</h2>
           <div class="field">
-            <label class="label" for="recover-password">New password</label>
+            <label class="label" for="recover-password" data-i18n="staff.newPassword">New password</label>
             <input class="input" id="recover-password" type="password" required
                    autocomplete="new-password" minlength="8" placeholder="At least 8 characters">
           </div>
           <p class="error" id="recover-error" role="alert" hidden></p>
-          <button class="btn btn-primary btn-lg btn-block" type="submit" id="recover-submit">Save new password</button>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="recover-submit" data-i18n="staff.savePassword">Save new password</button>
         </form>
       </div>
 

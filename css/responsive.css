@@ -18,7 +18,7 @@
 
 /* ---------- Large phones --------------------------------------------- */
 @media (min-width: 600px) {
-  .container { padding: 20px; }
+  .container { padding: 26px 20px 20px; }
   .hero-facts { flex-direction: row; flex-wrap: wrap; gap: 20px; }
   .fact { flex: 1 1 200px; }
   .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -104,7 +104,12 @@
     font-size: 14.5px;
   }
   .admin-side a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
-  .admin-side a[aria-current='page'] { background: var(--accent-soft); color: var(--accent-text); }
+  .admin-side a[aria-current='page'] {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  [dir='rtl'] .admin-side a[aria-current='page'] { box-shadow: inset -3px 0 0 var(--accent); }
   .admin-side .ico { font-size: 17px; width: 22px; text-align: center; }
 
   .dash-split {

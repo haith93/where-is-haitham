@@ -1,47 +1,36 @@
 /**
- * index.html controller — the board everybody else looks at.
+ * index.html controller — the board everybody looks at.
  *
- * Three views share one page so that switching is instant on a phone:
- *   now      the status board (readable without an account when enabled)
- *   mine     the signed-in employee's own requests
- *   account  profile, notifications, sign out
+ * There is no sign-in here at all. Anyone who opens the page can read the
+ * board and send a request. The only thing kept on the device is a list of
+ * tokens for requests sent from it, so the person can follow their own
+ * request without an account.
  */
 import { configured } from './supabase.js';
 import { PRIORITY_META, REQUEST_STATUS_META } from './config.js';
-import {
-  $, $$, esc, el, fmtTime, fmtDateTime, relativeTime, durationText, prefs
-} from './utils.js';
+import { $, $$, esc, el, fmtTime, fmtDateTime, relativeTime, durationText, prefs } from './utils.js';
+import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
 import {
   initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toastOk, toastError, toast, withBusy, renderEmpty, renderError,
   renderSetupNeeded, confirmAction, registerServiceWorker
 } from './ui.js';
-import { getProfile, isAdmin, isJoined, signOut, updateMyName, onAuthChange, loginUrl } from './auth.js';
-import { getBuildings, getTasks, getSettings } from './data.js';
+import { getBuildings, getTasks } from './data.js';
 import { getPublicStatus, describeStatus } from './status.js';
 import {
-  createRequest, getMyRequests, getRequestTimeline, cancelRequest,
-  requestLocation, requestCategory, OPEN_STATUSES
+  createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
+  getMyDeviceRequests, cancelMyRequest, OPEN_STATUSES
 } from './requests.js';
-import {
-  subscribeBoard, subscribeMyRequests, subscribeNotifications, subscribeConfig, onResume
-} from './realtime.js';
-import {
-  getNotifications, unreadCount, markRead, describePushSetup,
-  enablePush, disablePush, showLocalNotification
-} from './notifications.js';
+import { subscribeBoard, subscribeConfig, onResume } from './realtime.js';
 
 /* ================================================================== */
 /* State                                                              */
 /* ================================================================== */
 
 const state = {
-  profile: null,
   snapshot: null,
   myRequests: [],
-  mineFilter: prefs.get('mineFilter', 'open'),
   view: 'now',
-  unread: 0,
   booted: false
 };
 
@@ -49,13 +38,22 @@ const state = {
 /* Boot                                                               */
 /* ================================================================== */
 
+applyDocument();
 initTheme();
 initThemeToggle();
+initLangToggle();
 initOffline(online => { if (online && configured && state.booted) refreshBoard(); });
 initSheets();
 startClock('#clock');
 registerServiceWorker();
-wireNotificationNavigation();
+
+// A language switch re-renders everything that JavaScript drew, so the
+// current screen and scroll position survive.
+onLangChange(() => {
+  applyI18n(document);
+  if (state.snapshot) paintBoard(state.snapshot, { silent: true });
+  paintMine();
+});
 
 if (!configured) {
   $('#view-now').hidden = true;
@@ -64,72 +62,26 @@ if (!configured) {
 } else {
   boot().catch(err => {
     console.error(err);
-    renderError($('#hero-host'), err.message || 'Could not start the app.', () => location.reload());
+    renderError($('#hero-host'), err.message || t('error.generic'), () => location.reload());
   });
 }
 
 async function boot() {
+  state.booted = true;
   wireViews();
   wireRequestForm();
-  wireAccount();
-  wireNotifications();
-
-  if (new URLSearchParams(location.search).get('denied')) {
-    toast('That area is for the administrator only.', 'info');
-    history.replaceState(null, '', location.pathname);
-  }
-
-  state.booted = true;
-  const settings = await getSettings();
-  state.profile = await loadJoinedProfile();
-  applyAuthUI();
-
-  // When the board is private, an unauthenticated visitor gets the
-  // sign-in prompt instead of an empty page.
-  if (!state.profile && settings.public_dashboard === false) {
-    $('#view-now').hidden = true;
-    $('#view-signedout').hidden = false;
-    return;
-  }
 
   await refreshBoard();
   subscribeBoard(snapshot => paintBoard(snapshot));
   subscribeConfig(() => { populateRequestSelects().catch(console.error); });
-  onResume(() => { refreshBoard(); if (state.profile) refreshMine(); });
+  onResume(() => { refreshBoard(); refreshMine(); });
 
-  // Recompute "expired / time passed" every 20s. Presentation only —
-  // this never writes to the database.
+  // Presentation-only tick so "expected time has passed" stays truthful.
   setInterval(() => { if (state.snapshot) paintBoard(state.snapshot, { silent: true }); }, 20000);
 
-  if (state.profile) {
-    await Promise.all([refreshMine(), refreshUnread()]);
-    subscribeMyRequests(state.profile.id, () => refreshMine());
-    subscribeNotifications(state.profile.id, onNotification);
-  }
+  refreshMine();
 
   if (location.hash === '#request') openRequestSheet();
-  onAuthChange(async (_event, profile) => {
-    state.profile = isJoined(profile) ? profile : null;
-    applyAuthUI();
-    if (state.profile) { refreshMine(); refreshUnread(); }
-  });
-}
-
-/**
- * An anonymous account that has not presented the access code yet is
- * inactive: it can see the board, and nothing else. Treat it as signed
- * out so the UI offers the join screen rather than a broken account page.
- */
-async function loadJoinedProfile() {
-  const profile = await getProfile().catch(() => null);
-  return isJoined(profile) ? profile : null;
-}
-
-/** Notification clicks ask the open tab to navigate. */
-function wireNotificationNavigation() {
-  navigator.serviceWorker?.addEventListener?.('message', event => {
-    if (event.data?.type === 'navigate' && event.data.url) location.assign(event.data.url);
-  });
 }
 
 /* ================================================================== */
@@ -139,7 +91,6 @@ function wireNotificationNavigation() {
 function wireViews() {
   $$('[data-view]').forEach(btn => {
     btn.addEventListener('click', event => {
-      if (btn.tagName === 'A') return;                 // real links navigate
       event.preventDefault();
       showView(btn.dataset.view);
     });
@@ -148,29 +99,16 @@ function wireViews() {
 
 function showView(view) {
   state.view = view;
-  const authed = Boolean(state.profile);
-  const needsAuth = (view === 'mine' || view === 'account') && !authed;
-
   $('#view-now').hidden = view !== 'now';
-  $('#view-mine').hidden = view !== 'mine' || needsAuth;
-  $('#view-account').hidden = view !== 'account' || needsAuth;
-  $('#view-signedout').hidden = !needsAuth;
+  $('#view-mine').hidden = view !== 'mine';
 
   $$('[data-view]').forEach(btn => {
     if (btn.dataset.view === view) btn.setAttribute('aria-current', 'page');
     else btn.removeAttribute('aria-current');
   });
 
-  if (view === 'mine' && authed) refreshMine();
-  if (view === 'account' && authed) paintAccount();
+  if (view === 'mine') refreshMine();
   scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function applyAuthUI() {
-  const authed = Boolean(state.profile);
-  $$('[data-auth-only]').forEach(node => { node.hidden = !authed; });
-  $$('[data-admin-only]').forEach(node => { node.hidden = !isAdmin(state.profile); });
-  if (!authed && (state.view === 'mine' || state.view === 'account')) showView(state.view);
 }
 
 /* ================================================================== */
@@ -179,8 +117,7 @@ function applyAuthUI() {
 
 async function refreshBoard() {
   try {
-    const snapshot = await getPublicStatus();
-    paintBoard(snapshot);
+    paintBoard(await getPublicStatus());
   } catch (err) {
     console.error(err);
     renderError($('#hero-host'), err.message, () => refreshBoard());
@@ -196,70 +133,71 @@ function paintBoard(snapshot, { silent = false } = {}) {
   paintQueue(snapshot.queue ?? []);
   paintCounters(snapshot.counts ?? {});
 
-  if (!silent) document.title = view.known
-    ? `${view.meta.label} · Where Is Haitham Now?`
-    : 'Where Is Haitham Now?';
+  if (!silent) {
+    document.title = view.known ? `${view.meta.label} · ${t('app.name')}` : t('app.name');
+  }
 }
 
 function paintHero(view, snapshot) {
-  const person = snapshot.status?.person || 'Haitham';
   const locationLine = view.location
     ? `<div class="fact"><span class="ico" aria-hidden="true">📍</span>
-         <span class="grow"><span class="k">Location</span><span class="v">${esc(view.location)}</span></span></div>`
+         <span class="grow"><span class="k">${esc(t('board.location'))}</span>
+         <span class="v">${esc(view.location)}</span></span></div>`
     : '';
   const taskLine = view.task
     ? `<div class="fact"><span class="ico" aria-hidden="true">🛠️</span>
-         <span class="grow"><span class="k">Doing</span><span class="v">${esc(view.task)}</span></span></div>`
+         <span class="grow"><span class="k">${esc(t('board.doing'))}</span>
+         <span class="v">${esc(view.task)}</span></span></div>`
     : '';
 
   const timeBlock = view.startedAt ? `
     <div class="hero-time">
       <div>
-        <div class="k">Started</div>
+        <div class="k">${esc(t('board.started'))}</div>
         <div class="v">${esc(fmtTime(view.startedAt))}</div>
       </div>
       <div>
-        <div class="k">Expected until</div>
-        <div class="v">${view.expectedEndAt ? esc(fmtTime(view.expectedEndAt)) : 'Open ended'}</div>
+        <div class="k">${esc(t('board.expectedUntil'))}</div>
+        <div class="v">${view.expectedEndAt ? esc(fmtTime(view.expectedEndAt)) : esc(t('board.openEnded'))}</div>
       </div>
       <div style="grid-column:1 / -1">
-        <div class="k">Expected availability</div>
-        <div class="v big">${esc(view.availabilityText)}</div>
+        <div class="k">${esc(t('board.availability'))}</div>
+        <div class="v big">${esc(availabilityText(view))}</div>
       </div>
     </div>` : '';
 
   const expiredNote = view.expired ? `
     <div class="expired-note" role="status">
       <span aria-hidden="true">⏰</span>
-      <span>
-        <strong>Expected time has passed.</strong>
-        ${esc(person)} planned to finish at ${esc(fmtTime(view.expectedEndAt))}
-        (${esc(durationText(view.minutesOver))} ago)${view.stale ? ' and has not posted an update yet' : ''}.
-        This status may be out of date.
-      </span>
-    </div>` : '';
-
-  const openTooLong = !view.expired && view.stale ? `
+      <span><strong>${esc(t('board.expiredTitle'))}</strong> ${esc(t('board.expiredBody'))}</span>
+    </div>` : (view.stale ? `
     <div class="expired-note" role="status">
       <span aria-hidden="true">⏰</span>
-      <span><strong>This status is a few hours old.</strong> It may be out of date.</span>
-    </div>` : '';
+      <span><strong>${esc(t('board.staleTitle'))}</strong> ${esc(t('board.expiredBody'))}</span>
+    </div>` : '');
 
   $('#hero-host').innerHTML = `
     <div class="hero" data-tone="${esc(view.meta.tone)}">
       <p class="hero-status ${view.known && !view.expired ? 'live' : ''}">
         <span class="dot" aria-hidden="true"></span>
-        <span>${esc(view.meta.label.toUpperCase())}</span>
+        <span>${esc(view.known ? view.meta.label : t('board.noStatus'))}</span>
       </p>
-      <p class="hero-hint">${esc(view.known ? view.meta.hint : 'Haitham has not posted a status yet.')}</p>
+      <p class="hero-hint">${esc(view.known ? view.meta.hint : t('board.noStatusHint'))}</p>
       ${locationLine || taskLine ? `<div class="hero-facts">${locationLine}${taskLine}</div>` : ''}
       ${timeBlock}
-      ${expiredNote}${openTooLong}
+      ${expiredNote}
       <p class="hero-foot">
-        ${view.updatedAt ? `<span>Last updated ${esc(fmtTime(view.updatedAt))} · ${esc(relativeTime(view.updatedAt))}</span>` : ''}
-        ${view.startedAt && !view.isFree ? `<span>· Here ${esc(view.elapsedText)}</span>` : ''}
+        ${view.updatedAt ? `<span>${esc(t('board.lastUpdated'))} ${esc(fmtTime(view.updatedAt))} · ${esc(relativeTime(view.updatedAt))}</span>` : ''}
+        ${view.startedAt && !view.isFree ? `<span>· ${esc(t('board.here'))} ${esc(view.elapsedText)}</span>` : ''}
       </p>
     </div>`;
+}
+
+/** Localised version of the availability line. */
+function availabilityText(view) {
+  if (view.isFree) return t('board.now');
+  if (!view.expectedEndAt) return t('board.notStated');
+  return fmtTime(view.expectedEndAt);
 }
 
 function paintServing(serving, next) {
@@ -272,12 +210,12 @@ function paintServing(serving, next) {
       <p class="muted">📍 ${esc(serving.location)}</p>
       <p style="margin-top:6px;font-weight:650">🔧 ${esc(serving.category)}</p>
       ${serving.started_at ? `<p class="small faint" style="margin-top:8px">
-        Started ${esc(fmtTime(serving.started_at))} · ${esc(relativeTime(serving.started_at))}</p>` : ''}
+        ${esc(t('board.started'))} ${esc(fmtTime(serving.started_at))} · ${esc(relativeTime(serving.started_at))}</p>` : ''}
       <p class="small faint mono" style="margin-top:4px">${esc(serving.request_number)}</p>`;
     card.hidden = false;
   } else if (next) {
     body.innerHTML = `
-      <p class="muted small" style="margin-bottom:6px">Nobody is being served right now. Next:</p>
+      <p class="muted small" style="margin-bottom:6px">${esc(t('board.nextUp'))}</p>
       <p class="serving-person">${esc(next.requester)}</p>
       <p class="muted">📍 ${esc(next.location)} · 🔧 ${esc(next.category)}</p>`;
     card.hidden = false;
@@ -289,11 +227,11 @@ function paintServing(serving, next) {
 function paintQueue(queue) {
   const body = $('#queue-body');
   $('#queue-count').textContent = queue.length === 0
-    ? 'Nobody waiting'
-    : `${queue.length} waiting`;
+    ? t('board.nobodyWaiting')
+    : t('board.countWaiting', { n: queue.length });
 
   if (!queue.length) {
-    renderEmpty(body, '🎉', 'Nobody is waiting', 'Haitham has no queue at the moment.');
+    renderEmpty(body, '🎉', t('board.nobodyWaiting'), t('board.nobodyWaitingHint'));
     return;
   }
 
@@ -310,14 +248,13 @@ function paintQueue(queue) {
         <span class="badge badge-${esc(priority.tone)}">
           <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}
         </span>
-        <span class="sr-only">Status: ${esc(status.label)}</span>
+        <span class="sr-only">${esc(status.label)}</span>
       </li>`;
   }).join('')}</ol>`;
 }
 
 function paintCounters(counts) {
-  const host = $('#counters');
-  host.hidden = false;
+  $('#counters').hidden = false;
   $('#c-waiting').textContent = counts.waiting ?? 0;
   $('#c-urgent').textContent = counts.urgent ?? 0;
   $('#c-very').textContent = counts.very_urgent ?? 0;
@@ -351,18 +288,16 @@ function wireRequestForm() {
 }
 
 async function openRequestSheet() {
-  if (!state.profile) {
-    location.href = loginUrl('index.html#request');
-    return;
-  }
-  $('#rq-name').textContent = state.profile.full_name;
   $('#request-form').hidden = false;
   $('#rq-success').hidden = true;
   $('#rq-error').hidden = true;
 
   await populateRequestSelects();
 
-  // Offer the location used last time — most people ask from the same room.
+  // Most people ask from the same room, and type the same name, every time.
+  const lastName = prefs.get('lastName');
+  if (lastName && !$('#rq-name').value) $('#rq-name').value = lastName;
+
   const lastBuilding = prefs.get('lastRequestBuilding');
   if (lastBuilding && $(`#rq-location option[value="${CSS.escape(lastBuilding)}"]`)) {
     $('#rq-location').value = lastBuilding;
@@ -377,9 +312,8 @@ async function populateRequestSelects() {
       getBuildings({ activeOnly: true }),
       getTasks({ activeOnly: true })
     ]);
-
-    fillSelect($('#rq-location'), buildings, 'Select where you are', '+ Other / custom location');
-    fillSelect($('#rq-category'), tasks, 'Select what you need', '+ Other / custom');
+    fillSelect($('#rq-location'), buildings, t('form.selectLocation'), t('form.customLocation'));
+    fillSelect($('#rq-category'), tasks, t('form.selectNeed'), t('form.customNeed'));
   } catch (err) {
     $('#rq-error').textContent = err.message;
     $('#rq-error').hidden = false;
@@ -404,6 +338,7 @@ async function onSubmitRequest(event) {
   const categoryValue = $('#rq-category').value;
 
   const payload = {
+    requesterName: $('#rq-name').value,
     buildingId: locationValue && locationValue !== CUSTOM ? locationValue : null,
     customLocation: locationValue === CUSTOM ? $('#rq-location-custom').value : null,
     taskId: categoryValue && categoryValue !== CUSTOM ? categoryValue : null,
@@ -412,23 +347,23 @@ async function onSubmitRequest(event) {
     priority: $('#rq-priority input:checked')?.value ?? 'normal'
   };
 
-  await withBusy($('#rq-submit'), 'Sending…', async () => {
+  await withBusy($('#rq-submit'), t('action.sending'), async () => {
     try {
-      const created = await createRequest(payload);
+      const created = await createPublicRequest(payload);
+      rememberRequest(created);
+
+      prefs.set('lastName', payload.requesterName.trim());
       if (payload.buildingId) prefs.set('lastRequestBuilding', payload.buildingId);
 
       $('#request-form').hidden = true;
       $('#rq-success').hidden = false;
       $('#rq-number').textContent = created.request_number;
-
-      const waiting = (state.snapshot?.counts?.waiting ?? 0);
-      $('#rq-eta').textContent = waiting > 1
-        ? `${waiting - 1} other ${waiting - 1 === 1 ? 'person is' : 'people are'} ahead of you.`
-        : 'You are next in the queue.';
+      $('#rq-eta').textContent = created.people_ahead > 0
+        ? t('form.peopleAhead', { n: created.people_ahead })
+        : t('form.youAreNext');
 
       resetRequestForm();
       refreshMine();
-      toastOk('Request sent to Haitham.');
     } catch (err) {
       errorNode.textContent = err.message;
       errorNode.hidden = false;
@@ -438,130 +373,105 @@ async function onSubmitRequest(event) {
 }
 
 function resetRequestForm() {
+  const name = $('#rq-name').value;
   $('#request-form').reset();
+  $('#rq-name').value = name;                 // keep the name for next time
   $('#rq-location-custom-field').hidden = true;
   $('#rq-category-custom-field').hidden = true;
   $('#rq-desc-count').textContent = '0';
 }
 
 /* ================================================================== */
-/* My requests                                                        */
+/* My requests (this device)                                          */
 /* ================================================================== */
 
 async function refreshMine() {
-  if (!state.profile) return;
-  const body = $('#mine-body');
-  try {
-    state.myRequests = await getMyRequests(state.profile.id);
+  if (!rememberedRequests().length) {
+    state.myRequests = [];
     paintMine();
-  } catch (err) {
-    renderError(body, err.message, () => refreshMine());
-  }
-}
-
-$$('[data-mine-filter]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    state.mineFilter = btn.dataset.mineFilter;
-    prefs.set('mineFilter', state.mineFilter);
-    $$('[data-mine-filter]').forEach(b =>
-      b.setAttribute('aria-pressed', String(b.dataset.mineFilter === state.mineFilter)));
-    paintMine();
-  });
-  btn.setAttribute('aria-pressed', String(btn.dataset.mineFilter === state.mineFilter));
-});
-
-function paintMine() {
-  const body = $('#mine-body');
-  const rows = state.myRequests.filter(r =>
-    state.mineFilter === 'all' ? true :
-    state.mineFilter === 'open' ? OPEN_STATUSES.includes(r.status) :
-    r.status === 'completed');
-
-  if (!rows.length) {
-    renderEmpty(body, '📋',
-      state.mineFilter === 'open' ? 'No open requests' : 'Nothing here yet',
-      'Tap "Request Haitham" when you need help.');
     return;
   }
-
-  body.innerHTML = rows.map(requestCardHTML).join('');
-  $$('.req-card', body).forEach(card =>
-    card.addEventListener('click', () => openRequestDetail(card.dataset.id)));
-}
-
-function requestCardHTML(r) {
-  const status = REQUEST_STATUS_META[r.status] ?? REQUEST_STATUS_META.pending;
-  const priority = PRIORITY_META[r.priority] ?? PRIORITY_META.normal;
-  return `
-    <button class="req-card" type="button" data-id="${esc(r.id)}" data-priority="${esc(r.priority)}">
-      <span class="req-head">
-        <span class="req-num mono">${esc(r.request_number)}</span>
-        <span class="badge badge-${esc(status.tone)}">
-          <span aria-hidden="true">${status.icon}</span>${esc(status.label)}
-        </span>
-      </span>
-      <span class="req-title">${esc(requestCategory(r))}</span>
-      <span class="req-sub">📍 ${esc(requestLocation(r))} · ${esc(fmtDateTime(r.created_at))}</span>
-      ${r.priority !== 'normal'
-        ? `<span class="badge badge-${esc(priority.tone)}" style="margin-top:8px">
-             <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}</span>`
-        : ''}
-    </button>`;
-}
-
-async function openRequestDetail(id) {
-  const request = state.myRequests.find(r => r.id === id);
-  if (!request) return;
-
-  const body = $('#detail-body');
-  $('#detail-title').textContent = request.request_number;
-  body.innerHTML = '<div class="skeleton" style="height:120px"></div>';
-  openSheet('#detail-sheet');
-
-  const status = REQUEST_STATUS_META[request.status] ?? REQUEST_STATUS_META.pending;
-  const priority = PRIORITY_META[request.priority] ?? PRIORITY_META.normal;
-
-  let timeline = [];
   try {
-    timeline = await getRequestTimeline(id);
+    state.myRequests = await getMyDeviceRequests();
   } catch (err) {
     console.warn(err);
   }
+  paintMine();
+}
 
+function paintMine() {
+  const body = $('#mine-body');
+  if (!body) return;
+
+  if (!state.myRequests.length) {
+    renderEmpty(body, '📋', t('mine.empty'), t('mine.emptyHint'));
+    return;
+  }
+
+  body.innerHTML = state.myRequests.map(r => {
+    const status = REQUEST_STATUS_META[r.status] ?? REQUEST_STATUS_META.pending;
+    const priority = PRIORITY_META[r.priority] ?? PRIORITY_META.normal;
+    return `
+      <button class="req-card" type="button" data-token="${esc(r.token)}" data-priority="${esc(r.priority)}">
+        <span class="req-head">
+          <span class="req-num mono">${esc(r.request_number)}</span>
+          <span class="badge badge-${esc(status.tone)}">
+            <span aria-hidden="true">${status.icon}</span>${esc(status.label)}
+          </span>
+        </span>
+        <span class="req-title">${esc(r.category)}</span>
+        <span class="req-sub">📍 ${esc(r.location)} · ${esc(t('mine.sent'))} ${esc(fmtDateTime(r.created_at))}</span>
+        ${r.status === 'pending' && r.people_ahead > 0
+          ? `<span class="req-sub">⏳ ${esc(t('mine.ahead', { n: r.people_ahead }))}</span>` : ''}
+        ${r.priority !== 'normal'
+          ? `<span class="badge badge-${esc(priority.tone)}" style="margin-top:8px">
+               <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}</span>` : ''}
+      </button>`;
+  }).join('');
+
+  $$('.req-card', body).forEach(card =>
+    card.addEventListener('click', () => openMyRequest(card.dataset.token)));
+}
+
+function openMyRequest(token) {
+  const request = state.myRequests.find(r => r.token === token);
+  if (!request) return;
+
+  const status = REQUEST_STATUS_META[request.status] ?? REQUEST_STATUS_META.pending;
+  const priority = PRIORITY_META[request.priority] ?? PRIORITY_META.normal;
+  const body = $('#detail-body');
+
+  $('#detail-title').textContent = request.request_number;
   body.innerHTML = `
     <div class="stack-sm">
       <div class="row-wrap">
-        <span class="badge badge-${esc(status.tone)}"><span aria-hidden="true">${status.icon}</span>${esc(status.label)}</span>
-        <span class="badge badge-${esc(priority.tone)}"><span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}</span>
+        <span class="badge badge-${esc(status.tone)}">${status.icon} ${esc(status.label)}</span>
+        <span class="badge badge-${esc(priority.tone)}">${priority.icon} ${esc(priority.label)}</span>
       </div>
-      <p class="req-title" style="font-size:18px">${esc(requestCategory(request))}</p>
-      <p class="muted">📍 ${esc(requestLocation(request))}</p>
+      <p class="req-title" style="font-size:18px">${esc(request.category)}</p>
+      <p class="muted">📍 ${esc(request.location)}</p>
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
-      <p class="small faint">Sent ${esc(fmtDateTime(request.created_at))}</p>
-      ${timeline.length ? `<ol class="timeline">${timeline.map(t => `
-        <li>
-          <strong>${esc(REQUEST_STATUS_META[t.new_status]?.label ?? t.new_status ?? 'Updated')}</strong>
-          ${t.notes ? `<div class="small muted">${esc(t.notes)}</div>` : ''}
-          <time>${esc(fmtDateTime(t.created_at))}</time>
-        </li>`).join('')}</ol>` : ''}
+      <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>
+      ${request.accepted_at ? `<p class="small faint">${esc(REQUEST_STATUS_META.accepted.label)} · ${esc(fmtDateTime(request.accepted_at))}</p>` : ''}
+      ${request.started_at ? `<p class="small faint">${esc(REQUEST_STATUS_META.in_progress.label)} · ${esc(fmtDateTime(request.started_at))}</p>` : ''}
+      ${request.completed_at ? `<p class="small faint">${esc(REQUEST_STATUS_META.completed.label)} · ${esc(fmtDateTime(request.completed_at))}</p>` : ''}
     </div>`;
 
-  if (['pending', 'accepted'].includes(request.status)) {
+  openSheet('#detail-sheet');
+
+  if (OPEN_STATUSES.includes(request.status) && request.status !== 'in_progress') {
     const cancelBtn = el('button', {
       class: 'btn btn-danger btn-block',
       type: 'button',
-      text: 'Cancel this request',
+      text: t('mine.cancel'),
       style: 'margin-top:18px'
     });
     cancelBtn.addEventListener('click', async () => {
-      const ok = await confirmAction(
-        'Cancel this request? Haitham will see that you no longer need help.',
-        { confirmText: 'Cancel request', danger: true, title: request.request_number });
-      if (!ok) return;
-      await withBusy(cancelBtn, 'Cancelling…', async () => {
+      if (!await confirmAction(t('mine.cancelConfirm'), { confirmText: t('mine.cancel'), danger: true })) return;
+      await withBusy(cancelBtn, t('action.working'), async () => {
         try {
-          await cancelRequest(request.id, 'Cancelled by the requester');
-          toastOk('Request cancelled.');
+          await cancelMyRequest(token);
+          toastOk(t('mine.cancelled'));
           closeSheet('#detail-sheet');
           refreshMine();
         } catch (err) {
@@ -571,146 +481,19 @@ async function openRequestDetail(id) {
     });
     body.append(cancelBtn);
   }
-}
 
-/* ================================================================== */
-/* Notifications                                                      */
-/* ================================================================== */
-
-function wireNotifications() {
-  $('#bell').addEventListener('click', openNotifications);
-  $('#notif-read-all').addEventListener('click', async event => {
-    await withBusy(event.currentTarget, 'Marking…', async () => {
-      try {
-        await markRead(null);
-        await refreshUnread();
-        await openNotifications({ keepOpen: true });
-      } catch (err) {
-        toastError(err.message);
-      }
-    });
-  });
-}
-
-async function refreshUnread() {
-  if (!state.profile) return;
-  state.unread = await unreadCount(state.profile.id);
-  const dot = $('#bell-dot');
-  dot.hidden = state.unread === 0;
-  dot.textContent = state.unread > 9 ? '9+' : String(state.unread);
-}
-
-async function openNotifications({ keepOpen = false } = {}) {
-  if (!state.profile) return;
-  const body = $('#notif-body');
-  if (!keepOpen) {
-    body.innerHTML = '<div class="skeleton" style="height:60px"></div>';
-    openSheet('#notif-sheet');
-  }
-  try {
-    const rows = await getNotifications(state.profile.id);
-    if (!rows.length) {
-      renderEmpty(body, '🔕', 'No notifications yet', 'Updates about your requests appear here.');
-      return;
+  const forgetBtn = el('button', {
+    class: 'btn btn-ghost btn-sm btn-block',
+    type: 'button',
+    text: t('mine.forget'),
+    style: 'margin-top:8px',
+    onclick: () => {
+      forgetRequest(token);
+      closeSheet('#detail-sheet');
+      refreshMine();
     }
-    body.innerHTML = rows.map(n => `
-      <div class="card card-tight" style="${n.read ? '' : 'border-color:var(--accent)'}">
-        <div class="row-between">
-          <strong>${esc(n.title)}</strong>
-          ${n.read ? '' : '<span class="badge badge-info">New</span>'}
-        </div>
-        <p class="small muted" style="margin-top:4px">${esc(n.message)}</p>
-        <p class="small faint" style="margin-top:6px">${esc(fmtDateTime(n.created_at))}</p>
-      </div>`).join('');
-  } catch (err) {
-    renderError(body, err.message, () => openNotifications());
-  }
-}
-
-function onNotification(row) {
-  refreshUnread();
-  refreshMine();
-  if (document.visibilityState === 'visible') {
-    toast(`${row.title} — ${row.message}`, 'info', 6000);
-  } else {
-    showLocalNotification(row.title, row.message, { tag: `req-${row.request_id ?? row.id}`, url: 'index.html' });
-  }
-}
-
-/* ================================================================== */
-/* Account                                                            */
-/* ================================================================== */
-
-function wireAccount() {
-  $('#signout-btn').addEventListener('click', async event => {
-    const ok = await confirmAction('Sign out of this device?', { confirmText: 'Sign out' });
-    if (!ok) return;
-    await withBusy(event.currentTarget, 'Signing out…', async () => {
-      try {
-        await signOut();
-        location.replace('index.html');
-      } catch (err) {
-        toastError(err.message);
-      }
-    });
   });
-
-  $('#acct-save-name').addEventListener('click', async event => {
-    await withBusy(event.currentTarget, 'Saving…', async () => {
-      try {
-        state.profile = await updateMyName($('#acct-name-input').value);
-        paintAccount();
-        toastOk('Name saved.');
-      } catch (err) {
-        toastError(err.message);
-      }
-    });
-  });
-
-  $('#push-enable').addEventListener('click', async event => {
-    await withBusy(event.currentTarget, 'Enabling…', async () => {
-      try {
-        await enablePush();
-        toastOk('Notifications are on for this device.');
-      } catch (err) {
-        toast(err.message, 'info', 8000);
-      }
-      paintPushState();
-    });
-  });
-
-  $('#push-disable').addEventListener('click', async event => {
-    await withBusy(event.currentTarget, 'Turning off…', async () => {
-      await disablePush();
-      toastOk('Notifications turned off for this device.');
-      paintPushState();
-    });
-  });
-}
-
-function paintAccount() {
-  if (!state.profile) return;
-  $('#acct-name').textContent = state.profile.full_name;
-  $('#acct-email').textContent = state.profile.email
-    || 'Joined with an access code on this device';
-  $('#acct-name-input').value = state.profile.full_name;
-  const role = $('#acct-role');
-  role.textContent = isAdmin(state.profile) ? 'Administrator' : 'Employee';
-  role.className = `badge ${isAdmin(state.profile) ? 'badge-info' : 'badge-muted'}`;
-  paintPushState();
-}
-
-async function paintPushState() {
-  const setup = await describePushSetup();
-  const blocked = ['unsupported', 'not-configured', 'blocked'].includes(setup.level);
-
-  const state = $('#push-state');
-  state.textContent = setup.text;
-  state.className = blocked ? 'notice notice-warn' : 'small muted';
-
-  $('#push-enable').hidden = setup.level === 'on' || blocked;
-  $('#push-enable').disabled = false;
-  $('#push-disable').hidden = setup.level !== 'on';
+  body.append(forgetBtn);
 }
 
 /* ================================================================== */

@@ -7,13 +7,14 @@
 /* ---------- Section switching ---------------------------------------- */
 .admin-section { display: none; }
 .admin-section.is-active { display: block; }
+.admin-section > .stack { gap: var(--gap); }
 
 .section-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 .section-head h1 { font-size: 22px; letter-spacing: -.02em; }
 .section-head p  { font-size: 13.5px; color: var(--text-muted); }
@@ -27,10 +28,10 @@
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  padding: 16px 18px;
-  border-left: 5px solid var(--now-accent, var(--text-faint));
+  padding: 18px 20px;
+  border-inline-start: 5px solid var(--now-accent, var(--text-faint));
 }
-.now-card[data-tone='ok']     { --now-accent: var(--ok); }
+.now-card[data-tone='ok']     { --now-accent: var(--secondary); }
 .now-card[data-tone='warn']   { --now-accent: var(--warn); }
 .now-card[data-tone='info']   { --now-accent: var(--info); }
 .now-card[data-tone='muted']  { --now-accent: var(--text-faint); }
@@ -59,8 +60,9 @@
 .duration-grid .btn { padding: 10px 4px; min-height: 52px; font-size: 15px; }
 .duration-grid .btn[aria-pressed='true'] {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
   border-color: var(--accent);
+  font-weight: 750;
 }
 
 /* The computed "12:30 PM → 12:40 PM" preview. */
@@ -91,14 +93,14 @@
 .queue-card {
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  border-left: 5px solid var(--q-accent, var(--border-strong));
+  border-inline-start: 5px solid var(--q-accent, var(--border-strong));
   background: var(--surface);
-  padding: 14px;
+  padding: 16px;
   box-shadow: var(--shadow-sm);
 }
 .queue-card[data-priority='very_urgent'] { --q-accent: var(--danger); }
 .queue-card[data-priority='urgent']      { --q-accent: var(--urgent); }
-.queue-card[data-priority='normal']      { --q-accent: var(--warn); }
+.queue-card[data-priority='normal']      { --q-accent: var(--secondary); }
 
 .queue-card .who { font-size: 17px; font-weight: 750; }
 .queue-card .where { font-size: 14px; color: var(--text-muted); }
@@ -125,7 +127,7 @@
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--text-faint);
-  margin: 18px 0 10px;
+  margin: 26px 0 12px;
 }
 .queue-group-title::after {
   content: '';
@@ -161,7 +163,7 @@
 .filter-pill[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast);
 }
 
 /* ---------- Report cards --------------------------------------------- */
@@ -212,7 +214,7 @@
   min-width: 3px;
   transition: width .3s ease;
 }
-.bar-row[data-tone='ok']     .bar-fill { background: var(--ok); }
+.bar-row[data-tone='ok']     .bar-fill { background: var(--secondary); }
 .bar-row[data-tone='warn']   .bar-fill { background: var(--warn); }
 .bar-row[data-tone='urgent'] .bar-fill { background: var(--urgent); }
 .bar-row[data-tone='danger'] .bar-fill { background: var(--danger); }
@@ -224,7 +226,7 @@
 .chart .axis-text { fill: var(--text-faint); font-size: 10px; font-family: var(--font); }
 .chart .val-text  { fill: var(--text-muted); font-size: 10px; font-weight: 700; font-family: var(--font); }
 .chart .bar       { fill: var(--accent); }
-.chart .bar.alt   { fill: var(--info); }
+.chart .bar.alt   { fill: var(--secondary); }
 .chart-legend {
   display: flex;
   flex-wrap: wrap;

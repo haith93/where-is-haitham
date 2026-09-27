@@ -19,8 +19,8 @@ import {
   fmtDateLong, fmtDateTime, fmtTime, weekdayName, toCSV, downloadFile
 } from './utils.js';
 import { getStatusHistory, historyLocation, historyTask, actualMinutes } from './status.js';
-import { getRequestsBetween, completionMinutes, requestLocation, requestCategory } from './requests.js';
-import { PRIORITY_META, REQUEST_STATUS_META, STATUS_META } from './config.js';
+import { getRequestsBetween, completionMinutes, requestLocation, requestCategory, requestChannel } from './requests.js';
+import { PRIORITY_META, REQUEST_STATUS_META, STATUS_META, CHANNELS } from './config.js';
 
 /** Status types that do not count as working time. */
 const NON_WORK = new Set(['break', 'offsite', 'done']);
@@ -55,6 +55,7 @@ export async function buildReport(fromKey, toKey, filters = {}) {
     if (filters.taskId && row.category_task_id !== filters.taskId) return false;
     if (filters.priority && row.priority !== filters.priority) return false;
     if (filters.status && row.status !== filters.status) return false;
+    if (filters.channel && requestChannel(row) !== filters.channel) return false;
     return true;
   });
 
@@ -124,11 +125,13 @@ export async function buildReport(fromKey, toKey, filters = {}) {
 
   const byCategory = new Map();
   const byRequestLocation = new Map();
+  const byChannel = new Map();
   const byDay = new Map(days.map(d => [d, 0]));
 
   for (const r of requests) {
     add(byCategory, requestCategory(r), 1);
     add(byRequestLocation, requestLocation(r), 1);
+    add(byChannel, requestChannel(r), 1);
     const key = dayKey(r.created_at);
     if (byDay.has(key)) byDay.set(key, byDay.get(key) + 1);
   }
@@ -165,6 +168,12 @@ export async function buildReport(fromKey, toKey, filters = {}) {
       byCategory: sortDesc(byCategory),
       byLocation: sortDesc(byRequestLocation),
       byDay: days.map(d => ({ key: d, value: byDay.get(d) ?? 0 })),
+      // Labels resolve through i18n, so the chart follows the language.
+      byChannel: sortDesc(byChannel).map(row => ({
+        label: (CHANNELS[row.label] ?? CHANNELS.other).label,
+        value: row.value,
+        tone: row.label === 'app' ? 'ok' : 'info'
+      })),
       byPriority: [
         { key: 'very_urgent', label: PRIORITY_META.very_urgent.label, value: counts.veryUrgent, tone: 'danger' },
         { key: 'urgent',      label: PRIORITY_META.urgent.label,      value: counts.urgent,     tone: 'urgent' },
@@ -259,6 +268,10 @@ export function exportSummaryCSV(report) {
     ['Task', 'Times'],
     ...report.time.byTaskCount.map(r => [r.label, r.value]),
     [],
+    ['HOW REQUESTS ARRIVED'],
+    ['Channel', 'Requests'],
+    ...report.breakdown.byChannel.map(r => [r.label, r.value]),
+    [],
     ['REQUESTS BY CATEGORY'],
     ['Category', 'Requests'],
     ...report.breakdown.byCategory.map(r => [r.label, r.value]),
@@ -276,17 +289,20 @@ export function exportSummaryCSV(report) {
 
 export function exportRequestsCSV(report) {
   const rows = [
-    ['Request number', 'Created', 'Requester', 'Location', 'Category', 'Priority',
-     'Status', 'Description', 'Accepted', 'Started', 'Completed', 'Minutes to accept', 'Minutes to complete'],
+    ['Request number', 'Created', 'Requester', 'Location', 'Category', 'Channel', 'Priority',
+     'Status', 'Description', 'Notes', 'Accepted', 'Started', 'Completed',
+     'Minutes to accept', 'Minutes to complete'],
     ...report.requests.map(r => [
       r.request_number,
       fmtDateTime(r.created_at),
       r.requester_name_snapshot,
       requestLocation(r),
       requestCategory(r),
+      (CHANNELS[requestChannel(r)] ?? CHANNELS.other).label,
       PRIORITY_META[r.priority]?.label ?? r.priority,
       REQUEST_STATUS_META[r.status]?.label ?? r.status,
       r.description ?? '',
+      r.notes ?? '',
       r.accepted_at ? fmtDateTime(r.accepted_at) : '',
       r.started_at ? fmtDateTime(r.started_at) : '',
       r.completed_at ? fmtDateTime(r.completed_at) : '',
