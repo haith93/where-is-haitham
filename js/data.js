@@ -32,18 +32,48 @@ function fail(error, fallback) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Surviving a database that is behind the frontend                    */
+/*                                                                     */
+/* A deploy can reach GitHub Pages before its SQL migration has been    */
+/* run in Supabase. Without this, asking for a column that does not     */
+/* exist yet returns 400 and the request form silently loses its        */
+/* dropdowns - the worst possible failure for the one screen everybody  */
+/* uses. Retry once without the new columns instead, and say so in the  */
+/* console so the pending migration is obvious.                         */
+/* ------------------------------------------------------------------ */
+
+const isMissingColumn = error =>
+  error?.code === '42703' || /column .* does not exist/i.test(error?.message ?? '');
+
+async function selectOrFallback(table, fullColumns, baseColumns, shape) {
+  const { data, error } = await shape(sb.from(table).select(fullColumns));
+  if (!error) return data ?? [];
+
+  if (isMissingColumn(error)) {
+    console.warn(
+      `[data] ${table}: the newer columns were rejected, falling back. ` +
+      'A SQL migration is still pending in Supabase.'
+    );
+    const retry = await shape(sb.from(table).select(baseColumns));
+    if (!retry.error) return retry.data ?? [];
+    fail(retry.error, `Could not load ${table}.`);
+  }
+  fail(error, `Could not load ${table}.`);
+  return [];
+}
+
+/* ------------------------------------------------------------------ */
 /* Buildings                                                           */
 /* ------------------------------------------------------------------ */
 
 export async function getBuildings({ activeOnly = false, force = false } = {}) {
   if (force || !cache.buildings) {
-    const { data, error } = await sb
-      .from('buildings')
-      .select('id, name, name_ar, active, display_order')
-      .order('display_order', { ascending: true })
-      .order('name', { ascending: true });
-    if (error) fail(error, 'Could not load the list of buildings.');
-    cache.buildings = data ?? [];
+    cache.buildings = await selectOrFallback(
+      'buildings',
+      'id, name, name_ar, active, display_order',
+      'id, name, active, display_order',
+      q => q.order('display_order', { ascending: true }).order('name', { ascending: true })
+    );
   }
   return activeOnly ? cache.buildings.filter(b => b.active) : cache.buildings;
 }
@@ -80,13 +110,12 @@ export async function updateBuilding(id, patch) {
 
 export async function getTasks({ activeOnly = false, force = false } = {}) {
   if (force || !cache.tasks) {
-    const { data, error } = await sb
-      .from('tasks')
-      .select('id, name, name_ar, active, display_order')
-      .order('display_order', { ascending: true })
-      .order('name', { ascending: true });
-    if (error) fail(error, 'Could not load the list of tasks.');
-    cache.tasks = data ?? [];
+    cache.tasks = await selectOrFallback(
+      'tasks',
+      'id, name, name_ar, active, display_order',
+      'id, name, active, display_order',
+      q => q.order('display_order', { ascending: true }).order('name', { ascending: true })
+    );
   }
   return activeOnly ? cache.tasks.filter(t => t.active) : cache.tasks;
 }

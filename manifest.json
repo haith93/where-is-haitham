@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#f4f6fa",
-  "theme_color": "#1f6feb",
+  "theme_color": "#f2b705",
   "lang": "en",
   "dir": "ltr",
   "categories": ["productivity", "business", "utilities"],

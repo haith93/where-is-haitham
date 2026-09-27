@@ -20,6 +20,34 @@ const REQUEST_COLUMNS = `
   location_name_ar_snapshot, category_name_ar_snapshot
 `;
 
+/* Columns added by later migrations. If Supabase has not caught up with the
+   deployed frontend, drop back to the original set rather than letting the
+   queue screen fail outright. */
+const REQUEST_COLUMNS_BASE = `
+  id, request_number, requester_id, requester_name_snapshot,
+  location_building_id, custom_location, location_name_snapshot,
+  category_task_id, custom_category, category_name_snapshot,
+  description, priority, status, queue_position, assigned_to,
+  created_at, accepted_at, started_at, completed_at, cancelled_at, updated_at
+`;
+
+let requestColumns = REQUEST_COLUMNS;
+
+async function queryRequests(shape, failureMessage) {
+  const { data, error } = await shape(sb.from('service_requests').select(requestColumns));
+  if (!error) return data ?? [];
+
+  const missing = error?.code === '42703' || /column .* does not exist/i.test(error?.message ?? '');
+  if (missing && requestColumns !== REQUEST_COLUMNS_BASE) {
+    console.warn('[requests] falling back to the base column set; a SQL migration is pending in Supabase.');
+    requestColumns = REQUEST_COLUMNS_BASE;
+    const retry = await shape(sb.from('service_requests').select(requestColumns));
+    if (!retry.error) return retry.data ?? [];
+    throw new Error(errorMessage(retry.error, failureMessage));
+  }
+  throw new Error(errorMessage(error, failureMessage));
+}
+
 export const OPEN_STATUSES = ['pending', 'accepted', 'in_progress'];
 export const CLOSED_STATUSES = ['completed', 'rejected', 'cancelled'];
 
@@ -158,37 +186,29 @@ function deviceId() {
 
 /** Everything still open, for Haitham's queue. */
 export async function getOpenRequests() {
-  const { data, error } = await sb
-    .from('service_requests')
-    .select(REQUEST_COLUMNS)
-    .in('status', OPEN_STATUSES)
-    .order('queue_position', { ascending: true })
-    .order('created_at', { ascending: true });
-  if (error) throw new Error(errorMessage(error, 'Could not load the queue.'));
-  return sortQueue(data ?? []);
+  const rows = await queryRequests(
+    q => q.in('status', OPEN_STATUSES)
+          .order('queue_position', { ascending: true })
+          .order('created_at', { ascending: true }),
+    'Could not load the queue.'
+  );
+  return sortQueue(rows);
 }
 
 /** Requests in a period, for reports and for the closed-request list. */
 export async function getRequestsBetween(from, to, { limit = 2000 } = {}) {
-  const { data, error } = await sb
-    .from('service_requests')
-    .select(REQUEST_COLUMNS)
-    .gte('created_at', from.toISOString())
-    .lt('created_at', to.toISOString())
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) throw new Error(errorMessage(error, 'Could not load the requests.'));
-  return data ?? [];
+  return queryRequests(
+    q => q.gte('created_at', from.toISOString())
+          .lt('created_at', to.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(limit),
+    'Could not load the requests.'
+  );
 }
 
 export async function getRequestById(id) {
-  const { data, error } = await sb
-    .from('service_requests')
-    .select(REQUEST_COLUMNS)
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(errorMessage(error, 'Could not load that request.'));
-  return data ?? null;
+  const rows = await queryRequests(q => q.eq('id', id), 'Could not load that request.');
+  return rows[0] ?? null;
 }
 
 export async function getRequestTimeline(requestId) {

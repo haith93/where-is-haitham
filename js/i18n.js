@@ -68,6 +68,7 @@ const STRINGS = {
                            ar: '⚠️ أنت غير متصل بالإنترنت. لا يمكن حفظ التغييرات حتى تعود الاتصال.' },
   'common.backToBoard':  { en: '← Back to the status board', ar: '→ العودة إلى لوحة الحالة' },
   'common.new':          { en: 'New',             ar: 'جديد' },
+  'common.checking':     { en: 'Checking…',       ar: 'جارٍ التحقق…' },
 
   /* ================= status types ================= */
   'status.available':      { en: 'Available',            ar: 'متفرّغ' },

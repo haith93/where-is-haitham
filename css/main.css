@@ -270,7 +270,7 @@ a:hover { text-decoration: underline; }
   width: 30px; height: 30px;
   display: grid; place-items: center;
   border-radius: 9px;
-  background: linear-gradient(140deg, var(--accent), var(--secondary));
+  background: linear-gradient(140deg, var(--accent) 45%, var(--secondary));
   color: var(--accent-contrast);
   font-size: 15px;
   flex: none;

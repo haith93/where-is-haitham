@@ -122,21 +122,21 @@
               <span class="label" data-i18n="admin.status">Status</span>
               <div class="segmented" id="st-type">
                 <input type="radio" name="status_type" id="st-busy" value="busy" checked>
-                <label for="st-busy">🟡 Busy</label>
+                <label for="st-busy">🟡 <span data-i18n="status.busy">Busy</span></label>
                 <input type="radio" name="status_type" id="st-serving" value="serving">
-                <label for="st-serving">🔵 With someone</label>
+                <label for="st-serving">🔵 <span data-i18n="status.serving">With someone</span></label>
                 <input type="radio" name="status_type" id="st-traveling" value="traveling">
-                <label for="st-traveling">🚶 On the way</label>
+                <label for="st-traveling">🚶 <span data-i18n="status.traveling">On the way</span></label>
                 <input type="radio" name="status_type" id="st-available" value="available">
-                <label for="st-available">🟢 Available</label>
+                <label for="st-available">🟢 <span data-i18n="status.available">Available</span></label>
                 <input type="radio" name="status_type" id="st-meeting" value="meeting">
-                <label for="st-meeting">📋 Meeting</label>
+                <label for="st-meeting">📋 <span data-i18n="status.meeting">Meeting</span></label>
                 <input type="radio" name="status_type" id="st-break" value="break">
-                <label for="st-break">☕ Break</label>
+                <label for="st-break">☕ <span data-i18n="status.break">Break</span></label>
                 <input type="radio" name="status_type" id="st-offsite" value="offsite">
-                <label for="st-offsite">🚗 Off site</label>
+                <label for="st-offsite">🚗 <span data-i18n="status.offsite">Off site</span></label>
                 <input type="radio" name="status_type" id="st-done" value="done">
-                <label for="st-done">🌙 Finished</label>
+                <label for="st-done">🌙 <span data-i18n="status.done">Finished</span></label>
               </div>
             </div>
 
@@ -443,7 +443,7 @@
 
           <div class="card stack">
             <h2 class="card-title" data-i18n="admin.pushTitle">Notifications on this device</h2>
-            <p class="small muted" id="push-state">Checking…</p>
+            <p class="small muted" id="push-state" data-i18n="common.checking">Checking…</p>
             <div class="row-wrap">
               <button class="btn btn-soft" type="button" id="push-enable" data-i18n="admin.pushOn">Turn on notifications</button>
               <button class="btn btn-ghost" type="button" id="push-disable" hidden data-i18n="admin.pushOff">Turn off</button>

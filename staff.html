@@ -60,7 +60,7 @@
           <p class="error" id="signin-error" role="alert" hidden></p>
           <button class="btn btn-primary btn-lg btn-block" type="submit" id="signin-submit" data-i18n="staff.signIn">Sign in</button>
           <button class="btn btn-ghost btn-sm" type="button" id="forgot-btn" data-i18n="staff.forgot">Forgot your password?</button>
-          <button class="btn btn-ghost btn-sm" type="button" id="to-signup" hidden>Create an e-mail account</button>
+          <button class="btn btn-ghost btn-sm" type="button" id="to-signup" hidden data-i18n="staff.createAccount">Create an e-mail account</button>
         </form>
 
         <!-- ---------------- Create account ---------------- -->
@@ -81,7 +81,7 @@
                    autocomplete="new-password" minlength="8" placeholder="At least 8 characters">
           </div>
           <p class="error" id="signup-error" role="alert" hidden></p>
-          <button class="btn btn-primary btn-lg btn-block" type="submit" id="signup-submit">Create account</button>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="signup-submit" data-i18n="staff.createAccount">Create account</button>
           <p class="help">
             New accounts are ordinary employee accounts. Administrator access is
             granted by an existing administrator.
@@ -103,7 +103,7 @@
       </div>
 
       <p class="small muted" style="text-align:center;margin-top:18px">
-        <a href="index.html">← Back to the status board</a>
+        <a href="index.html" data-i18n="common.backToBoard">← Back to the status board</a>
       </p>
     </main>
   </div>
