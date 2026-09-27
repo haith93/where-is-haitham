@@ -63,9 +63,13 @@
   --nav-h: 64px;
   --maxw: 780px;
 
-  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-          'Helvetica Neue', Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  /* IBM Plex. Sans for words, Sans Arabic for Arabic (same family, drawn
+     together), and Mono reserved for machine output: clock times, the
+     expected-end window, request numbers and tabular figures. */
+  --font:    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+             'Helvetica Neue', Arial, sans-serif;
+  --font-ar: 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', 'Segoe UI', Tahoma, sans-serif;
+  --mono:    'IBM Plex Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 /* ---------- Tokens: dark -------------------------------------------- */
@@ -169,6 +173,17 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Arabic gets its own face from the same family. Plex Sans Arabic has a
+   larger apparent size at the same px, so it is nudged down slightly. */
+:root[lang='ar'] body { font-family: var(--font-ar); }
+:root[lang='ar'] {
+  --font: var(--font-ar);
+  /* Plex Mono carries no Arabic glyphs, so an Arabic AM/PM marker inside a
+     time would fall through to whatever the system offers. Naming Plex Sans
+     Arabic next in the stack keeps "3:02 م" inside one family. */
+  --mono: 'IBM Plex Mono', 'IBM Plex Sans Arabic', ui-monospace, SFMono-Regular, monospace;
+}
+
 h1, h2, h3, h4 { margin: 0; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; }
 p { margin: 0; }
 img, svg { max-width: 100%; }
@@ -245,7 +260,7 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   gap: 9px;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 15px;
   letter-spacing: -.02em;
   color: var(--text);
@@ -261,6 +276,7 @@ a:hover { text-decoration: underline; }
   flex: none;
 }
 .appbar-clock {
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   color: var(--text-muted);
@@ -284,7 +300,7 @@ a:hover { text-decoration: underline; }
   background: var(--btn-bg);
   color: var(--btn-fg);
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   text-align: center;
   transition: transform .06s ease, filter .15s ease, background .15s ease;
@@ -299,7 +315,7 @@ a:hover { text-decoration: underline; }
   filter: none;
 }
 
-.btn-primary { --btn-bg: var(--accent); --btn-fg: var(--accent-contrast); --btn-bd: transparent; font-weight: 750; }
+.btn-primary { --btn-bg: var(--accent); --btn-fg: var(--accent-contrast); --btn-bd: transparent; font-weight: 700; }
 .btn-primary:hover { --btn-bg: var(--accent-hover); filter: none; }
 .btn-secondary { --btn-bg: var(--secondary); --btn-fg: #fff; --btn-bd: transparent; }
 .btn-secondary:hover { --btn-bg: var(--secondary-hover); filter: none; }
@@ -384,6 +400,8 @@ a:hover { text-decoration: underline; }
 }
 
 .mono { font-family: var(--mono); font-size: .92em; letter-spacing: -.02em; }
+/* Figures that line up in columns read better monospaced. */
+.tabnum { font-family: var(--mono); }
 .muted { color: var(--text-muted); }
 .faint { color: var(--text-faint); }
 .small { font-size: 13px; }
@@ -450,7 +468,7 @@ a:hover { text-decoration: underline; }
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--surface);
-  font-weight: 650;
+  font-weight: 600;
   cursor: pointer;
   text-align: center;
 }
@@ -578,7 +596,7 @@ a:hover { text-decoration: underline; }
   border: 0;
   font: inherit;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-faint);
   cursor: pointer;
   text-decoration: none;
@@ -602,7 +620,7 @@ a:hover { text-decoration: underline; }
   background: var(--danger);
   color: #fff;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 700;
   display: grid;
   place-items: center;
 }

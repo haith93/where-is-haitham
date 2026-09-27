@@ -11,7 +11,7 @@
                      responses carry the user's access token.
    ===================================================================== */
 
-const VERSION = 'wih-v2.0.0';
+const VERSION = 'wih-v2.1.0';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
@@ -78,7 +78,11 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  if (url.origin === self.location.origin || url.hostname === 'cdn.jsdelivr.net') {
+  // Same-origin files, the Supabase client, and the web fonts. Caching the
+  // fonts keeps the app's type intact when the network is gone, instead of
+  // dropping to a system face.
+  const CACHEABLE_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
+  if (url.origin === self.location.origin || CACHEABLE_HOSTS.includes(url.hostname)) {
     event.respondWith(staleWhileRevalidate(request));
   }
 });

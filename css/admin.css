@@ -38,13 +38,14 @@
 
 .now-status {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--now-accent, var(--text));
   letter-spacing: -.02em;
 }
-.now-line { font-size: 16px; font-weight: 650; margin-top: 6px; }
+.now-line { font-size: 16px; font-weight: 600; margin-top: 6px; }
 .now-time {
   margin-top: 8px;
+  font-family: var(--mono);
   font-size: 15px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -62,7 +63,7 @@
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: var(--accent);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 /* The computed "12:30 PM → 12:40 PM" preview. */
@@ -82,8 +83,9 @@
   opacity: .85;
 }
 .time-preview .v {
+  font-family: var(--mono);
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -.01em;
 }
@@ -102,7 +104,7 @@
 .queue-card[data-priority='urgent']      { --q-accent: var(--urgent); }
 .queue-card[data-priority='normal']      { --q-accent: var(--secondary); }
 
-.queue-card .who { font-size: 17px; font-weight: 750; }
+.queue-card .who { font-size: 17px; font-weight: 700; }
 .queue-card .where { font-size: 14px; color: var(--text-muted); }
 .queue-card .what { margin-top: 6px; font-size: 15px; font-weight: 600; }
 .queue-card .desc {
@@ -123,7 +125,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -155,7 +157,7 @@
   background: var(--surface);
   font: inherit;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
   white-space: nowrap;
@@ -179,8 +181,9 @@
   background: var(--surface);
 }
 .stat .n {
+  font-family: var(--mono);
   font-size: 25px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
@@ -196,8 +199,8 @@
 /* ---------- Breakdown bars ------------------------------------------- */
 .bars { display: flex; flex-direction: column; gap: 10px; }
 .bar-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
-.bar-label { font-size: 14.5px; font-weight: 650; min-width: 0; overflow-wrap: anywhere; }
-.bar-value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.bar-label { font-size: 14.5px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.bar-value { font-family: var(--mono); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-muted); }
 .bar-track {
   display: block;
   grid-column: 1 / -1;
@@ -223,8 +226,8 @@
 /* ---------- Charts (inline SVG) -------------------------------------- */
 .chart { width: 100%; height: auto; display: block; overflow: visible; }
 .chart .grid-line { stroke: var(--border); stroke-width: 1; }
-.chart .axis-text { fill: var(--text-faint); font-size: 10px; font-family: var(--font); }
-.chart .val-text  { fill: var(--text-muted); font-size: 10px; font-weight: 700; font-family: var(--font); }
+.chart .axis-text { fill: var(--text-faint); font-size: 10px; font-family: var(--mono); }
+.chart .val-text  { fill: var(--text-muted); font-size: 10px; font-weight: 600; font-family: var(--mono); }
 .chart .bar       { fill: var(--accent); }
 .chart .bar.alt   { fill: var(--secondary); }
 .chart-legend {
@@ -251,7 +254,7 @@
   background: var(--bg);
   padding: 12px 0 8px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -264,8 +267,9 @@
   border-bottom: 1px solid var(--border);
 }
 .hist-time {
-  font-size: 13.5px;
-  font-weight: 750;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }

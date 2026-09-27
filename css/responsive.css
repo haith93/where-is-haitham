@@ -38,7 +38,7 @@
     padding: 9px 13px;
     border-radius: var(--radius-sm);
     font-size: 14px;
-    font-weight: 650;
+    font-weight: 600;
     color: var(--text-muted);
     background: none;
     border: 0;
@@ -100,7 +100,7 @@
     padding: 11px 14px;
     border-radius: var(--radius-sm);
     color: var(--text-muted);
-    font-weight: 650;
+    font-weight: 600;
     font-size: 14.5px;
   }
   .admin-side a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }

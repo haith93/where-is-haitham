@@ -648,6 +648,31 @@ the name in the *other* language so nothing looks like it is repeating itself.
 Also corrected: the Arabic spelling of Haitham's name, حيثم → **هيثم**, in 13
 places.
 
+### Typography
+
+IBM Plex, chosen from a six-option comparison rendered as real status cards in
+both scripts.
+
+- **IBM Plex Sans** for English, **IBM Plex Sans Arabic** for Arabic. One
+  superfamily, drawn together, so the two scripts look like the same product —
+  which the previous Inter + system-fallback arrangement did not.
+- **IBM Plex Mono** reserved for machine output: the clock, the
+  `2:44 PM → 3:14 PM` window, request numbers, history times and tabular
+  figures. The terminal character lands where it carries meaning instead of
+  slowing down names and descriptions.
+
+Two details worth keeping in mind when editing the CSS:
+
+- Plex ships 100–700. The stylesheets previously used 800, 750 and 650, and CSS
+  weight matching rounds 650 **up** to 700, which made every button look bold.
+  All weights are now normalised to 400 / 600 / 700.
+- Plex Mono carries no Arabic glyphs, so `--mono` is redefined under
+  `:root[lang='ar']` with Plex Sans Arabic second in the stack. Without it the
+  "م" in a time string falls through to whatever the device happens to have.
+
+The service worker caches `fonts.googleapis.com` and `fonts.gstatic.com`, so the
+app keeps its type offline rather than dropping to a system face.
+
 ### Still to do
 
 - [ ] Run `sql/migration-public-requests.sql` against the live database.
