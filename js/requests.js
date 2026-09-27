@@ -283,6 +283,20 @@ export async function resumeRequest(id, durationMinutes = null) {
   return data;
 }
 
+/** Remove one request entirely. For test data, not for real requests. */
+export async function deleteRequest(id) {
+  const { data, error } = await sb.rpc('admin_delete_request', { p_request_id: id });
+  if (error) throw new Error(errorMessage(error, 'Could not delete that request.'));
+  return data;
+}
+
+/** Clear every request and restart the numbering. */
+export async function purgeRequests() {
+  const { data, error } = await sb.rpc('admin_purge_requests');
+  if (error) throw new Error(errorMessage(error, 'Could not clear the requests.'));
+  return data;
+}
+
 export async function setPriority(id, priority) {
   if (!PRIORITY_META[priority]) throw new Error('Unknown priority.');
   const { data, error } = await sb.rpc('set_request_priority', { p_request_id: id, p_priority: priority });

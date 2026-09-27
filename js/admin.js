@@ -27,13 +27,15 @@ import {
 } from './data.js';
 import {
   getCurrentStatus, updateStatus, finishCurrentTask, setAvailableNow,
-  describeStatus, getStatusHistory, historyLocation, historyTask, actualMinutes
+  describeStatus, getStatusHistory, historyLocation, historyTask, actualMinutes,
+  purgeActivity
 } from './status.js';
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
   completeRequest, rejectRequest, setPriority, saveQueueOrder, sortQueue,
   requestLocation, requestCategory, requestChannel, adminCreateRequest,
-  pauseRequest, resumeRequest, getRequestTimeline, OPEN_STATUSES
+  pauseRequest, resumeRequest, deleteRequest, purgeRequests,
+  getRequestTimeline, OPEN_STATUSES
 } from './requests.js';
 import {
   subscribeAllRequests, subscribeCurrentStatus, subscribeConfig,
@@ -909,7 +911,15 @@ async function openRequestActions(request) {
       <p class="help">${esc(t('admin.orderHint'))}</p>
     </div>
 
-    <div id="action-timeline" style="margin-top:18px"></div>`;
+    <div id="action-timeline" style="margin-top:18px"></div>
+
+    <div class="field" style="margin-top:22px">
+      <span class="label">${esc(t('admin.removeSection'))}</span>
+      <button class="btn btn-danger btn-block" type="button" id="delete-request">
+        ${esc(t('admin.deleteRequest'))}
+      </button>
+      <p class="help">${esc(t('admin.deleteHint'))}</p>
+    </div>`;
 
   openSheet('#action-sheet');
 
@@ -935,6 +945,21 @@ async function openRequestActions(request) {
         } catch (err) { toastError(err.message); }
       });
     }));
+
+  $('#delete-request')?.addEventListener('click', async event => {
+    const ok = await confirmAction(
+      t('admin.deleteConfirm', { number: request.request_number }),
+      { title: t('admin.deleteRequest'), confirmText: t('admin.deleteRequest'), danger: true });
+    if (!ok) return;
+    await withBusy(event.currentTarget, t('action.working'), async () => {
+      try {
+        await deleteRequest(request.id);
+        toastOk(t('admin.deletedToast', { number: request.request_number }));
+        closeSheet('#action-sheet');
+        await Promise.all([refreshQueue(), refreshCurrent()]);
+      } catch (err) { toastError(err.message); }
+    });
+  });
 
   try {
     const timeline = await getRequestTimeline(request.id);
@@ -1528,6 +1553,38 @@ function wireSettings() {
       'This is what a new request will look like.',
       { tag: 'test' });
     if (!shown) toast('Your browser did not show it. Check the site notification permission.', 'info');
+  });
+
+  // Two taps, and the second one states the real count, so nobody clears
+  // a live queue by reflex.
+  $('#purge-requests').addEventListener('click', async event => {
+    if (!await confirmAction(t('admin.purgeRequestsQ'),
+        { title: t('admin.purgeRequests'), confirmText: t('action.confirm'), danger: true })) return;
+
+    const count = state.openRequests.length;
+    if (!await confirmAction(t('admin.purgeRequestsQ2', { n: count }),
+        { title: t('admin.purgeRequests'), confirmText: t('admin.purgeYes'), danger: true })) return;
+
+    await withBusy(event.currentTarget, t('action.working'), async () => {
+      try {
+        const result = await purgeRequests();
+        toastOk(t('admin.purgedToast', { n: result?.deleted ?? 0 }));
+        await Promise.all([refreshQueue(), refreshCurrent()]);
+      } catch (err) { toastError(err.message); }
+    });
+  });
+
+  $('#purge-activity').addEventListener('click', async event => {
+    if (!await confirmAction(t('admin.purgeActivityQ'),
+        { title: t('admin.purgeActivity'), confirmText: t('admin.purgeYes'), danger: true })) return;
+
+    await withBusy(event.currentTarget, t('action.working'), async () => {
+      try {
+        const result = await purgeActivity();
+        toastOk(t('admin.purgedActivityToast', { n: result?.deleted ?? 0 }));
+        await refreshCurrent();
+      } catch (err) { toastError(err.message); }
+    });
   });
 
   $('#hide-admin-link').addEventListener('click', async event => {

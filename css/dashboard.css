@@ -161,7 +161,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--gap-tight);
 }
 .queue-item {
   display: flex;
@@ -198,7 +198,7 @@
 .counters {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: var(--gap-tight);
 }
 .counter {
   text-align: center;

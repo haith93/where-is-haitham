@@ -56,9 +56,9 @@
   --radius-pill: 999px;
 
   --tap: 48px;                       /* minimum comfortable touch target */
-  --gap-tight: 10px;
-  --gap:       18px;                 /* between cards inside a group */
-  --gap-group: 30px;                 /* between logically different groups */
+  --gap-tight: 12px;                 /* between rows in a list */
+  --gap:       20px;                 /* between cards inside a group */
+  --gap-group: 34px;                 /* between logically different groups */
   --header-h: 56px;
   --nav-h: 64px;
   --maxw: 780px;
@@ -226,13 +226,18 @@ a:hover { text-decoration: underline; }
   padding: 20px 16px 16px;
 }
 
-.page { padding-bottom: calc(var(--nav-h) + 32px); }
+.page { padding-bottom: calc(var(--nav-h) + 40px); }
+
+/* A <section> dropped straight into the page (history days, generated
+   report blocks) still needs separating from its neighbour. */
+main > section + section,
+[id$='-host'] > section + section { margin-block-start: var(--gap-group); }
 
 .stack       { display: flex; flex-direction: column; gap: var(--gap); }
 /* Use between groups that mean different things, not between siblings. */
 .stack-loose { display: flex; flex-direction: column; gap: var(--gap-group); }
 .section-gap { margin-top: var(--gap-group); }
-.stack-sm    { display: flex; flex-direction: column; gap: 8px; }
+.stack-sm    { display: flex; flex-direction: column; gap: var(--gap-tight); }
 .row         { display: flex; align-items: center; gap: 10px; }
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .row-wrap    { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -361,7 +366,20 @@ a:hover { text-decoration: underline; }
   padding: 20px;
 }
 .card-tight { padding: 15px; }
-.card + .card { margin-top: 0; }     /* spacing is owned by the flex gap */
+/* Flex `gap` owns the spacing wherever a parent is a .stack. Everywhere
+   else - a plain <div> that innerHTML fills with cards - nothing would
+   separate them at all, so adjacent blocks get their own margin and the
+   flex containers switch it back off. */
+.card + .card,
+.queue-card + .queue-card,
+.cfg-row + .cfg-row,
+.now-card + .card,
+.card + .queue-card,
+.queue-card + .card { margin-block-start: var(--gap); }
+
+.stack > * + *,
+.stack-sm > * + *,
+.stack-loose > * + * { margin-block-start: 0; }
 .card-title {
   font-size: 12px;
   font-weight: 700;

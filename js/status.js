@@ -202,6 +202,13 @@ function pickName(status, field) {
   return candidates.find(v => v) || custom || null;
 }
 
+/** Clear the whole activity log. For test data, before going live. */
+export async function purgeActivity() {
+  const { data, error } = await sb.rpc('admin_purge_activity');
+  if (error) throw new Error(errorMessage(error, 'Could not clear the activity log.'));
+  return data;
+}
+
 /* ------------------------------------------------------------------ */
 /* History                                                             */
 /* ------------------------------------------------------------------ */

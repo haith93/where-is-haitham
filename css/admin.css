@@ -114,7 +114,7 @@
   overflow-wrap: anywhere;
 }
 .queue-card .acts {
-  margin-top: 12px;
+  margin-top: 14px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 8px;
@@ -172,7 +172,7 @@
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--gap-tight);
 }
 .stat {
   padding: 14px;
@@ -252,7 +252,8 @@
   top: var(--header-h);
   z-index: 5;
   background: var(--bg);
-  padding: 12px 0 8px;
+  padding: 14px 0 10px;
+  margin-block-start: var(--gap);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: .1em;
@@ -262,10 +263,11 @@
 .hist-item {
   display: grid;
   grid-template-columns: 62px 1fr;
-  gap: 12px;
-  padding: 12px 0;
+  gap: 14px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--border);
 }
+.hist-item:last-child { border-bottom: 0; }
 .hist-time {
   font-family: var(--mono);
   font-size: 13px;
