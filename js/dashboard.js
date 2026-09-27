@@ -70,6 +70,7 @@ async function boot() {
   state.booted = true;
   wireViews();
   wireRequestForm();
+  wireAdminGesture();
 
   await refreshBoard();
   subscribeBoard(snapshot => paintBoard(snapshot));
@@ -494,6 +495,68 @@ function openMyRequest(token) {
     }
   });
   body.append(forgetBtn);
+}
+
+/* ================================================================== */
+/* Getting to the admin console from an installed app                 */
+/*                                                                    */
+/* A standalone PWA has no address bar, and the public page carries no */
+/* admin link, so Haitham had no way in from his home screen. Ten taps */
+/* on the clock opens it and remembers the device, after which a normal */
+/* Admin link appears in the navigation.                               */
+/*                                                                    */
+/* This hides the door; it is not the lock. The console still requires */
+/* a password, and RLS still refuses anyone who is not an admin.       */
+/* ================================================================== */
+
+/* Declared as a function, not a const: boot() calls wireAdminGesture during
+   module evaluation, and a const declared further down the file is still in
+   its temporal dead zone at that point. */
+function adminUnlocked() {
+  return prefs.get('adminUnlocked', false) === true;
+}
+
+function revealAdminLinks() {
+  ['#admin-link-nav', '#admin-link-desktop'].forEach(sel => {
+    const node = $(sel);
+    if (node) node.hidden = false;
+  });
+}
+
+function wireAdminGesture() {
+  if (adminUnlocked()) revealAdminLinks();
+
+  const clock = $('#clock');
+  if (!clock) return;
+
+  let taps = 0;
+  let reset;
+
+  clock.addEventListener('click', () => {
+    if (adminUnlocked()) {
+      location.href = 'admin.html';
+      return;
+    }
+
+    taps += 1;
+    clearTimeout(reset);
+    reset = setTimeout(() => { taps = 0; }, 2000);   // pause and start over
+
+    const left = 10 - taps;
+    if (left <= 0) {
+      taps = 0;
+      prefs.set('adminUnlocked', true);
+      revealAdminLinks();
+      toastOk(t('admin.unlocked'));
+      setTimeout(() => { location.href = 'admin.html'; }, 900);
+    } else if (left <= 4) {
+      // Quiet countdown once you are clearly doing it on purpose.
+      const key = left === 1 ? 'admin.tapsLeft1'
+                : left === 2 ? 'admin.tapsLeft2'
+                : 'admin.tapsLeft';
+      toast(t(key, { n: left }), 'info', 1100);
+    }
+  });
 }
 
 /* ================================================================== */

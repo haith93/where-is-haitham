@@ -36,6 +36,7 @@
       <nav class="desktop-nav" style="display:none" aria-label="Sections">
         <button type="button" data-view="now" aria-current="page" data-i18n="board.heading">Now</button>
         <button type="button" data-view="mine" data-i18n="mine.title">My requests</button>
+        <a href="admin.html" id="admin-link-desktop" data-i18n="app.admin" hidden>Admin console</a>
       </nav>
 
       <span class="appbar-clock tabnum" id="clock" data-i18n-aria="common.time"></span>
@@ -111,6 +112,10 @@
     <button type="button" data-view="mine">
       <span class="ico" aria-hidden="true">📋</span><span data-i18n="mine.title">My requests</span>
     </button>
+    <!-- Revealed only on a device where the clock gesture has been used. -->
+    <a href="admin.html" id="admin-link-nav" hidden>
+      <span class="ico" aria-hidden="true">🛠</span><span data-i18n="app.admin">Admin console</span>
+    </a>
   </nav>
 </div>
 

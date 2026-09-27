@@ -1475,6 +1475,13 @@ function wireSettings() {
     if (!shown) toast('Your browser did not show it. Check the site notification permission.', 'info');
   });
 
+  $('#hide-admin-link').addEventListener('click', async event => {
+    const ok = await confirmAction(t('admin.hideLinkConfirm'), { confirmText: t('action.confirm') });
+    if (!ok) return;
+    prefs.remove('adminUnlocked');
+    toastOk(t('admin.hiddenToast'));
+  });
+
   $('#signout-btn').addEventListener('click', async event => {
     const ok = await confirmAction(t('admin.signOutConfirm'), { confirmText: t('admin.signOut') });
     if (!ok) return;

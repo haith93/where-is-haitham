@@ -276,6 +276,12 @@ a:hover { text-decoration: underline; }
   flex: none;
 }
 .appbar-clock {
+  /* Doubles as the hidden way into the admin console, so rapid tapping
+     must not start selecting the text. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: default;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   font-size: 13px;
