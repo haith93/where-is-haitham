@@ -10,6 +10,12 @@
 --
 --  Everything here is administrator-only, writes to the audit log, and
 --  is deliberately awkward enough that nobody triggers it by accident.
+--
+--  NOTE ON THE WHERE CLAUSES
+--  Supabase refuses a DELETE or UPDATE with no WHERE ("DELETE requires a
+--  WHERE clause"), which is a good guard against a mistyped statement
+--  wiping a table. Clearing a table is genuinely the intent here, so each
+--  statement says so explicitly with a predicate that matches every row.
 -- =====================================================================
 
 begin;
@@ -79,12 +85,14 @@ begin
 
   select count(*) into v_count from public.service_requests;
 
-  update public.current_status set serving_request_id = null, next_request_id = null;
+  update public.current_status
+     set serving_request_id = null, next_request_id = null
+   where user_id is not null;
   update public.status_history set request_id = null where request_id is not null;
 
-  delete from public.service_requests;
-  delete from public.notifications;
-  delete from public.request_throttle;
+  delete from public.service_requests where id is not null;
+  delete from public.notifications     where id is not null;
+  delete from public.request_throttle  where device_id is not null;
 
   -- Restart the numbering for the current year.
   delete from public.request_counters
@@ -117,8 +125,8 @@ begin
 
   select count(*) into v_count from public.status_history;
 
-  delete from public.status_history;
-  delete from public.current_status;
+  delete from public.status_history where id is not null;
+  delete from public.current_status where id is not null;
 
   insert into public.audit_log (actor_id, action, entity, details)
   values (auth.uid(), 'activity_purged', 'status_history',
