@@ -98,6 +98,7 @@ export const REQUEST_STATUS_META = Object.freeze(Object.fromEntries(
     ['pending',     '⏳', 'muted'],
     ['accepted',    '👍', 'info'],
     ['in_progress', '🔧', 'warn'],
+    ['paused',      '⏸️', 'urgent'],
     ['completed',   '✅', 'ok'],
     ['rejected',    '⛔', 'danger'],
     ['cancelled',   '✖️', 'muted']

@@ -16,7 +16,7 @@ const REQUEST_COLUMNS = `
   category_task_id, custom_category, category_name_snapshot,
   description, priority, status, queue_position, assigned_to,
   created_at, accepted_at, started_at, completed_at, cancelled_at, updated_at,
-  channel, notes, created_by,
+  channel, notes, created_by, paused_at, pause_reason,
   location_name_ar_snapshot, category_name_ar_snapshot
 `;
 
@@ -48,7 +48,7 @@ async function queryRequests(shape, failureMessage) {
   throw new Error(errorMessage(error, failureMessage));
 }
 
-export const OPEN_STATUSES = ['pending', 'accepted', 'in_progress'];
+export const OPEN_STATUSES = ['pending', 'accepted', 'in_progress', 'paused'];
 export const CLOSED_STATUSES = ['completed', 'rejected', 'cancelled'];
 
 /* ------------------------------------------------------------------ */
@@ -259,6 +259,30 @@ export const completeRequest = (id, notes) => setRequestStatus(id, 'completed', 
 export const rejectRequest   = (id, notes) => setRequestStatus(id, 'rejected', notes);
 export const cancelRequest   = (id, notes) => setRequestStatus(id, 'cancelled', notes);
 
+/**
+ * Put a started request down without finishing it.
+ *
+ * Nothing is faked as complete and nothing is lost: the request stays in
+ * the queue, marked paused, with the reason attached.
+ */
+export async function pauseRequest(id, reason = null) {
+  const { data, error } = await sb.rpc('pause_request', {
+    p_request_id: id,
+    p_reason: trimOrNull(reason)
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not pause that request.'));
+  return data;
+}
+
+export async function resumeRequest(id, durationMinutes = null) {
+  const { data, error } = await sb.rpc('resume_request', {
+    p_request_id: id,
+    p_duration_minutes: durationMinutes ?? null
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not resume that request.'));
+  return data;
+}
+
 export async function setPriority(id, priority) {
   if (!PRIORITY_META[priority]) throw new Error('Unknown priority.');
   const { data, error } = await sb.rpc('set_request_priority', { p_request_id: id, p_priority: priority });
@@ -281,7 +305,9 @@ export async function saveQueueOrder(ids) {
  * only the order the list is displayed in.
  */
 export function sortQueue(rows) {
-  const statusRank = { in_progress: 0, accepted: 1, pending: 2 };
+  // Paused sits directly under the job in hand: it is the thing most
+  // likely to be picked up next, and the easiest thing to forget.
+  const statusRank = { in_progress: 0, paused: 1, accepted: 2, pending: 3 };
   return [...rows].sort((a, b) =>
     (statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9) ||
     (PRIORITY_META[a.priority] ?? PRIORITY_META.normal).rank -

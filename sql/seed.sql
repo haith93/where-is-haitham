@@ -28,31 +28,37 @@ on conflict (key) do nothing;
 -- ---------------------------------------------------------------------
 -- Buildings / locations
 -- ---------------------------------------------------------------------
-insert into public.buildings (name, display_order) values
-  ('Photocopy Center', 1),
-  ('Administration',   2),
-  ('Building 1',       3),
-  ('Building 2',       4),
-  ('Building 3',       5),
-  ('Building 4',       6),
-  ('IT Office',        7)
+insert into public.buildings (name, name_ar, display_order) values
+  ('Rihab Zahraa HS',        'مبنى الثانوية',        1),
+  ('Rihab Zahraa BE',        'مبنى التعليم الأساسي', 2),
+  ('KG Building',            'مبنى الروضات',         3),
+  ('Papyrus',                'بابيروس',              4),
+  ('AFAAK Vocational',       'معهد الآفاق',          5),
+  ('Headquarters',           'مبنى الإدارات',        6),
+  ('Rihab Zahraa Orphanage', 'المبرة',               7),
+  ('Photocopy Center',       'مركز التصوير',         8),
+  ('IT Office',              'مكتب المعلوماتية',     9)
 on conflict do nothing;
+
+-- Somewhere off site is not a building row: the location dropdown ends
+-- with "+ Other / custom location", which records free text for that one
+-- event without adding it to this list.
 
 -- ---------------------------------------------------------------------
 -- Tasks
 -- ---------------------------------------------------------------------
-insert into public.tasks (name, display_order) values
-  ('Photocopying',      1),
-  ('Printer repair',    2),
-  ('Computer repair',   3),
-  ('School system',     4),
-  ('Projector',         5),
-  ('Network / WiFi',    6),
-  ('Administration',    7),
-  ('Helping employee',  8),
-  ('Meeting',           9),
-  ('Equipment setup',  10),
-  ('Other',            11)
+insert into public.tasks (name, name_ar, display_order) values
+  ('Photocopying',     'التصوير',            1),
+  ('Printer repair',   'تصليح الطابعة',      2),
+  ('Computer repair',  'تصليح الكمبيوتر',    3),
+  ('School system',    'النظام المدرسي',     4),
+  ('Projector',        'جهاز العرض',         5),
+  ('Network / WiFi',   'الشبكة / الواي فاي', 6),
+  ('Administration',   'الإدارة',            7),
+  ('Helping employee', 'مساعدة موظف',        8),
+  ('Meeting',          'اجتماع',             9),
+  ('Equipment setup',  'تجهيز المعدات',     10),
+  ('Other',            'أخرى',              11)
 on conflict do nothing;
 
 -- =====================================================================

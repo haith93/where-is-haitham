@@ -673,6 +673,31 @@ Two details worth keeping in mind when editing the CSS:
 The service worker caches `fonts.googleapis.com` and `fonts.gstatic.com`, so the
 app keeps its type offline rather than dropping to a system face.
 
+### Real buildings, and interrupted work
+
+The placeholder building list was replaced with the actual sites, bilingual.
+Old rows are **disabled, never deleted** — every recorded request and status
+points at them, and historical reports have to keep reading correctly.
+"Somewhere off site" is deliberately not a building row: the location dropdown
+already ends with "+ Other / custom location", which records free text for that
+one event without adding it to the permanent list.
+
+The more interesting change is `paused`. Until now a started request could only
+move forward — complete it, cancel it, or leave it hanging. Real days are not
+like that: something very urgent arrives by WhatsApp and the job in hand has to
+be put down, unfinished.
+
+`paused` is a first-class open state. It stays in the queue, stays in the
+counts, and sorts directly under the job in hand, because it is the thing most
+easily forgotten. Two RPCs, `pause_request` and `resume_request`, move between
+them, and the reason is recorded.
+
+The part that matters for daily use: **`start_request` now pauses whatever was
+in progress automatically**, naming what displaced it. So the real-world flow —
+an urgent WhatsApp message arrives — is *Record a request → I am handling this
+right now*, and the previous job is set down with a note, unprompted. Nothing is
+faked as finished and nothing is lost.
+
 ### Still to do
 
 - [ ] Run `sql/migration-public-requests.sql` against the live database.

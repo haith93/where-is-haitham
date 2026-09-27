@@ -12,7 +12,7 @@ import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, get
 import {
   $, $$, esc, el, fmtTime, fmtDateTime, fmtDateLong, fmtDateShort, relativeTime,
   durationText, dayKey, addDays, startOfWeek, startOfMonth, startOfDay, endOfDay,
-  prefs, weekdayName
+  minutesBetween, prefs, weekdayName
 } from './utils.js';
 import {
   initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
@@ -33,7 +33,7 @@ import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
   completeRequest, rejectRequest, setPriority, saveQueueOrder, sortQueue,
   requestLocation, requestCategory, requestChannel, adminCreateRequest,
-  getRequestTimeline, OPEN_STATUSES
+  pauseRequest, resumeRequest, getRequestTimeline, OPEN_STATUSES
 } from './requests.js';
 import {
   subscribeAllRequests, subscribeCurrentStatus, subscribeConfig,
@@ -170,6 +170,8 @@ async function boot() {
     applyI18n(document);
     paintCurrent();
     paintQueue();
+    paintQueueBadges();
+    paintDashboardExtras();
     // Re-render whichever section is on screen. Buildings, tasks and
     // users carry names that differ per language, so they need it too.
     if (state.section === 'buildings') paintBuildings();
@@ -339,6 +341,12 @@ async function paintDashboardExtras() {
   $('#d-very').textContent = queue.filter(r => r.priority === 'very_urgent' && r.status !== 'in_progress').length;
   $('#d-urgent').textContent = queue.filter(r => r.priority === 'urgent' && r.status !== 'in_progress').length;
   $('#d-pending').textContent = queue.filter(r => r.status === 'pending').length;
+  const pausedCount = queue.filter(r => r.status === 'paused').length;
+  const pausedTile = $('#d-paused-tile');
+  if (pausedTile) {
+    pausedTile.hidden = pausedCount === 0;
+    $('#d-paused').textContent = pausedCount;
+  }
 
   const host = $('#d-queue');
   const next = queue.filter(r => r.status !== 'in_progress').slice(0, 3);
@@ -683,10 +691,12 @@ function paintQueue() {
   }
 
   const inProgress = rows.filter(r => r.status === 'in_progress');
-  const waiting = rows.filter(r => r.status !== 'in_progress');
+  const paused = rows.filter(r => r.status === 'paused');
+  const waiting = rows.filter(r => !['in_progress', 'paused'].includes(r.status));
 
   host.innerHTML = [
     inProgress.length ? `<p class="queue-group-title">${esc(t('admin.workingNow'))}</p>${inProgress.map(queueCardHTML).join('')}` : '',
+    paused.length ? `<p class="queue-group-title">${esc(t('admin.pausedGroup'))}</p>${paused.map(queueCardHTML).join('')}` : '',
     waiting.length ? `<p class="queue-group-title">${esc(filter === 'open' ? t('admin.waitingGroup') : t('admin.requestsGroup'))}</p>${waiting.map(queueCardHTML).join('')}` : ''
   ].join('');
 
@@ -706,6 +716,10 @@ function queueCardHTML(r) {
       ${r.status === 'accepted' ? `
         <button class="btn btn-primary btn-sm" type="button" data-act="start" data-id="${esc(r.id)}">${esc(t('admin.startNow'))}</button>` : ''}
       ${r.status === 'in_progress' ? `
+        <button class="btn btn-ok btn-sm" type="button" data-act="complete" data-id="${esc(r.id)}">${esc(t('admin.complete'))}</button>
+        <button class="btn btn-soft btn-sm" type="button" data-act="pause" data-id="${esc(r.id)}">${esc(t('admin.pause'))}</button>` : ''}
+      ${r.status === 'paused' ? `
+        <button class="btn btn-primary btn-sm" type="button" data-act="resume" data-id="${esc(r.id)}">${esc(t('admin.resume'))}</button>
         <button class="btn btn-ok btn-sm" type="button" data-act="complete" data-id="${esc(r.id)}">${esc(t('admin.complete'))}</button>` : ''}
       <button class="btn btn-soft btn-sm" type="button" data-act="more" data-id="${esc(r.id)}">${esc(t('action.more'))}</button>
     </div>`;
@@ -725,6 +739,9 @@ function queueCardHTML(r) {
       <p class="where">${channelBadge(r)}</p>
       <p class="what">🔧 ${esc(requestCategory(r))}</p>
       ${r.description ? `<p class="desc">${esc(r.description)}</p>` : ''}
+      ${r.status === 'paused' ? `<p class="desc" style="color:var(--urgent)">
+        ⏸️ ${esc(t('admin.pausedFor', { d: durationText(minutesBetween(r.paused_at, new Date()) ?? 0) }))}${
+          r.pause_reason ? ` — ${esc(r.pause_reason)}` : ''}</p>` : ''}
       <p class="small faint" style="margin-top:6px">
         ${esc(t('admin.sentAt', { time: fmtTime(r.created_at) }))} · ${esc(relativeTime(r.created_at))}
       </p>
@@ -786,6 +803,44 @@ async function onQueueAction(action, id, button) {
       try {
         await startRequest(id, state.duration);
         toastOk(t('admin.startedToast'));
+        await Promise.all([refreshQueue(), refreshCurrent()]);
+      } catch (err) { toastError(err.message); }
+    });
+    return;
+  }
+
+  if (action === 'pause') {
+    const why = await chooseAction(
+      t('admin.pauseWhy', { name: request.requester_name_snapshot }),
+      [
+        { value: 'urgent',  label: t('admin.pauseUrgent'), style: 'btn-primary' },
+        { value: 'blocked', label: t('admin.pauseBlocked') },
+        { value: 'other',   label: t('admin.pauseOther') }
+      ],
+      { title: t('admin.pause') });
+    if (!why) return;
+
+    const reason = {
+      urgent:  t('admin.pauseUrgent'),
+      blocked: t('admin.pauseBlocked'),
+      other:   t('admin.pauseOther')
+    }[why];
+
+    await withBusy(button, t('action.working'), async () => {
+      try {
+        await pauseRequest(id, reason);
+        toastOk(t('admin.pausedToast'));
+        await Promise.all([refreshQueue(), refreshCurrent()]);
+      } catch (err) { toastError(err.message); }
+    });
+    return;
+  }
+
+  if (action === 'resume') {
+    await withBusy(button, t('action.working'), async () => {
+      try {
+        await resumeRequest(id, state.duration);
+        toastOk(t('admin.resumedToast'));
         await Promise.all([refreshQueue(), refreshCurrent()]);
       } catch (err) { toastError(err.message); }
     });
