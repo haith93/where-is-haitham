@@ -7,6 +7,12 @@
 /* ---------- Section switching ---------------------------------------- */
 .admin-section { display: none; }
 .admin-section.is-active { display: block; }
+
+/* Every admin section also carries .stack, but `.admin-section.is-active`
+   outranks `.stack` and was forcing display:block - so the flex gap never
+   applied and the sections relied entirely on their children's margins.
+   This puts the gap back. */
+.admin-section.is-active.stack { display: flex; flex-direction: column; gap: var(--gap); }
 .admin-section > .stack { gap: var(--gap); }
 
 .section-head {
@@ -14,7 +20,9 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
+  /* The section is a flex column now, so its gap separates the head from
+     the content; a margin here would be counted twice. */
+  margin-bottom: 0;
 }
 .section-head h1 { font-size: 22px; letter-spacing: -.02em; }
 .section-head p  { font-size: 13.5px; color: var(--text-muted); }

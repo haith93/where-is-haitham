@@ -377,9 +377,21 @@ main > section + section,
 .card + .queue-card,
 .queue-card + .card { margin-block-start: var(--gap); }
 
-.stack > * + *,
-.stack-sm > * + *,
-.stack-loose > * + * { margin-block-start: 0; }
+/* Only the pairs above are cancelled inside a flex stack, where `gap`
+   already separates them. A blanket `.stack > * + *` reset would also
+   wipe out any deliberate margin set further down this file. */
+:is(.stack, .stack-sm, .stack-loose) >
+  :is(.card, .queue-card, .cfg-row, .now-card) +
+  :is(.card, .queue-card, .cfg-row) { margin-block-start: 0; }
+
+/* ---------- Deliberate separation between groups ---------------------
+   These sit on top of the stack gap, because they divide the screen into
+   parts that mean different things: the status, the numbers, the filters.
+   -------------------------------------------------------------------- */
+section.admin-section { margin-block: 1rem; }
+.admin-section .counters { margin-block: 1rem; }
+#now-host { margin-block: 1rem; }
+.filters { margin-block: 1rem; }
 .card-title {
   font-size: 12px;
   font-weight: 700;
