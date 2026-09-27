@@ -35,7 +35,7 @@ export const LANGS = {
 
 const STRINGS = {
   /* ================= shared ================= */
-  'app.name':            { en: 'Where Is Haitham Now?', ar: 'أين حيثم الآن؟' },
+  'app.name':            { en: 'Where Is Haitham Now?', ar: 'أين هيثم الآن؟' },
   'app.admin':           { en: 'Admin console',         ar: 'لوحة التحكم' },
   'app.staffSignIn':     { en: 'Staff sign-in',         ar: 'دخول الموظفين' },
 
@@ -110,9 +110,9 @@ const STRINGS = {
   'channel.label':     { en: 'How did it arrive?', ar: 'كيف وصل الطلب؟' },
 
   /* ================= the board ================= */
-  'board.heading':        { en: 'Where is Haitham now?', ar: 'أين حيثم الآن؟' },
+  'board.heading':        { en: 'Where is Haitham now?', ar: 'أين هيثم الآن؟' },
   'board.noStatus':       { en: 'No status posted yet',  ar: 'لم يتم نشر أي حالة بعد' },
-  'board.noStatusHint':   { en: 'Haitham has not posted a status yet.', ar: 'لم ينشر حيثم حالته بعد.' },
+  'board.noStatusHint':   { en: 'Haitham has not posted a status yet.', ar: 'لم ينشر هيثم حالته بعد.' },
   'board.location':       { en: 'Location',   ar: 'المكان' },
   'board.doing':          { en: 'Doing',      ar: 'المهمة' },
   'board.started':        { en: 'Started',    ar: 'بدأ' },
@@ -125,7 +125,7 @@ const STRINGS = {
   'board.here':           { en: 'Here',       ar: 'هنا منذ' },
   'board.serving':        { en: 'Currently serving', ar: 'يخدم حالياً' },
   'board.nextUp':         { en: 'Nobody is being served right now. Next:', ar: 'لا أحد يُخدم حالياً. التالي:' },
-  'board.waiting':        { en: 'Waiting for Haitham', ar: 'في انتظار حيثم' },
+  'board.waiting':        { en: 'Waiting for Haitham', ar: 'في انتظار هيثم' },
   'board.nobodyWaiting':  { en: 'Nobody is waiting',   ar: 'لا أحد ينتظر' },
   'board.nobodyWaitingHint': { en: 'Haitham has no queue at the moment.', ar: 'لا يوجد طابور انتظار حالياً.' },
   'board.countWaiting':   { en: '{n} waiting',         ar: '{n} بالانتظار' },
@@ -133,8 +133,8 @@ const STRINGS = {
   'board.expiredBody':    { en: 'This status may be out of date.', ar: 'قد تكون هذه الحالة قديمة.' },
   'board.staleTitle':     { en: 'This status is a few hours old.', ar: 'مضى على هذه الحالة بضع ساعات.' },
   'board.footer':         { en: 'This board replaces the phone call. Haitham updates it himself — there is no location tracking.',
-                            ar: 'هذه اللوحة تغنيك عن الاتصال. حيثم يحدّثها بنفسه — لا يوجد أي تتبّع للموقع.' },
-  'board.requestBtn':     { en: 'Request Haitham', ar: 'اطلب حيثم' },
+                            ar: 'هذه اللوحة تغنيك عن الاتصال. هيثم يحدّثها بنفسه — لا يوجد أي تتبّع للموقع.' },
+  'board.requestBtn':     { en: 'Request Haitham', ar: 'اطلب هيثم' },
 
   'counters.waiting':     { en: 'Waiting',     ar: 'بالانتظار' },
   'counters.urgent':      { en: 'Urgent',      ar: 'عاجل' },
@@ -142,12 +142,12 @@ const STRINGS = {
   'counters.pending':     { en: 'Pending',     ar: 'معلّق' },
 
   /* ================= the request form ================= */
-  'form.title':         { en: 'Request Haitham',  ar: 'اطلب حيثم' },
+  'form.title':         { en: 'Request Haitham',  ar: 'اطلب هيثم' },
   'form.intro':         { en: 'No account needed. Fill this in and Haitham sees it immediately.',
-                          ar: 'لا حاجة لحساب. املأ النموذج وسيصل الطلب إلى حيثم فوراً.' },
+                          ar: 'لا حاجة لحساب. املأ النموذج وسيصل الطلب إلى هيثم فوراً.' },
   'form.yourName':      { en: 'Your name',       ar: 'اسمك' },
   'form.namePlaceholder': { en: 'e.g. Sarah Mansour', ar: 'مثال: سارة منصور' },
-  'form.nameHelp':      { en: 'So Haitham knows who to come to.', ar: 'ليعرف حيثم إلى من يأتي.' },
+  'form.nameHelp':      { en: 'So Haitham knows who to come to.', ar: 'ليعرف هيثم إلى من يأتي.' },
   'form.where':         { en: 'Where are you?',  ar: 'أين أنت؟' },
   'form.selectLocation':{ en: 'Select where you are', ar: 'اختر مكانك' },
   'form.customLocation':{ en: '+ Other / custom location', ar: '+ مكان آخر' },
@@ -166,7 +166,7 @@ const STRINGS = {
                           ar: 'يُرجى استخدام "عاجل جداً" فقط لما يوقف التدريس أو العمل فوراً.' },
   'form.submit':        { en: 'Send request',     ar: 'إرسال الطلب' },
   'form.successTitle':  { en: 'Request sent',     ar: 'تم إرسال الطلب' },
-  'form.successBody':   { en: 'Haitham has been notified. Your reference is', ar: 'تم إبلاغ حيثم. رقم طلبك هو' },
+  'form.successBody':   { en: 'Haitham has been notified. Your reference is', ar: 'تم إبلاغ هيثم. رقم طلبك هو' },
   'form.peopleAhead':   { en: '{n} ahead of you.', ar: '{n} قبلك في الانتظار.' },
   'form.youAreNext':    { en: 'You are next in the queue.', ar: 'أنت التالي في الانتظار.' },
 
@@ -174,10 +174,10 @@ const STRINGS = {
   'mine.title':       { en: 'My requests',   ar: 'طلباتي' },
   'mine.subtitle':    { en: 'Requests you sent from this device.', ar: 'الطلبات التي أرسلتها من هذا الجهاز.' },
   'mine.empty':       { en: 'Nothing sent yet', ar: 'لم ترسل أي طلب بعد' },
-  'mine.emptyHint':   { en: 'Tap "Request Haitham" when you need help.', ar: 'اضغط "اطلب حيثم" عندما تحتاج مساعدة.' },
+  'mine.emptyHint':   { en: 'Tap "Request Haitham" when you need help.', ar: 'اضغط "اطلب هيثم" عندما تحتاج مساعدة.' },
   'mine.cancel':      { en: 'Cancel this request', ar: 'إلغاء هذا الطلب' },
   'mine.cancelConfirm': { en: 'Cancel this request? Haitham will see that you no longer need help.',
-                          ar: 'هل تريد إلغاء هذا الطلب؟ سيرى حيثم أنك لم تعد بحاجة إلى المساعدة.' },
+                          ar: 'هل تريد إلغاء هذا الطلب؟ سيرى هيثم أنك لم تعد بحاجة إلى المساعدة.' },
   'mine.cancelled':   { en: 'Request cancelled.', ar: 'تم إلغاء الطلب.' },
   'mine.sent':        { en: 'Sent',           ar: 'أُرسل' },
   'mine.ahead':       { en: '{n} ahead of you', ar: '{n} قبلك' },
@@ -317,6 +317,13 @@ const STRINGS = {
   'admin.newBuilding':  { en: 'New building name', ar: 'اسم مبنى جديد' },
   'admin.newTask':      { en: 'New task name',     ar: 'اسم مهمة جديدة' },
   'admin.active':       { en: 'Active',            ar: 'مفعّل' },
+  'admin.nameEn':       { en: 'Name (English)',    ar: 'الاسم (بالإنكليزية)' },
+  'admin.nameAr':       { en: 'Name (Arabic)',     ar: 'الاسم (بالعربية)' },
+  'admin.noArabicName': { en: 'No Arabic name yet — tap Edit to add one',
+                          ar: 'لا يوجد اسم عربي — اضغط تعديل لإضافته' },
+  'admin.renameEn':     { en: 'English name for this {noun}:', ar: 'الاسم الإنكليزي لهذا العنصر:' },
+  'admin.renameAr':     { en: 'Arabic name (leave empty to use the English one):',
+                          ar: 'الاسم العربي (اتركه فارغاً لاستخدام الإنكليزي):' },
   'admin.disabled':     { en: 'Disabled',          ar: 'معطّل' },
   'admin.position':     { en: 'position {n}',      ar: 'الترتيب {n}' },
   'admin.usersIntro':   { en: 'Administrator accounts. Employees do not need accounts at all.',
@@ -407,7 +414,7 @@ const STRINGS = {
   /* ================= staff sign-in ================= */
   'staff.title':        { en: 'Administrator sign-in', ar: 'دخول المسؤول' },
   'staff.intro':        { en: 'For Haitham and anyone else with an e-mail account.',
-                          ar: 'لحيثم ولكل من لديه حساب بالبريد الإلكتروني.' },
+                          ar: 'لهيثم ولكل من لديه حساب بالبريد الإلكتروني.' },
   'staff.employeesUse': { en: 'Colleagues sending a request do not need an account.',
                           ar: 'الزملاء الذين يرسلون طلباً لا يحتاجون إلى حساب.' },
   'staff.email':        { en: 'E-mail',   ar: 'البريد الإلكتروني' },

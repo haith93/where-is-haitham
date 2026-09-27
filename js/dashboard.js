@@ -15,11 +15,11 @@ import {
   startClock, toastOk, toastError, toast, withBusy, renderEmpty, renderError,
   renderSetupNeeded, confirmAction, registerServiceWorker
 } from './ui.js';
-import { getBuildings, getTasks } from './data.js';
+import { getBuildings, getTasks, localName } from './data.js';
 import { getPublicStatus, describeStatus } from './status.js';
 import {
   createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
-  getMyDeviceRequests, cancelMyRequest, OPEN_STATUSES
+  getMyDeviceRequests, cancelMyRequest, requestLocation, requestCategory, OPEN_STATUSES
 } from './requests.js';
 import { subscribeBoard, subscribeConfig, onResume } from './realtime.js';
 
@@ -207,8 +207,8 @@ function paintServing(serving, next) {
   if (serving) {
     body.innerHTML = `
       <p class="serving-person">${esc(serving.requester)}</p>
-      <p class="muted">📍 ${esc(serving.location)}</p>
-      <p style="margin-top:6px;font-weight:650">🔧 ${esc(serving.category)}</p>
+      <p class="muted">📍 ${esc(requestLocation(serving))}</p>
+      <p style="margin-top:6px;font-weight:650">🔧 ${esc(requestCategory(serving))}</p>
       ${serving.started_at ? `<p class="small faint" style="margin-top:8px">
         ${esc(t('board.started'))} ${esc(fmtTime(serving.started_at))} · ${esc(relativeTime(serving.started_at))}</p>` : ''}
       <p class="small faint mono" style="margin-top:4px">${esc(serving.request_number)}</p>`;
@@ -217,7 +217,7 @@ function paintServing(serving, next) {
     body.innerHTML = `
       <p class="muted small" style="margin-bottom:6px">${esc(t('board.nextUp'))}</p>
       <p class="serving-person">${esc(next.requester)}</p>
-      <p class="muted">📍 ${esc(next.location)} · 🔧 ${esc(next.category)}</p>`;
+      <p class="muted">📍 ${esc(requestLocation(next))} · 🔧 ${esc(requestCategory(next))}</p>`;
     card.hidden = false;
   } else {
     card.hidden = true;
@@ -243,7 +243,7 @@ function paintQueue(queue) {
         <span class="queue-rank" aria-hidden="true">${index + 1}</span>
         <span class="queue-main">
           <span class="queue-name">${esc(item.requester)}</span>
-          <span class="queue-meta">📍 ${esc(item.location)} · ${esc(item.category)}</span>
+          <span class="queue-meta">📍 ${esc(requestLocation(item))} · ${esc(requestCategory(item))}</span>
         </span>
         <span class="badge badge-${esc(priority.tone)}">
           <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}
@@ -324,7 +324,7 @@ function fillSelect(select, rows, placeholder, customLabel) {
   const previous = select.value;
   select.innerHTML =
     `<option value="">${esc(placeholder)}</option>` +
-    rows.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') +
+    rows.map(r => `<option value="${esc(r.id)}">${esc(localName(r))}</option>`).join('') +
     `<option value="${CUSTOM}">${esc(customLabel)}</option>`;
   if (previous && [...select.options].some(o => o.value === previous)) select.value = previous;
 }
@@ -419,8 +419,8 @@ function paintMine() {
             <span aria-hidden="true">${status.icon}</span>${esc(status.label)}
           </span>
         </span>
-        <span class="req-title">${esc(r.category)}</span>
-        <span class="req-sub">📍 ${esc(r.location)} · ${esc(t('mine.sent'))} ${esc(fmtDateTime(r.created_at))}</span>
+        <span class="req-title">${esc(requestCategory(r))}</span>
+        <span class="req-sub">📍 ${esc(requestLocation(r))} · ${esc(t('mine.sent'))} ${esc(fmtDateTime(r.created_at))}</span>
         ${r.status === 'pending' && r.people_ahead > 0
           ? `<span class="req-sub">⏳ ${esc(t('mine.ahead', { n: r.people_ahead }))}</span>` : ''}
         ${r.priority !== 'normal'
@@ -448,8 +448,8 @@ function openMyRequest(token) {
         <span class="badge badge-${esc(status.tone)}">${status.icon} ${esc(status.label)}</span>
         <span class="badge badge-${esc(priority.tone)}">${priority.icon} ${esc(priority.label)}</span>
       </div>
-      <p class="req-title" style="font-size:18px">${esc(request.category)}</p>
-      <p class="muted">📍 ${esc(request.location)}</p>
+      <p class="req-title" style="font-size:18px">${esc(requestCategory(request))}</p>
+      <p class="muted">📍 ${esc(requestLocation(request))}</p>
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>
       ${request.accepted_at ? `<p class="small faint">${esc(REQUEST_STATUS_META.accepted.label)} · ${esc(fmtDateTime(request.accepted_at))}</p>` : ''}

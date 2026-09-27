@@ -9,6 +9,7 @@
 import { sb, errorMessage } from './supabase.js';
 import { STATUS_META } from './config.js';
 import { toDate, minutesBetween, fmtTime, durationText } from './utils.js';
+import { getLang } from './i18n.js';
 
 /* ------------------------------------------------------------------ */
 /* Reading                                                             */
@@ -171,8 +172,8 @@ export function describeStatus(status, now = new Date()) {
     known: true,
     meta,
     statusType: status.status_type,
-    location: status.location || status.location_name_snapshot || status.custom_location || null,
-    task: status.task || status.task_name_snapshot || status.custom_task || null,
+    location: pickName(status, 'location'),
+    task: pickName(status, 'task'),
     startedAt,
     expectedEndAt,
     updatedAt,
@@ -184,6 +185,21 @@ export function describeStatus(status, now = new Date()) {
     availabilityText,
     elapsedText: startedAt ? durationText(minutesBetween(startedAt, now)) : ''
   };
+}
+
+/**
+ * Picks the Arabic or English name from whichever shape the caller has:
+ * the board snapshot (`location` / `location_ar`) or a raw current_status
+ * row (`location_name_snapshot` / `location_name_ar_snapshot`).
+ */
+function pickName(status, field) {
+  const ar = getLang() === 'ar';
+  const candidates = ar
+    ? [status[`${field}_ar`], status[`${field}_name_ar_snapshot`],
+       status[field], status[`${field}_name_snapshot`]]
+    : [status[field], status[`${field}_name_snapshot`]];
+  const custom = field === 'location' ? status.custom_location : status.custom_task;
+  return candidates.find(v => v) || custom || null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -212,8 +228,13 @@ export async function getStatusHistory(from, to, { limit = 1000 } = {}) {
 }
 
 /** Display name helpers used by history and reports. */
-export const historyLocation = row => row.location_name_snapshot || row.custom_location || 'Not stated';
-export const historyTask     = row => row.task_name_snapshot || row.custom_task || null;
+export const historyLocation = row =>
+  (getLang() === 'ar' ? row.location_name_ar_snapshot : null)
+  || row.location_name_snapshot || row.custom_location || 'Not stated';
+
+export const historyTask = row =>
+  (getLang() === 'ar' ? row.task_name_ar_snapshot : null)
+  || row.task_name_snapshot || row.custom_task || null;
 
 /**
  * Real minutes spent on a history row. Open rows count up to `now`, which

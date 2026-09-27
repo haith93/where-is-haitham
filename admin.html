@@ -108,7 +108,7 @@
           <div class="section-head">
             <div>
               <h1 id="h-status" data-i18n="admin.statusTitle">Update my status</h1>
-              <p>Pick where, what and for how long. The times are worked out for you.</p>
+              <p data-i18n="admin.statusIntro">Pick where, what and for how long.</p>
             </div>
           </div>
 
@@ -215,13 +215,22 @@
           <div class="section-head">
             <div>
               <h1 id="h-buildings" data-i18n="admin.buildings">Buildings</h1>
-              <p>Locations you can choose from. Disable instead of deleting so old reports keep their names.</p>
+              <p data-i18n="admin.buildingsIntro">Locations you can choose from.</p>
             </div>
           </div>
 
-          <form class="card row" id="building-form" style="gap:8px">
-            <label class="sr-only" for="building-name" data-i18n="admin.newBuilding">New building name</label>
-            <input class="input grow" id="building-name" type="text" maxlength="80" placeholder="New building name" data-i18n-ph="admin.newBuilding" required>
+          <form class="card stack-sm" id="building-form">
+            <div class="row-wrap" style="gap:8px">
+              <div class="field grow">
+                <label class="label" for="building-name" data-i18n="admin.nameEn">Name (English)</label>
+                <input class="input" id="building-name" type="text" maxlength="80" required
+                       data-i18n-ph="admin.newBuilding">
+              </div>
+              <div class="field grow">
+                <label class="label" for="building-name-ar" data-i18n="admin.nameAr">Name (Arabic)</label>
+                <input class="input" id="building-name-ar" type="text" maxlength="80" lang="ar" dir="rtl">
+              </div>
+            </div>
             <button class="btn btn-primary" type="submit" id="building-add" data-i18n="action.add">Add</button>
           </form>
 
@@ -233,13 +242,22 @@
           <div class="section-head">
             <div>
               <h1 id="h-tasks" data-i18n="admin.tasks">Tasks</h1>
-              <p>The kinds of work you do. Also used as the categories employees pick from.</p>
+              <p data-i18n="admin.tasksIntro">The kinds of work you do.</p>
             </div>
           </div>
 
-          <form class="card row" id="task-form" style="gap:8px">
-            <label class="sr-only" for="task-name" data-i18n="admin.newTask">New task name</label>
-            <input class="input grow" id="task-name" type="text" maxlength="80" placeholder="New task name" data-i18n-ph="admin.newTask" required>
+          <form class="card stack-sm" id="task-form">
+            <div class="row-wrap" style="gap:8px">
+              <div class="field grow">
+                <label class="label" for="task-name" data-i18n="admin.nameEn">Name (English)</label>
+                <input class="input" id="task-name" type="text" maxlength="80" required
+                       data-i18n-ph="admin.newTask">
+              </div>
+              <div class="field grow">
+                <label class="label" for="task-name-ar" data-i18n="admin.nameAr">Name (Arabic)</label>
+                <input class="input" id="task-name-ar" type="text" maxlength="80" lang="ar" dir="rtl">
+              </div>
+            </div>
             <button class="btn btn-primary" type="submit" id="task-add" data-i18n="action.add">Add</button>
           </form>
 
@@ -251,7 +269,7 @@
           <div class="section-head">
             <div>
               <h1 id="h-users" data-i18n="admin.users">Users</h1>
-              <p>Accounts are never deleted, because requests refer to them. Deactivate instead.</p>
+              <p data-i18n="admin.usersIntro">Administrator accounts.</p>
             </div>
           </div>
           <div class="field">

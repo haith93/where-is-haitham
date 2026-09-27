@@ -8,7 +8,7 @@
  */
 import { configured } from './supabase.js';
 import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META, CHANNELS } from './config.js';
-import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
+import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, getLang } from './i18n.js';
 import {
   $, $$, esc, el, fmtTime, fmtDateTime, fmtDateLong, fmtDateShort, relativeTime,
   durationText, dayKey, addDays, startOfWeek, startOfMonth, startOfDay, endOfDay,
@@ -22,7 +22,8 @@ import {
 import { requireAuth, signOut } from './auth.js';
 import {
   getBuildings, getTasks, addBuilding, addTask, updateBuilding, updateTask,
-  moveItem, getUsers, setUserActive, setUserRole, getSettings, saveSetting, getAuditLog
+  moveItem, getUsers, setUserActive, setUserRole, getSettings, saveSetting, getAuditLog,
+  localName
 } from './data.js';
 import {
   getCurrentStatus, updateStatus, finishCurrentTask, setAvailableNow,
@@ -169,8 +170,14 @@ async function boot() {
     applyI18n(document);
     paintCurrent();
     paintQueue();
+    // Re-render whichever section is on screen. Buildings, tasks and
+    // users carry names that differ per language, so they need it too.
+    if (state.section === 'buildings') paintBuildings();
+    if (state.section === 'tasks')     paintTasks();
+    if (state.section === 'users')     paintUsers();
+    if (state.section === 'status')    fillStatusSelects();
     if (state.section === 'reports' && state.report) paintReport(state.report);
-    if (state.section === 'history') paintHistory();
+    if (state.section === 'history')   paintHistory();
   });
 
   safe('navigation', wireRouter);
@@ -443,7 +450,7 @@ function fillSelect(select, rows, placeholder, customLabel) {
   const previous = select.value;
   select.innerHTML =
     `<option value="">${esc(placeholder)}</option>` +
-    rows.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') +
+    rows.map(r => `<option value="${esc(r.id)}">${esc(localName(r))}</option>`).join('') +
     (customLabel ? `<option value="${CUSTOM}">${esc(customLabel)}</option>` : '');
   if (previous && [...select.options].some(o => o.value === previous)) select.value = previous;
 }
@@ -910,8 +917,9 @@ function wireBuildings() {
     const input = $('#building-name');
     await withBusy($('#building-add'), 'Adding…', async () => {
       try {
-        await addBuilding(input.value);
+        await addBuilding(input.value, $('#building-name-ar').value);
         input.value = '';
+        $('#building-name-ar').value = '';
         toastOk('Building added.');
         await paintBuildings();
       } catch (err) { toastError(err.message); }
@@ -939,8 +947,9 @@ function wireTasks() {
     const input = $('#task-name');
     await withBusy($('#task-add'), 'Adding…', async () => {
       try {
-        await addTask(input.value);
+        await addTask(input.value, $('#task-name-ar').value);
         input.value = '';
+        $('#task-name-ar').value = '';
         toastOk('Task added.');
         await paintTasks();
       } catch (err) { toastError(err.message); }
@@ -956,6 +965,15 @@ async function paintTasks() {
     update: updateTask,
     noun: 'task'
   });
+}
+
+/**
+ * The name in the language that is NOT currently on screen, so an
+ * administrator can see both without the row repeating itself.
+ */
+function otherName(row) {
+  const ar = (row.name_ar ?? '').trim();
+  return getLang() === 'ar' ? (row.name ?? '') : ar;
 }
 
 /** Buildings and tasks are managed identically, so they share a renderer. */
@@ -975,8 +993,14 @@ async function paintConfigList({ host, load, table, update, noun }) {
           <button type="button" data-move="down" ${index === rows.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(row.name)} down">▼</button>
         </span>
         <span class="grow">
-          <span class="cfg-name">${esc(row.name)}</span>
-          <span class="cfg-sub">${esc(row.active ? t('admin.active') : t('admin.disabled'))} · ${esc(t('admin.position', { n: index + 1 }))}</span>
+          <span class="cfg-name">${esc(localName(row))}</span>
+          <span class="cfg-sub">
+            ${otherName(row)
+              ? esc(otherName(row))
+              : `<em style="color:var(--warn)">${esc(t('admin.noArabicName'))}</em>`}
+            · ${esc(row.active ? t('admin.active') : t('admin.disabled'))}
+            · ${esc(t('admin.position', { n: index + 1 }))}
+          </span>
         </span>
         <button class="btn btn-sm btn-soft" type="button" data-edit aria-label="Rename ${esc(row.name)}">${esc(t('action.edit'))}</button>
         <button class="btn btn-sm ${row.active ? 'btn-ghost' : 'btn-ok'}" type="button" data-toggle>
@@ -997,10 +1021,13 @@ async function paintConfigList({ host, load, table, update, noun }) {
         }));
 
       $('[data-edit]', rowNode).addEventListener('click', async () => {
-        const next = prompt(`Rename this ${noun}:`, row.name);
-        if (next == null || next.trim() === row.name) return;
+        const next = prompt(t('admin.renameEn', { noun }), row.name);
+        if (next == null) return;
+        const nextAr = prompt(t('admin.renameAr', { noun }), row.name_ar ?? '');
+        if (nextAr == null) return;
+        if (next.trim() === row.name && (nextAr.trim() || null) === (row.name_ar ?? null)) return;
         try {
-          await update(id, { name: next });
+          await update(id, { name: next, name_ar: nextAr });
           toastOk(`${noun[0].toUpperCase()}${noun.slice(1)} renamed. Old records keep their original name.`);
           await paintConfigList({ host, load, table, update, noun });
         } catch (err) { toastError(err.message); }

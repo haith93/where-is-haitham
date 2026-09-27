@@ -633,9 +633,25 @@ channel breakdown, and both languages at desktop and 375px.
 One gap found and fixed during testing: `durationText` and `relativeTime` were
 emitting English inside Arabic text ("20 min ago"). Both now route through i18n.
 
+### Bilingual data names
+
+Building and task names are *data*, not interface strings, so the Arabic layer
+did not reach them — "Computer repair" stayed English on an otherwise Arabic
+screen. `buildings` and `tasks` gained an optional `name_ar`, and the three
+snapshot-carrying tables gained a frozen Arabic column beside the English one,
+so an old report still reads correctly in either language. Where no Arabic name
+has been entered the English one is used, so nothing renders blank.
+
+The admin screens take both names when adding or renaming, and each row shows
+the name in the *other* language so nothing looks like it is repeating itself.
+
+Also corrected: the Arabic spelling of Haitham's name, حيثم → **هيثم**, in 13
+places.
+
 ### Still to do
 
 - [ ] Run `sql/migration-public-requests.sql` against the live database.
+- [ ] Then run `sql/migration-bilingual-names.sql`.
 - [ ] Confirm the `pgcrypto` item from §9 is moot — the access-code system that
       needed it has been removed, so `crypt`/`gen_salt` are no longer used
       anywhere.

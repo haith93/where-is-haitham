@@ -6,8 +6,26 @@
  * administrator edits them, so nothing here ever goes stale.
  */
 import { sb, errorMessage } from './supabase.js';
+import { getLang } from './i18n.js';
 
 const cache = { buildings: null, tasks: null, settings: null };
+
+/**
+ * The name to show for a building or task in the current language.
+ *
+ * These are DATA, not interface strings, so they live in the database
+ * with an optional Arabic name beside the English one. Where no Arabic
+ * name has been entered the English one is used, so a list can never
+ * render blank.
+ */
+export function localName(row) {
+  if (!row) return '';
+  if (getLang() === 'ar') {
+    const ar = (row.name_ar ?? '').trim();
+    if (ar) return ar;
+  }
+  return row.name ?? '';
+}
 
 function fail(error, fallback) {
   throw new Error(errorMessage(error, fallback));
@@ -21,7 +39,7 @@ export async function getBuildings({ activeOnly = false, force = false } = {}) {
   if (force || !cache.buildings) {
     const { data, error } = await sb
       .from('buildings')
-      .select('id, name, active, display_order')
+      .select('id, name, name_ar, active, display_order')
       .order('display_order', { ascending: true })
       .order('name', { ascending: true });
     if (error) fail(error, 'Could not load the list of buildings.');
@@ -30,14 +48,15 @@ export async function getBuildings({ activeOnly = false, force = false } = {}) {
   return activeOnly ? cache.buildings.filter(b => b.active) : cache.buildings;
 }
 
-export async function addBuilding(name) {
+export async function addBuilding(name, nameAr = null) {
   const clean = validateName(name, 'building');
+  const cleanAr = optionalName(nameAr, 'building');
   const all = await getBuildings({ force: true });
   const nextOrder = all.length ? Math.max(...all.map(b => b.display_order)) + 1 : 1;
 
   const { data, error } = await sb
     .from('buildings')
-    .insert({ name: clean, display_order: nextOrder })
+    .insert({ name: clean, name_ar: cleanAr, display_order: nextOrder })
     .select()
     .single();
   if (error) fail(error, 'Could not add the building.');
@@ -48,6 +67,7 @@ export async function addBuilding(name) {
 
 export async function updateBuilding(id, patch) {
   if (patch.name != null) patch.name = validateName(patch.name, 'building');
+  if (patch.name_ar !== undefined) patch.name_ar = optionalName(patch.name_ar, 'building');
   const { data, error } = await sb.from('buildings').update(patch).eq('id', id).select().single();
   if (error) fail(error, 'Could not save the building.');
   cache.buildings = null;
@@ -62,7 +82,7 @@ export async function getTasks({ activeOnly = false, force = false } = {}) {
   if (force || !cache.tasks) {
     const { data, error } = await sb
       .from('tasks')
-      .select('id, name, active, display_order')
+      .select('id, name, name_ar, active, display_order')
       .order('display_order', { ascending: true })
       .order('name', { ascending: true });
     if (error) fail(error, 'Could not load the list of tasks.');
@@ -71,14 +91,15 @@ export async function getTasks({ activeOnly = false, force = false } = {}) {
   return activeOnly ? cache.tasks.filter(t => t.active) : cache.tasks;
 }
 
-export async function addTask(name) {
+export async function addTask(name, nameAr = null) {
   const clean = validateName(name, 'task');
+  const cleanAr = optionalName(nameAr, 'task');
   const all = await getTasks({ force: true });
   const nextOrder = all.length ? Math.max(...all.map(t => t.display_order)) + 1 : 1;
 
   const { data, error } = await sb
     .from('tasks')
-    .insert({ name: clean, display_order: nextOrder })
+    .insert({ name: clean, name_ar: cleanAr, display_order: nextOrder })
     .select()
     .single();
   if (error) fail(error, 'Could not add the task.');
@@ -89,6 +110,7 @@ export async function addTask(name) {
 
 export async function updateTask(id, patch) {
   if (patch.name != null) patch.name = validateName(patch.name, 'task');
+  if (patch.name_ar !== undefined) patch.name_ar = optionalName(patch.name_ar, 'task');
   const { data, error } = await sb.from('tasks').update(patch).eq('id', id).select().single();
   if (error) fail(error, 'Could not save the task.');
   cache.tasks = null;
@@ -123,6 +145,14 @@ export async function moveItem(table, id, direction) {
   if (bad) fail(bad.error, 'Could not change the order.');
 
   cache[table] = null;
+}
+
+/** Arabic names are optional; blank means "fall back to English". */
+function optionalName(value, what) {
+  const clean = String(value ?? '').trim().replace(/\s+/g, ' ');
+  if (!clean) return null;
+  if (clean.length > 80) throw new Error(`That ${what} name is too long (80 characters maximum).`);
+  return clean;
 }
 
 function validateName(value, what) {

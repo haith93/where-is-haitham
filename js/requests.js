@@ -8,6 +8,7 @@
 import { sb, errorMessage } from './supabase.js';
 import { PRIORITY_META, CHANNEL_KEYS } from './config.js';
 import { prefs } from './utils.js';
+import { getLang } from './i18n.js';
 
 const REQUEST_COLUMNS = `
   id, request_number, requester_id, requester_name_snapshot,
@@ -15,7 +16,8 @@ const REQUEST_COLUMNS = `
   category_task_id, custom_category, category_name_snapshot,
   description, priority, status, queue_position, assigned_to,
   created_at, accepted_at, started_at, completed_at, cancelled_at, updated_at,
-  channel, notes, created_by
+  channel, notes, created_by,
+  location_name_ar_snapshot, category_name_ar_snapshot
 `;
 
 export const OPEN_STATUSES = ['pending', 'accepted', 'in_progress'];
@@ -275,8 +277,13 @@ export function completionMinutes(request) {
   return Math.round((new Date(request.completed_at) - new Date(request.created_at)) / 60000);
 }
 
-export const requestLocation = r => r.location_name_snapshot || r.custom_location || 'Not stated';
-export const requestCategory = r => r.category_name_snapshot || r.custom_category || 'Not stated';
+export const requestLocation = r =>
+  (getLang() === 'ar' ? (r.location_name_ar_snapshot || r.location_ar) : null)
+  || r.location_name_snapshot || r.location || r.custom_location || 'Not stated';
+
+export const requestCategory = r =>
+  (getLang() === 'ar' ? (r.category_name_ar_snapshot || r.category_ar) : null)
+  || r.category_name_snapshot || r.category || r.custom_category || 'Not stated';
 export const requestChannel  = r => r.channel || 'app';
 
 const trimOrNull = v => {
