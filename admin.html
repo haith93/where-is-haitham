@@ -451,8 +451,12 @@
               <button class="btn btn-soft" type="button" id="push-enable" data-i18n="admin.pushOn">Turn on notifications</button>
               <button class="btn btn-ghost" type="button" id="push-disable" hidden data-i18n="admin.pushOff">Turn off</button>
               <button class="btn btn-ghost" type="button" id="push-test" hidden data-i18n="admin.pushTest">Send a test</button>
+              <button class="btn btn-ghost" type="button" id="push-rereg" hidden data-i18n="admin.pushRereg">Re-register this device</button>
             </div>
-            <p class="help">
+            <p class="help" data-i18n="admin.pushTestNote">
+              "Send a test" only proves this phone can display a notification.
+            </p>
+            <p class="help" data-i18n="admin.pushHint">
               New requests always appear here instantly while the app is open. Turning
               notifications on also alerts you when it is closed.
             </p>

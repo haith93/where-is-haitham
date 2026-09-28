@@ -137,6 +137,65 @@ export async function enablePush() {
   return true;
 }
 
+/**
+ * Re-save this device's push subscription.
+ *
+ * Browsers rotate a push subscription from time to time. When that
+ * happens the old endpoint starts returning 410, the sender deletes it
+ * as dead, and unless something re-registers the new one the device goes
+ * quiet for good - notifications that "worked once and never again".
+ *
+ * Calling this on every app start keeps the stored endpoint current. It
+ * is silent: no prompt, and nothing happens unless permission was
+ * already granted.
+ */
+export async function refreshPushSubscription() {
+  if (!pushSupported() || !pushConfigured()) return false;
+  if (permissionState() !== 'granted') return false;
+
+  const reg = await registration();
+  if (!reg) return false;
+
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    try {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(CONFIG.vapidPublicKey)
+      });
+    } catch (err) {
+      console.warn('[push] could not re-subscribe', err);
+      return false;
+    }
+  }
+
+  const json = sub.toJSON();
+  const { error } = await sb.rpc('save_push_subscription', {
+    p_endpoint: sub.endpoint,
+    p_p256dh: json.keys?.p256dh ?? null,
+    p_auth: json.keys?.auth ?? null,
+    p_user_agent: navigator.userAgent
+  });
+  if (error) {
+    console.warn('[push] could not store the subscription', error);
+    return false;
+  }
+  return true;
+}
+
+/** How many devices are currently registered for this account. */
+export async function registeredDeviceCount(userId) {
+  const { count, error } = await sb
+    .from('push_subscriptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+  if (error) {
+    console.warn('registeredDeviceCount', error);
+    return null;
+  }
+  return count ?? 0;
+}
+
 export async function disablePush() {
   const reg = await registration();
   const sub = await reg?.pushManager.getSubscription();

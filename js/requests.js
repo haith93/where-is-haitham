@@ -164,6 +164,20 @@ export async function getMyDeviceRequests() {
   return results.filter(Boolean);
 }
 
+/**
+ * Change your own request. Pending only: once Haitham has accepted it he
+ * has planned around what it said, so it must not shift under him.
+ */
+export async function updateMyRequest(token, { description, priority } = {}) {
+  const { data, error } = await sb.rpc('update_request_by_token', {
+    p_token: token,
+    p_description: trimOrNull(description),
+    p_priority: priority ?? null
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not update that request.'));
+  return data;
+}
+
 export async function cancelMyRequest(token) {
   const { data, error } = await sb.rpc('cancel_request_by_token', { p_token: token });
   if (error) throw new Error(errorMessage(error, 'Could not cancel that request.'));

@@ -43,7 +43,8 @@ import {
 } from './realtime.js';
 import {
   getNotifications, unreadCount, markRead, describePushSetup,
-  enablePush, disablePush, showLocalNotification
+  enablePush, disablePush, showLocalNotification,
+  refreshPushSubscription, registeredDeviceCount
 } from './notifications.js';
 import { buildReport, reportTitle, exportSummaryCSV, exportRequestsCSV, exportActivityCSV } from './reports.js';
 import { barChart, proportionBars } from './charts.js';
@@ -203,6 +204,18 @@ async function boot() {
   subscribeAllRequests(() => refreshQueue());
   subscribeConfig(() => { paintBuildings(); paintTasks(); fillStatusSelects(); });
   subscribeNotifications(state.profile.id, onNotification);
+
+  // Keeps the stored push endpoint current. Silent, and a no-op unless
+  // notifications were already switched on for this device.
+  refreshPushSubscription().catch(err => console.warn('[push]', err));
+
+  // The service worker tells us when the browser rotated the subscription
+  // while the app was closed.
+  navigator.serviceWorker?.addEventListener?.('message', event => {
+    if (event.data?.type === 'push-subscription-changed') {
+      refreshPushSubscription().catch(err => console.warn('[push]', err));
+    }
+  });
   onResume(() => refreshAll());
 
   // Expiry is recomputed, never rewritten.
@@ -1547,6 +1560,15 @@ function wireSettings() {
     });
   });
 
+  $('#push-rereg').addEventListener('click', async event => {
+    await withBusy(event.currentTarget, t('action.working'), async () => {
+      const ok = await refreshPushSubscription();
+      toast(ok ? t('admin.pushReregistered') : t('admin.pushReregisterFailed'),
+            ok ? 'ok' : 'error', 6000);
+      paintPushState();
+    });
+  });
+
   $('#push-test').addEventListener('click', async () => {
     const shown = await showLocalNotification(
       'Test notification',
@@ -1659,14 +1681,25 @@ async function paintPushState() {
   // explain why instead.
   const blocked = ['unsupported', 'not-configured', 'blocked'].includes(setup.level);
 
-  const state = $('#push-state');
-  state.textContent = setup.text;
-  state.className = blocked ? 'notice notice-warn' : 'small muted';
+  let text = setup.text;
+  if (setup.level === 'on') {
+    // Seeing the device count makes a silent failure obvious: zero means
+    // the subscription was dropped and nothing re-registered it.
+    const devices = await registeredDeviceCount(state.profile.id);
+    if (devices != null) {
+      text += ' ' + t(devices === 1 ? 'admin.pushDevices1' : 'admin.pushDevices', { n: devices });
+    }
+  }
+
+  const node = $('#push-state');
+  node.textContent = text;
+  node.className = blocked ? 'notice notice-warn' : 'small muted';
 
   $('#push-enable').hidden = setup.level === 'on' || blocked;
   $('#push-enable').disabled = false;
   $('#push-disable').hidden = setup.level !== 'on';
   $('#push-test').hidden = setup.level !== 'on';
+  $('#push-rereg').hidden = setup.level !== 'on';
 }
 
 /* ================================================================== */

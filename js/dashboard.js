@@ -19,7 +19,8 @@ import { getBuildings, getTasks, localName } from './data.js';
 import { getPublicStatus, describeStatus } from './status.js';
 import {
   createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
-  getMyDeviceRequests, cancelMyRequest, requestLocation, requestCategory, OPEN_STATUSES
+  getMyDeviceRequests, cancelMyRequest, updateMyRequest,
+  requestLocation, requestCategory, OPEN_STATUSES
 } from './requests.js';
 import { subscribeBoard, subscribeConfig, onResume } from './realtime.js';
 
@@ -460,6 +461,20 @@ function openMyRequest(token) {
 
   openSheet('#detail-sheet');
 
+  // Editing is for pending only; after that he has planned around it.
+  if (request.status === 'pending') {
+    const editBtn = el('button', {
+      class: 'btn btn-soft btn-block',
+      type: 'button',
+      text: t('mine.edit'),
+      style: 'margin-top:18px'
+    });
+    editBtn.addEventListener('click', () => openEditRequest(request));
+    body.append(editBtn);
+  } else if (OPEN_STATUSES.includes(request.status)) {
+    body.append(el('p', { class: 'help', style: 'margin-top:14px', text: t('mine.editClosed') }));
+  }
+
   if (OPEN_STATUSES.includes(request.status) && request.status !== 'in_progress') {
     const cancelBtn = el('button', {
       class: 'btn btn-danger btn-block',
@@ -495,6 +510,56 @@ function openMyRequest(token) {
     }
   });
   body.append(forgetBtn);
+}
+
+/** Change a pending request: more detail, or a different urgency. */
+function openEditRequest(request) {
+  const body = $('#detail-body');
+  $('#detail-title').textContent = t('mine.editTitle');
+
+  body.innerHTML = `
+    <div class="stack">
+      <p class="help">${esc(t('mine.editHint'))}</p>
+      <div class="field">
+        <label class="label" for="edit-desc">${esc(t('form.description'))}</label>
+        <textarea class="textarea" id="edit-desc" maxlength="1000">${esc(request.description ?? '')}</textarea>
+      </div>
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label">${esc(t('form.priority'))}</legend>
+        <div class="segmented" id="edit-priority">
+          ${Object.entries(PRIORITY_META).map(([key, meta]) => `
+            <input type="radio" name="edit_priority" id="ep-${esc(key)}" value="${esc(key)}"
+                   ${request.priority === key ? 'checked' : ''}>
+            <label for="ep-${esc(key)}">${meta.icon} <span>${esc(meta.label)}</span></label>`).join('')}
+        </div>
+      </fieldset>
+      <p class="error" id="edit-error" role="alert" hidden></p>
+    </div>`;
+
+  const save = el('button', {
+    class: 'btn btn-primary btn-lg btn-block',
+    type: 'button',
+    text: t('mine.editSave'),
+    style: 'margin-top:18px'
+  });
+  save.addEventListener('click', async () => {
+    await withBusy(save, t('action.saving'), async () => {
+      try {
+        await updateMyRequest(request.token, {
+          description: $('#edit-desc').value,
+          priority: $('#edit-priority input:checked')?.value
+        });
+        toastOk(t('mine.edited'));
+        closeSheet('#detail-sheet');
+        refreshMine();
+      } catch (err) {
+        const node = $('#edit-error');
+        node.textContent = err.message;
+        node.hidden = false;
+      }
+    });
+  });
+  body.append(save);
 }
 
 /* ================================================================== */

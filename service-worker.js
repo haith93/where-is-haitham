@@ -141,6 +141,28 @@ self.addEventListener('push', event => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+/* The browser can replace a push subscription at any time. Re-subscribe
+   immediately so the endpoint stays valid, and tell any open tab so it can
+   store the new one. If no tab is open, the app re-saves it on next start
+   via refreshPushSubscription(). */
+self.addEventListener('pushsubscriptionchange', event => {
+  event.waitUntil((async () => {
+    try {
+      const key = event.oldSubscription?.options?.applicationServerKey;
+      if (!key) return;
+      const fresh = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key
+      });
+      const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      clientList.forEach(client =>
+        client.postMessage({ type: 'push-subscription-changed', subscription: fresh.toJSON() }));
+    } catch (err) {
+      console.warn('[sw] resubscribe failed', err);
+    }
+  })());
+});
+
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   const target = new URL(event.notification.data?.url || './index.html', self.location.href).href;

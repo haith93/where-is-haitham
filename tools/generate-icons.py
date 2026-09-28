@@ -18,14 +18,35 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "icons"
 
-# Straight from css/main.css
-BG_TOP = (242, 183, 5)     # --accent            #f2b705
-BG_BOTTOM = (21, 127, 74)  # --secondary         #157f4a
-GLYPH = (26, 20, 7)        # --accent-contrast   #1a1407
+# Glossy yellow ground, green pin.
+# The ground runs from a light gold at the top to the brand accent at the
+# bottom, with a soft highlight in the upper third: that highlight is what
+# reads as gloss, rather than a flat two-stop ramp.
+BG_TOP = (255, 221, 110)    # light gold
+BG_BOTTOM = (224, 158, 4)   # deeper gold, a shade under --accent
+GLOSS = (255, 249, 219)     # the sheen
+GLYPH = (21, 127, 74)       # --secondary  #157f4a
 
 
 def blend(a, b, t):
+    t = max(0.0, min(1.0, t))
     return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+
+def glossy_ground(x, y, size):
+    """Vertical gold ramp with a broad specular highlight near the top.
+
+    A single linear gradient looks flat at icon sizes. The extra radial
+    term sits off-centre and fades fast, which is what the eye reads as a
+    curved, glossy surface.
+    """
+    base = blend(BG_TOP, BG_BOTTOM, (y / size) ** 0.85)
+
+    # Highlight centred above the middle, wide and soft.
+    dx = (x - size * 0.38) / (size * 0.62)
+    dy = (y - size * 0.24) / (size * 0.42)
+    sheen = max(0.0, 1.0 - (dx * dx + dy * dy))
+    return blend(base, GLOSS, sheen * 0.55)
 
 
 def rounded_alpha(x, y, size, radius):
@@ -83,10 +104,7 @@ def make_icon(size, maskable=False):
     for y in range(size):
         row = bytearray()
         for x in range(size):
-            # Eased so yellow holds most of the square and the green
-            # arrives late; a straight 50/50 ramp muddies through olive.
-            t = ((x + y) / (2 * size)) ** 1.9
-            bg = blend(BG_TOP, BG_BOTTOM, t)
+            bg = glossy_ground(x + 0.5, y + 0.5, size)
             a_bg = rounded_alpha(x + 0.5, y + 0.5, size, corner)
 
             a_pin = pin_alpha(x + 0.5, y + 0.5, size, scale, -0.02)
