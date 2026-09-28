@@ -8,8 +8,9 @@ import { configured, sb } from './supabase.js';
 import { $, esc } from './utils.js';
 import { applyDocument, initLangToggle, apply as applyI18n, onLangChange } from './i18n.js';
 import { getSettings } from './data.js';
+import { initSkin, syncSkinFromSettings } from './skins.js';
 import {
-  initSkin, initTheme, initThemeToggle, initOffline, renderSetupNeeded,
+  initTheme, initThemeToggle, initOffline, renderSetupNeeded,
   toastOk, toastError, withBusy, registerServiceWorker
 } from './ui.js';
 import {
@@ -60,6 +61,7 @@ async function boot() {
   // Before the very first administrator exists it is the only way in.
   try {
     const settings = await getSettings();
+    syncSkinFromSettings(settings);
     const toSignup = $('#to-signup');
     if (toSignup) toSignup.hidden = settings.allow_email_signup === false;
   } catch (err) {

@@ -431,15 +431,19 @@
           <div class="card stack">
             <h2 class="card-title" data-i18n="admin.appearance">Appearance</h2>
             <div class="field">
-              <span class="label" data-i18n="admin.skin">Interface style</span>
-              <div class="segmented" id="skin-picker">
-                <input type="radio" name="skin" id="skin-standard" value="standard" checked>
-                <label for="skin-standard" data-i18n="admin.skinStandard">Standard</label>
-                <input type="radio" name="skin" id="skin-brutal" value="brutal">
-                <label for="skin-brutal" data-i18n="admin.skinBrutal">Brutalist</label>
-              </div>
-              <p class="help" data-i18n="admin.skinHint">
-                Changes only this device, so you can try it before deciding.
+              <span class="label" data-i18n="admin.skinSite">Interface style for everyone</span>
+              <div class="segmented" id="skin-picker"></div>
+              <p class="help" data-i18n="admin.skinSiteHint">
+                Applies to every colleague, on their next visit.
+              </p>
+            </div>
+
+            <div class="field">
+              <label class="label" for="skin-override" data-i18n="admin.skinDevice">Override on this device</label>
+              <select class="select" id="skin-override"></select>
+              <p class="help" data-i18n="admin.skinDeviceHint">
+                Only for this phone or browser. Useful for previewing a change
+                before applying it to everyone.
               </p>
             </div>
           </div>

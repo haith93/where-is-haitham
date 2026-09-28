@@ -15,7 +15,12 @@ import {
   minutesBetween, prefs, weekdayName
 } from './utils.js';
 import {
-  initSkin, setSkin, currentSkin, initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
+  initSkin, syncSkinFromSettings, applySkin, resolveSkin,
+  getDeviceOverride, setDeviceOverride, cacheSiteSkin,
+  SKINS, SKIN_IDS
+} from './skins.js';
+import {
+  initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toast, toastOk, toastError, withBusy, confirmAction, chooseAction,
   renderEmpty, renderError, renderSetupNeeded, registerServiceWorker
 } from './ui.js';
@@ -174,6 +179,7 @@ async function boot() {
   state.booted = true;
   $('#shell').hidden = false;
   state.settings = await getSettings();
+  syncSkinFromSettings(state.settings);
 
   // Re-render everything JavaScript drew when the language changes.
   onLangChange(() => {
@@ -1539,11 +1545,28 @@ function wireSettings() {
     });
   });
 
-  $$('#skin-picker input').forEach(input =>
-    input.addEventListener('change', () => {
-      setSkin(input.value);
-      toastOk(t('admin.skinChanged'));
-    }));
+  $('#skin-override').addEventListener('change', event => {
+    setDeviceOverride(event.target.value || null);
+    toastOk(t('admin.skinChanged'));
+  });
+
+  // Delegated: the buttons are rendered from the registry, so there is
+  // nothing to re-bind when a skin is added.
+  $('#skin-picker').addEventListener('change', async event => {
+    const id = event.target?.value;
+    if (!SKIN_IDS.includes(id)) return;
+    try {
+      await saveSetting('ui_skin', id);
+      cacheSiteSkin(id);
+      applySkin(resolveSkin(id));
+      state.settings = await getSettings({ force: true });
+      toastOk(getDeviceOverride()
+        ? t('admin.skinSavedOverridden')
+        : t('admin.skinSaved'));
+    } catch (err) {
+      toastError(err.message);
+    }
+  });
 
   $('#set-email-signup').addEventListener('change', async event => {
     const value = event.target.checked;
@@ -1656,9 +1679,7 @@ async function paintSettings() {
   $('#admin-identity').textContent = `${state.profile.full_name} · ${state.profile.email ?? ''}`;
 
   $('#set-email-signup').checked = settings.allow_email_signup !== false;
-  const skin = currentSkin();
-  const skinInput = $(`#skin-picker input[value="${skin}"]`);
-  if (skinInput) skinInput.checked = true;
+  paintSkinControls(settings);
   paintPushState();
 
   try {
@@ -1693,6 +1714,22 @@ function describeAudit(entry) {
     case 'role_changed':     return `Role changed: ${d.name ?? ''} (${d.from} → ${d.to})`;
     default: return `${noun} ${entry.action}`;
   }
+}
+
+/** Both skin controls are built from the registry, never hard-coded. */
+function paintSkinControls(settings) {
+  const siteSkin = SKIN_IDS.includes(settings?.ui_skin) ? settings.ui_skin : 'brutal';
+
+  $('#skin-picker').innerHTML = SKIN_IDS.map(id => `
+    <input type="radio" name="skin" id="skin-${esc(id)}" value="${esc(id)}"
+           ${id === siteSkin ? 'checked' : ''}>
+    <label for="skin-${esc(id)}">${esc(t(SKINS[id].labelKey))}</label>`).join('');
+
+  const override = getDeviceOverride();
+  $('#skin-override').innerHTML =
+    `<option value="">${esc(t('admin.skinFollowSite', { name: t(SKINS[siteSkin].labelKey) }))}</option>` +
+    SKIN_IDS.map(id =>
+      `<option value="${esc(id)}" ${override === id ? 'selected' : ''}>${esc(t(SKINS[id].labelKey))}</option>`).join('');
 }
 
 async function paintPushState() {

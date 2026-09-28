@@ -215,6 +215,7 @@ export async function getSettings({ force = false } = {}) {
 }
 
 export const DEFAULT_SETTINGS = Object.freeze({
+  ui_skin: 'brutal',
   org_name: 'Our Organisation',
   tracked_person: 'Haitham',
   quick_durations: [5, 10, 15, 20, 30, 45, 60, 120],

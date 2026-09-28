@@ -17,7 +17,8 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 3 | `migration-buildings-and-interruptions.sql` | Real building names; putting a job on hold |
 | 4 | `migration-test-cleanup.sql` | Delete one request; clear test data |
 | 5 | `migration-edit-request.sql` | Requester can change a pending request |
-| 6 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
+| 6 | `migration-ui-skin.sql` | Site-wide interface style, defaulting to brutalist |
+| 7 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
 
 The order matters: 2 adds columns that 3 writes to, and 3 redefines a
 function that 2 created.
@@ -65,7 +66,7 @@ remembering what was run:
 -- paste sql/check-migrations.sql
 ```
 
-Every row should read `OK`. Number 6 is optional and may read `NOT RUN`
+Every row should read `OK`. The push trigger is optional and may read `NOT RUN`
 without anything being wrong.
 
 ## If everything reads OK but the app disagrees
