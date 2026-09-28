@@ -16,7 +16,7 @@ import {
   renderSetupNeeded, confirmAction, registerServiceWorker
 } from './ui.js';
 import { getBuildings, getTasks, localName } from './data.js';
-import { getPublicStatus, describeStatus } from './status.js';
+import { getPublicStatus, describeStatus, statusLabel } from './status.js';
 import {
   createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
   getMyDeviceRequests, cancelMyRequest, updateMyRequest,
@@ -136,11 +136,13 @@ function paintBoard(snapshot, { silent = false } = {}) {
   paintCounters(snapshot.counts ?? {});
 
   if (!silent) {
-    document.title = view.known ? `${view.meta.label} · ${t('app.name')}` : t('app.name');
+    const title = statusLabel(view, snapshot.serving?.requester ?? null);
+    document.title = view.known ? `${title} · ${t('app.name')}` : t('app.name');
   }
 }
 
 function paintHero(view, snapshot) {
+  const servingName = snapshot.serving?.requester ?? null;
   const locationLine = view.location
     ? `<div class="fact"><span class="ico" aria-hidden="true">📍</span>
          <span class="grow"><span class="k">${esc(t('board.location'))}</span>
@@ -182,7 +184,7 @@ function paintHero(view, snapshot) {
     <div class="hero" data-tone="${esc(view.meta.tone)}">
       <p class="hero-status ${view.known && !view.expired ? 'live' : ''}">
         <span class="dot" aria-hidden="true"></span>
-        <span>${esc(view.known ? view.meta.label : t('board.noStatus'))}</span>
+        <span>${esc(view.known ? statusLabel(view, servingName) : t('board.noStatus'))}</span>
       </p>
       <p class="hero-hint">${esc(view.known ? view.meta.hint : t('board.noStatusHint'))}</p>
       ${locationLine || taskLine ? `<div class="hero-facts">${locationLine}${taskLine}</div>` : ''}

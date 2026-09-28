@@ -27,8 +27,8 @@ import {
 } from './data.js';
 import {
   getCurrentStatus, updateStatus, finishCurrentTask, setAvailableNow,
-  describeStatus, getStatusHistory, historyLocation, historyTask, actualMinutes,
-  purgeActivity
+  describeStatus, statusLabel, getStatusHistory, historyLocation, historyTask,
+  actualMinutes, purgeActivity
 } from './status.js';
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
@@ -286,12 +286,17 @@ async function refreshCurrent() {
 
 function paintCurrent() {
   const view = describeStatus(state.current);
+
+  // Who the current "serving" status refers to, taken from the request
+  // actually in progress.
+  const serving = state.openRequests.find(r => r.status === 'in_progress');
+  const servingName = serving?.requester_name_snapshot ?? null;
   const host = $('#now-host');
   const mirror = $('#status-now-host');
 
   const html = `
     <div class="now-card" data-tone="${esc(view.meta.tone)}">
-      <p class="now-status">${esc(view.known ? view.meta.label : t('admin.noStatusYet'))}</p>
+      <p class="now-status">${esc(view.known ? statusLabel(view, servingName) : t('admin.noStatusYet'))}</p>
       ${view.location ? `<p class="now-line">📍 ${esc(view.location)}</p>` : ''}
       ${view.task ? `<p class="now-line">🛠️ ${esc(view.task)}</p>` : ''}
       ${view.startedAt ? `<p class="now-time">${esc(view.rangeText)}</p>` : ''}
@@ -309,7 +314,7 @@ function paintCurrent() {
   if (mirror) mirror.innerHTML = html;
 
   $('#greeting').textContent = view.known
-    ? t('admin.greetingSet', { status: view.meta.label })
+    ? t('admin.greetingSet', { status: statusLabel(view, servingName) })
     : t('admin.greetingNone');
 }
 

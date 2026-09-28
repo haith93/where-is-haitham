@@ -9,7 +9,7 @@
 import { sb, errorMessage } from './supabase.js';
 import { STATUS_META } from './config.js';
 import { toDate, minutesBetween, fmtTime, durationText } from './utils.js';
-import { getLang } from './i18n.js';
+import { getLang, t } from './i18n.js';
 
 /* ------------------------------------------------------------------ */
 /* Reading                                                             */
@@ -207,6 +207,18 @@ export async function purgeActivity() {
   const { data, error } = await sb.rpc('admin_purge_activity');
   if (error) throw new Error(errorMessage(error, 'Could not clear the activity log.'));
   return data;
+}
+
+/**
+ * The status line to display. "With someone" is what the system knows;
+ * "With Sarah Mansour" is what is actually useful to a colleague reading
+ * the board, and it is already public in the queue below it.
+ */
+export function statusLabel(view, servingName) {
+  if (view?.statusType === 'serving' && servingName) {
+    return t('status.servingWith', { name: servingName });
+  }
+  return view?.meta?.label ?? '';
 }
 
 /* ------------------------------------------------------------------ */

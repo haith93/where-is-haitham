@@ -17,6 +17,7 @@
  */
 import { sb, errorMessage } from './supabase.js';
 import { CONFIG } from './config.js';
+import { t } from './i18n.js';
 
 /* ------------------------------------------------------------------ */
 /* In-app notifications                                                */
@@ -247,6 +248,19 @@ function urlBase64ToUint8Array(base64String) {
 /* Status summary for the settings screen                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Brave turns off Google push messaging by default. Web Push on Android
+ * routes through Google, so a subscription can exist and still never be
+ * delivered - which looks exactly like a broken server.
+ */
+async function isBrave() {
+  try {
+    return Boolean(navigator.brave && await navigator.brave.isBrave());
+  } catch {
+    return false;
+  }
+}
+
 export async function describePushSetup() {
   if (!pushSupported()) {
     return { level: 'unsupported', text: 'This browser cannot deliver notifications when the app is closed. In-app alerts still work.' };
@@ -261,7 +275,10 @@ export async function describePushSetup() {
     return { level: 'blocked', text: 'Notifications are blocked in your browser settings for this site.' };
   }
   if (await isPushEnabled()) {
-    return { level: 'on', text: 'This device will receive notifications even when the app is closed.' };
+    const text = 'This device will receive notifications even when the app is closed.';
+    return await isBrave()
+      ? { level: 'on', text: `${text} ${t('push.brave')}` }
+      : { level: 'on', text };
   }
   return { level: 'off', text: 'Notifications are off on this device.' };
 }
