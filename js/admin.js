@@ -19,7 +19,7 @@ import {
   startClock, toast, toastOk, toastError, withBusy, confirmAction, chooseAction,
   renderEmpty, renderError, renderSetupNeeded, registerServiceWorker
 } from './ui.js';
-import { requireAuth, signOut } from './auth.js';
+import { requireAuth, signOut, NotAdminError } from './auth.js';
 import {
   getBuildings, getTasks, addBuilding, addTask, updateBuilding, updateTask,
   moveItem, getUsers, setUserActive, setUserRole, getSettings, saveSetting, getAuditLog,
@@ -91,7 +91,12 @@ if (!configured) {
 } else {
   boot().catch(err => {
     console.error('[admin] boot failed', err);
-    showBootError(err?.message || 'Could not start the admin console.');
+    if (err instanceof NotAdminError) {
+      const who = err.profile?.email || err.profile?.full_name || '';
+      showBootError(t('admin.notAdmin', { who }), { retry: false });
+      return;
+    }
+    showBootError(err?.message || t('error.generic'));
   });
 }
 
@@ -113,29 +118,30 @@ function showBootError(message, { retry = true } = {}) {
     host.append(el('button', {
       class: 'btn btn-primary btn-block',
       type: 'button',
-      text: 'Reload',
+      text: t('action.reload'),
       style: 'margin-top:12px',
       onclick: () => location.reload()
     }));
-
-    // The reliable way out of a stuck session: drop the stored tokens and
-    // sign in again. Reloading alone cannot fix a bad refresh token.
-    host.append(el('button', {
-      class: 'btn btn-soft btn-block',
-      type: 'button',
-      text: 'Sign out and sign in again',
-      style: 'margin-top:8px',
-      onclick: async () => {
-        try { await signOut(); } catch { /* clearing local state is enough */ }
-        try {
-          Object.keys(localStorage)
-            .filter(k => k.startsWith('sb-') || k === 'wih.auth')
-            .forEach(k => localStorage.removeItem(k));
-        } catch { /* private mode */ }
-        location.replace('staff.html');
-      }
-    }));
   }
+
+  // Always offered, whether or not reloading could help: it is the way
+  // out of both a stuck session and a signed-in-as-the-wrong-account
+  // dead end. Reloading alone fixes neither.
+  host.append(el('button', {
+    class: 'btn btn-soft btn-block',
+    type: 'button',
+    text: t('admin.signOutAndIn'),
+    style: 'margin-top:8px',
+    onclick: async () => {
+      try { await signOut(); } catch { /* clearing local state is enough */ }
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('sb-') || k === 'wih.auth')
+          .forEach(k => localStorage.removeItem(k));
+      } catch { /* private mode */ }
+      location.replace('staff.html');
+    }
+  }));
 }
 
 /** Wiring one section must never be able to blank the whole console. */

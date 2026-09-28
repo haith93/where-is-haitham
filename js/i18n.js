@@ -537,6 +537,9 @@ const STRINGS = {
   'error.generic':      { en: 'Something went wrong. Please try again.', ar: 'حدث خطأ ما. يُرجى المحاولة مرة أخرى.' },
   'error.offline':      { en: 'You appear to be offline. Reconnect and try again.', ar: 'يبدو أنك غير متصل. أعد الاتصال وحاول مجدداً.' },
   'error.bootTitle':    { en: 'The admin console could not start', ar: 'تعذّر تشغيل لوحة التحكم' },
+  'admin.signOutAndIn': { en: 'Sign out and sign in again', ar: 'تسجيل الخروج ثم الدخول من جديد' },
+  'admin.notAdmin':     { en: 'You are signed in as {who}, which is not an administrator account. If you created this account just now, sign out and sign in with your administrator e-mail instead.',
+                          ar: 'أنت مسجّل الدخول باسم {who}، وهو ليس حساب مسؤول. إذا أنشأت هذا الحساب للتو، سجّل الخروج ثم ادخل ببريد المسؤول.' },
   'error.notFound':     { en: 'That page does not exist', ar: 'هذه الصفحة غير موجودة' }
 };
 

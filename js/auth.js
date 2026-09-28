@@ -31,6 +31,14 @@ function withTimeout(promise, ms, label) {
 
 export class AuthTimeoutError extends Error {}
 
+/** Signed in, but this account is not an administrator. */
+export class NotAdminError extends Error {
+  constructor(profile) {
+    super('not an administrator');
+    this.profile = profile;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Session + profile                                                   */
 /* ------------------------------------------------------------------ */
@@ -217,8 +225,11 @@ export async function requireAuth({ admin = false } = {}) {
   }
 
   if (admin && !isAdmin(profile)) {
-    location.replace('index.html?denied=1');
-    return null;
+    // Bouncing to the board with ?denied=1 told the user nothing. The
+    // usual cause is signing UP in a new browser instead of signing in,
+    // which silently creates an ordinary employee account - so name the
+    // account and offer a way out.
+    throw new NotAdminError(profile);
   }
   return profile;
 }
