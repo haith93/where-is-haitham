@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/admin.css">
   <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/brutal.css">
 </head>
 <body>
 <div class="app">
@@ -425,6 +426,22 @@
                 </span>
               </span>
             </label>
+          </div>
+
+          <div class="card stack">
+            <h2 class="card-title" data-i18n="admin.appearance">Appearance</h2>
+            <div class="field">
+              <span class="label" data-i18n="admin.skin">Interface style</span>
+              <div class="segmented" id="skin-picker">
+                <input type="radio" name="skin" id="skin-standard" value="standard" checked>
+                <label for="skin-standard" data-i18n="admin.skinStandard">Standard</label>
+                <input type="radio" name="skin" id="skin-brutal" value="brutal">
+                <label for="skin-brutal" data-i18n="admin.skinBrutal">Brutalist</label>
+              </div>
+              <p class="help" data-i18n="admin.skinHint">
+                Changes only this device, so you can try it before deciding.
+              </p>
+            </div>
           </div>
 
           <div class="card stack">

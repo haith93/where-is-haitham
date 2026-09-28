@@ -9,7 +9,7 @@ import { $, esc } from './utils.js';
 import { applyDocument, initLangToggle, apply as applyI18n, onLangChange } from './i18n.js';
 import { getSettings } from './data.js';
 import {
-  initTheme, initThemeToggle, initOffline, renderSetupNeeded,
+  initSkin, initTheme, initThemeToggle, initOffline, renderSetupNeeded,
   toastOk, toastError, withBusy, registerServiceWorker
 } from './ui.js';
 import {
@@ -18,6 +18,7 @@ import {
 } from './auth.js';
 
 applyDocument();
+initSkin();
 initTheme();
 initThemeToggle();
 initLangToggle();

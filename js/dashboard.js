@@ -11,7 +11,7 @@ import { PRIORITY_META, REQUEST_STATUS_META } from './config.js';
 import { $, $$, esc, el, fmtTime, fmtDateTime, relativeTime, durationText, prefs } from './utils.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
 import {
-  initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
+  initSkin, initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toastOk, toastError, toast, withBusy, renderEmpty, renderError,
   renderSetupNeeded, confirmAction, registerServiceWorker
 } from './ui.js';
@@ -40,6 +40,7 @@ const state = {
 /* ================================================================== */
 
 applyDocument();
+initSkin();
 initTheme();
 initThemeToggle();
 initLangToggle();

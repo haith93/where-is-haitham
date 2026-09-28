@@ -15,7 +15,7 @@ import {
   minutesBetween, prefs, weekdayName
 } from './utils.js';
 import {
-  initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
+  initSkin, setSkin, currentSkin, initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toast, toastOk, toastError, withBusy, confirmAction, chooseAction,
   renderEmpty, renderError, renderSetupNeeded, registerServiceWorker
 } from './ui.js';
@@ -77,6 +77,7 @@ let previewTimer = null;
 /* ================================================================== */
 
 applyDocument();
+initSkin();
 initTheme();
 initThemeToggle();
 initLangToggle();
@@ -1538,6 +1539,12 @@ function wireSettings() {
     });
   });
 
+  $$('#skin-picker input').forEach(input =>
+    input.addEventListener('change', () => {
+      setSkin(input.value);
+      toastOk(t('admin.skinChanged'));
+    }));
+
   $('#set-email-signup').addEventListener('change', async event => {
     const value = event.target.checked;
     try {
@@ -1649,6 +1656,9 @@ async function paintSettings() {
   $('#admin-identity').textContent = `${state.profile.full_name} · ${state.profile.email ?? ''}`;
 
   $('#set-email-signup').checked = settings.allow_email_signup !== false;
+  const skin = currentSkin();
+  const skinInput = $(`#skin-picker input[value="${skin}"]`);
+  if (skinInput) skinInput.checked = true;
   paintPushState();
 
   try {

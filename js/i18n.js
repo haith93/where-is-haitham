@@ -434,6 +434,13 @@ const STRINGS = {
   /* ================= admin: settings ================= */
   'admin.settingsIntro':{ en: "Application configuration and this device's notifications.",
                           ar: 'إعدادات التطبيق وإشعارات هذا الجهاز.' },
+  'admin.appearance':   { en: 'Appearance',      ar: 'المظهر' },
+  'admin.skin':         { en: 'Interface style',  ar: 'نمط الواجهة' },
+  'admin.skinStandard': { en: 'Standard',         ar: 'قياسي' },
+  'admin.skinBrutal':   { en: 'Brutalist',        ar: 'بروتالي' },
+  'admin.skinHint':     { en: 'Changes only this device, so you can try it before deciding.',
+                          ar: 'يغيّر هذا الجهاز فقط، لتجربته قبل اتخاذ القرار.' },
+  'admin.skinChanged':  { en: 'Interface style changed.', ar: 'تم تغيير نمط الواجهة.' },
   'admin.naming':       { en: 'Naming', ar: 'التسمية' },
 
   /* ================= staff sign-in ================= */

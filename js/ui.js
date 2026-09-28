@@ -18,6 +18,33 @@ export function initTheme() {
   syncThemeColor();
 }
 
+/**
+ * Interface skin. 'brutal' switches on css/brutal.css, which is scoped to
+ * the attribute this sets; anything else leaves the standard look.
+ *
+ * Stored per device, so it can be tried on one phone without changing
+ * what colleagues see.
+ */
+export function initSkin() {
+  const skin = prefs.get('skin');
+  if (skin === 'brutal') document.documentElement.dataset.skin = 'brutal';
+  else delete document.documentElement.dataset.skin;
+}
+
+export function setSkin(skin) {
+  if (skin === 'brutal') {
+    document.documentElement.dataset.skin = 'brutal';
+    prefs.set('skin', 'brutal');
+  } else {
+    delete document.documentElement.dataset.skin;
+    prefs.set('skin', 'standard');
+  }
+  return skin;
+}
+
+export const currentSkin = () =>
+  document.documentElement.dataset.skin === 'brutal' ? 'brutal' : 'standard';
+
 export function toggleTheme() {
   const current = document.documentElement.dataset.theme
     || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
