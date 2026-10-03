@@ -1,17 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Where Is Haitham Now">
-  <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffdd6e"/>
-      <stop offset="1" stop-color="#e09e04"/>
-    </linearGradient>
-    <radialGradient id="gloss" cx="38%" cy="24%" r="66%">
-      <stop offset="0" stop-color="#fff9db" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#fff9db" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <rect width="192" height="192" rx="42" fill="url(#gold)"/>
-  <rect width="192" height="192" rx="42" fill="url(#gloss)"/>
-  <path fill="#157f4a"
-        d="M96 34c-21 0-38 17-38 38 0 8.4 2.8 16 7.4 22.3L96 158l30.6-63.7A37.8 37.8 0 0 0 134 72c0-21-17-38-38-38z"/>
-  <circle cx="96" cy="72" r="16" fill="url(#gold)"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="Where Is Haitham Now"><rect x="22" y="22" width="156" height="156" rx="16" fill="#0A0A0A"/>
+<rect x="8" y="8" width="156" height="156" rx="16" fill="#F5C518" stroke="#0A0A0A" stroke-width="8"/>
+<g transform="translate(84 84) scale(0.88) translate(-96 -96)">
+ <path d="M96 34c-21 0-38 17-38 38 0 8.4 2.8 16 7.4 22.3L96 158l30.6-63.7A37.8 37.8 0 0 0 134 72c0-21-17-38-38-38z" fill="#0A0A0A" transform="translate(13 13)"/>
+ <path d="M96 34c-21 0-38 17-38 38 0 8.4 2.8 16 7.4 22.3L96 158l30.6-63.7A37.8 37.8 0 0 0 134 72c0-21-17-38-38-38z" fill="#2DB34A" stroke="#0A0A0A" stroke-width="8" stroke-linejoin="miter"/>
+ <path d="M78 53H91V66H101V53H114V91H101V77H91V91H78Z" fill="#0A0A0A" transform="translate(4 4)"/>
+ <path d="M78 53H91V66H101V53H114V91H101V77H91V91H78Z" fill="#D62828" stroke="#0A0A0A" stroke-width="5" stroke-linejoin="miter"/></g></svg>
