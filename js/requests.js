@@ -17,7 +17,13 @@ const REQUEST_COLUMNS = `
   description, priority, status, queue_position, assigned_to,
   created_at, accepted_at, started_at, completed_at, cancelled_at, updated_at,
   channel, notes, created_by, paused_at, pause_reason,
-  location_name_ar_snapshot, category_name_ar_snapshot
+  location_name_ar_snapshot, category_name_ar_snapshot,
+  request_type,
+  print_jobs (
+    title, original_filename, mime_type, file_size,
+    paper_size, color_mode, color_permission, print_sides, copies,
+    section_snapshot, level_snapshot, grade_snapshot, note
+  )
 `;
 
 /* Columns added by later migrations. If Supabase has not caught up with the
@@ -37,7 +43,10 @@ async function queryRequests(shape, failureMessage) {
   const { data, error } = await shape(sb.from('service_requests').select(requestColumns));
   if (!error) return data ?? [];
 
-  const missing = error?.code === '42703' || /column .* does not exist/i.test(error?.message ?? '');
+  const missing = error?.code === '42703'
+    || error?.code === 'PGRST200'                       // embedded table absent
+    || /column .* does not exist/i.test(error?.message ?? '')
+    || /could not find .* relationship/i.test(error?.message ?? '');
   if (missing && requestColumns !== REQUEST_COLUMNS_BASE) {
     console.warn('[requests] falling back to the base column set; a SQL migration is pending in Supabase.');
     requestColumns = REQUEST_COLUMNS_BASE;
@@ -359,6 +368,21 @@ export const requestCategory = r =>
   (getLang() === 'ar' ? (r.category_name_ar_snapshot || r.category_ar) : null)
   || r.category_name_snapshot || r.category || r.custom_category || 'Not stated';
 export const requestChannel  = r => r.channel || 'app';
+
+/**
+ * The print job attached to a request, or null.
+ *
+ * PostgREST returns an embedded one-to-one as an array, and RLS makes it
+ * empty for anyone who is not an administrator - so a non-admin reading
+ * this gets null rather than a filename, which is the behaviour we want
+ * even if a query is written carelessly somewhere.
+ */
+export const printJob = r => {
+  const job = Array.isArray(r?.print_jobs) ? r.print_jobs[0] : r?.print_jobs;
+  return job ?? null;
+};
+
+export const isPrintRequest = r => (r?.request_type ?? 'help') === 'print';
 
 const trimOrNull = v => {
   const s = String(v ?? '').trim();

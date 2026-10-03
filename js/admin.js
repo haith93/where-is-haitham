@@ -9,6 +9,8 @@
 import { configured } from './supabase.js';
 import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META, CHANNELS } from './config.js';
 import { icon, paintIcons } from './icons.js';
+import { settingsLine, openPrintDocument } from './print.js';
+import { destinationText } from './school.js';
 import { availabilityMessage } from './messages.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, getLang } from './i18n.js';
 import {
@@ -35,7 +37,7 @@ import {
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
   completeRequest, rejectRequest, setPriority, saveQueueOrder, sortQueue,
-  requestLocation, requestCategory, requestChannel, adminCreateRequest,
+  requestLocation, requestCategory, requestChannel, printJob, isPrintRequest, adminCreateRequest,
   pauseRequest, resumeRequest, deleteRequest, purgeRequests,
   getRequestTimeline, OPEN_STATUSES
 } from './requests.js';
@@ -80,6 +82,7 @@ let previewTimer = null;
 
 applyDocument();
 paintIcons();
+wirePrintOpen();
 initTheme();
 initThemeToggle();
 initLangToggle();
@@ -774,7 +777,10 @@ function queueCardHTML(r) {
       <p class="who" style="margin-top:8px">${esc(r.requester_name_snapshot)}</p>
       <p class="where">${icon('pin')} ${esc(requestLocation(r))} · <span class="mono">${esc(r.request_number)}</span></p>
       <p class="where">${channelBadge(r)}</p>
-      <p class="what">${icon('wrench')} ${esc(requestCategory(r))}</p>
+      <p class="what">${isPrintRequest(r)
+        ? `${icon('files')} ${esc(printJob(r)?.title || printJob(r)?.original_filename || t('print.aPrintJob'))}`
+        : `${icon('wrench')} ${esc(requestCategory(r))}`}</p>
+      ${isPrintRequest(r) ? printAdminBlock(r) : ''}
       ${r.description ? `<p class="desc">${esc(r.description)}</p>` : ''}
       ${r.status === 'paused' ? `<p class="desc" style="color:var(--urgent)">
         ${icon('pause')} ${esc(t('admin.pausedFor', { d: durationText(minutesBetween(r.paused_at, new Date()) ?? 0) }))}${
@@ -784,6 +790,54 @@ function queueCardHTML(r) {
       </p>
       ${actions}
     </article>`;
+}
+
+/**
+ * Everything about a print job, for the only person allowed to see it.
+ *
+ * The filename is shown here deliberately: it is what tells Haitham what
+ * he is about to print, and the monthly report uses it too. It never
+ * leaves an administrator's screen - the public snapshot carries a title
+ * or nothing, and print_jobs is unreadable without the admin role.
+ */
+function printAdminBlock(request) {
+  const job = printJob(request);
+  if (!job) return '';
+  const where = destinationText({
+    section: job.section_snapshot,
+    level:   job.level_snapshot,
+    grade:   job.grade_snapshot
+  });
+  return `
+    <div class="printbox">
+      <p class="printbox-file">${icon('files')} <span class="mono">${esc(job.original_filename)}</span></p>
+      <p class="printbox-line">${esc(settingsLine(job))}</p>
+      ${where ? `<p class="printbox-line">${esc(t('print.destination'))}: ${esc(where)}</p>` : ''}
+      ${job.note ? `<p class="printbox-line printbox-note">${esc(job.note)}</p>` : ''}
+      <button class="btn btn-sm btn-soft" type="button" data-print-open="${esc(request.id)}">
+        ${icon('inbox')} <span>${esc(t('print.openDoc'))}</span>
+      </button>
+    </div>`;
+}
+
+/**
+ * Delegated, so a card drawn by any of the several render paths works
+ * without each of them remembering to bind a listener.
+ */
+function wirePrintOpen() {
+  document.addEventListener('click', async event => {
+    const btn = event.target.closest('[data-print-open]');
+    if (!btn) return;
+    event.preventDefault();
+    await withBusy(btn, async () => {
+      try {
+        const { url } = await openPrintDocument(btn.dataset.printOpen);
+        window.open(url, '_blank', 'noopener');
+      } catch (err) {
+        toastError(err.message);
+      }
+    });
+  });
 }
 
 /** Shows how a request reached Haitham, e.g. a speech bubble + "WhatsApp". */

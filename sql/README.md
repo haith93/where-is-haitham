@@ -18,7 +18,8 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 4 | `migration-test-cleanup.sql` | Delete one request; clear test data |
 | 5 | `migration-edit-request.sql` | Requester can change a pending request |
 | 6 | `migration-life-death.sql` | A fourth urgency above "very urgent" |
-| 7 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
+| 7 | `migration-print-requests.sql` | Print requests, the school's class list, the private document store |
+| 8 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
 
 There used to be a seventh file, `migration-ui-skin.sql`, which stored a
 site-wide interface style. The interface now has one deliberate design
@@ -26,8 +27,13 @@ system instead of a choice of skins, so that file is gone and nothing
 reads the setting any more. If you already ran it, leave the `ui_skin`
 row where it is: it is ignored and harmless.
 
-The order matters: 2 adds columns that 3 writes to, and 3 redefines a
-function that 2 created.
+The order matters: 2 adds columns that 3 writes to, 3 redefines a
+function that 2 created, and 7 redefines the public snapshot that 3
+and 6 built up.
+
+Migration 7 needs two things doing outside the SQL editor as well — a
+private storage bucket and two Edge Functions. See "Print requests"
+in the project README.
 
 ### Do not re-run the base files here
 

@@ -10,7 +10,7 @@ import { configured } from './supabase.js';
 import { icon, paintIcons } from './icons.js';
 import { PRIORITY_META, REQUEST_STATUS_META } from './config.js';
 import { $, $$, esc, el, fmtTime, fmtDateTime, relativeTime, durationText, prefs } from './utils.js';
-import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
+import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, getLang } from './i18n.js';
 import { priorityMessage, availabilityMessage } from './messages.js';
 import {
   initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
@@ -18,6 +18,12 @@ import {
   renderSetupNeeded, confirmAction, registerServiceWorker
 } from './ui.js';
 import { getBuildings, getTasks, localName } from './data.js';
+import {
+  uploadDocument, createPrintRequest, getPaperSizes, openPrintDocument,
+  checkFile, fileSizeText, settingsLine, publicPrintLine,
+  MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
+} from './print.js';
+import { getGrades, sectionsOf, levelsOf, gradesOf, destinationText } from './school.js';
 import { getPublicStatus, describeStatus, statusLabel } from './status.js';
 import {
   createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
@@ -76,6 +82,7 @@ async function boot() {
 
   wireViews();
   wireRequestForm();
+  wirePrintForm();
   wireAdminGesture();
 
   await refreshBoard();
@@ -223,7 +230,9 @@ function paintServing(serving, next) {
     body.innerHTML = `
       <p class="serving-person">${esc(serving.requester)}</p>
       <p class="muted">${icon('pin')} ${esc(requestLocation(serving))}</p>
-      <p style="margin-top:6px;font-weight:650">${icon('wrench')} ${esc(requestCategory(serving))}</p>
+      <p style="margin-top:6px;font-weight:650">${serving.request_type === 'print'
+        ? `${icon('files')} ${esc(publicPrintLine(serving.requester, serving.print_title))}`
+        : `${icon('wrench')} ${esc(requestCategory(serving))}`}</p>
       ${serving.started_at ? `<p class="small faint" style="margin-top:8px">
         ${esc(t('board.started'))} ${esc(fmtTime(serving.started_at))} · ${esc(relativeTime(serving.started_at))}</p>` : ''}
       <p class="small faint mono" style="margin-top:4px">${esc(serving.request_number)}</p>`;
@@ -254,11 +263,14 @@ function paintQueue(queue) {
     const priority = PRIORITY_META[item.priority] ?? PRIORITY_META.normal;
     const status = REQUEST_STATUS_META[item.status] ?? REQUEST_STATUS_META.pending;
     return `
-      <li class="queue-item" data-priority="${esc(item.priority)}">
+      <li class="queue-item" data-priority="${esc(item.priority)}"
+          data-type="${esc(item.request_type ?? 'help')}">
         <span class="queue-rank" aria-hidden="true">${index + 1}</span>
         <span class="queue-main">
           <span class="queue-name">${esc(item.requester)}</span>
-          <span class="queue-meta">${icon('pin')} ${esc(requestLocation(item))} · ${esc(requestCategory(item))}</span>
+          <span class="queue-meta">${item.request_type === 'print'
+            ? `${icon('files')} ${esc(publicPrintLine(item.requester, item.print_title))}`
+            : `${icon('pin')} ${esc(requestLocation(item))} · ${esc(requestCategory(item))}`}</span>
         </span>
         <span class="badge badge-${esc(priority.tone)}">
           <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}
@@ -322,6 +334,7 @@ async function openRequestSheet() {
 
   await populateRequestSelects();
   paintPriorityQuip();
+  await preparePrintForm();
 
   // Most people ask from the same room, and type the same name, every time.
   const lastName = prefs.get('lastName');
@@ -411,6 +424,279 @@ function resetRequestForm() {
   paintPriorityQuip();
 }
 
+
+/* ================================================================== */
+/* Print requests                                                     */
+/*                                                                    */
+/* A second form beside the help one, not a change to it. The two      */
+/* share the sheet, the location dropdown and the urgency scale, and   */
+/* nothing here touches the help path.                                 */
+/* ================================================================== */
+
+const printState = {
+  file: null,       // the File the colleague chose
+  upload: null,     // the receipt once it has been stored
+  grades: [],
+  busy: false
+};
+
+/** Show one of the two forms. */
+function showRequestTab(which) {
+  const printing = which === 'print';
+  $('#request-form').hidden = printing;
+  $('#print-form').hidden = !printing;
+  $$('[data-reqtab]').forEach(btn => {
+    btn.setAttribute('aria-selected', String(btn.dataset.reqtab === which));
+  });
+  prefs.set('requestTab', which);
+  const sheet = $('#request-sheet .sheet-panel');
+  if (sheet) sheet.scrollTop = 0;
+}
+
+function wirePrintForm() {
+  $$('[data-reqtab]').forEach(btn => {
+    btn.addEventListener('click', () => showRequestTab(btn.dataset.reqtab));
+  });
+
+  const file = $('#pq-file');
+  file.setAttribute('accept', ACCEPT_ATTRIBUTE);
+
+  $('#pq-file-btn').addEventListener('click', () => file.click());
+  file.addEventListener('change', onPickFile);
+
+  $('#pq-location').addEventListener('change', event => {
+    const custom = event.target.value === CUSTOM;
+    $('#pq-location-custom-field').hidden = !custom;
+    if (custom) $('#pq-location-custom').focus();
+  });
+
+  // Colour is the only field that reveals another. Asking the permission
+  // question for a black and white job would be noise.
+  $('#pq-colour').addEventListener('change', paintColourFields);
+  $('#pq-permission').addEventListener('change', paintColourFields);
+
+  $('#pq-section').addEventListener('change', paintLevels);
+  $('#pq-level').addEventListener('change', paintGrades);
+
+  $('#pq-note').addEventListener('input', event => {
+    $('#pq-note-count').textContent = event.target.value.length;
+  });
+
+  $('#pq-priority').addEventListener('change', paintPrintQuip);
+
+  $('#print-form').addEventListener('submit', onSubmitPrint);
+}
+
+/** Fill the dropdowns the print form needs. Cheap after the first time. */
+async function preparePrintForm() {
+  const help = $('#pq-file-help');
+  if (help) help.textContent = t('print.fileHelp', { max: fileSizeText(MAX_FILE_BYTES) });
+
+  // The location list is the same one the help form uses.
+  const buildings = await getBuildings().catch(() => []);
+  const options = [`<option value="">${esc(t('form.selectLocation'))}</option>`]
+    .concat(buildings.map(b => `<option value="${esc(b.id)}">${esc(localName(b))}</option>`))
+    .concat(`<option value="${CUSTOM}">${esc(t('form.customLocation'))}</option>`);
+  $('#pq-location').innerHTML = options.join('');
+
+  const sizes = await getPaperSizes();
+  $('#pq-paper').innerHTML = sizes
+    .map(row => `<option value="${esc(row.code)}">${esc(getLangLabel(row))}</option>`)
+    .join('');
+
+  printState.grades = await getGrades();
+  paintSections();
+  paintColourFields();
+  paintPrintQuip();
+  $('#pq-note-count').textContent = String($('#pq-note').value.length);
+
+  showRequestTab(prefs.get('requestTab', 'help') === 'print' ? 'print' : 'help');
+}
+
+const getLangLabel = row => (getLang() === 'ar' && row.label_ar) ? row.label_ar : row.label;
+
+function paintSections() {
+  const sections = sectionsOf(printState.grades);
+  $('#pq-section').innerHTML =
+    `<option value="">${esc(t('print.anySection'))}</option>` +
+    sections.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
+  paintLevels();
+}
+
+function paintLevels() {
+  const section = $('#pq-section').value;
+  const levels = section ? levelsOf(printState.grades, section) : [];
+  $('#pq-level-field').hidden = levels.length === 0;
+  $('#pq-level').innerHTML =
+    `<option value="">${esc(t('print.chooseLevel'))}</option>` +
+    levels.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
+  paintGrades();
+}
+
+function paintGrades() {
+  const section = $('#pq-section').value;
+  const level = $('#pq-level').value;
+  const grades = (section && level) ? gradesOf(printState.grades, section, level) : [];
+  $('#pq-grade-field').hidden = grades.length === 0;
+  $('#pq-grade').innerHTML =
+    `<option value="">${esc(t('print.chooseGrade'))}</option>` +
+    grades.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
+}
+
+function paintColourFields() {
+  const colour = $('#pq-colour input:checked')?.value === 'color';
+  $('#pq-permission-field').hidden = !colour;
+
+  // Answering "No" is not ignored: it is shown as the reason the button
+  // will not work, which is friendlier than a failed submit.
+  const refused = colour && $('#pq-permission input:checked')?.value === 'no';
+  $('#pq-permission-warn').hidden = !refused;
+  $('#pq-submit').disabled = refused;
+}
+
+function paintPrintQuip() {
+  const chosen = $('#pq-priority input:checked')?.value ?? 'normal';
+  const node = $('#pq-quip');
+  if (!node) return;
+  node.textContent = priorityMessage(chosen);
+  node.dataset.priority = chosen;
+}
+
+/**
+ * The file is uploaded as soon as it is chosen, not on submit: by the
+ * time the colleague has filled in the rest, the slow part is done.
+ */
+async function onPickFile(event) {
+  const file = event.target.files?.[0] ?? null;
+  printState.file = file;
+  printState.upload = null;
+  $('#pq-error').hidden = true;
+
+  const chip = $('#pq-file-chip');
+  if (!file) { chip.hidden = true; return; }
+
+  const problem = checkFile(file);
+  if (problem) {
+    chip.hidden = true;
+    showPrintError(problem);
+    event.target.value = '';
+    printState.file = null;
+    return;
+  }
+
+  chip.hidden = false;
+  chip.innerHTML = `<span class="filechip">
+      <span class="ico" data-icon="files" aria-hidden="true"></span>
+      <span class="grow">${esc(file.name)}</span>
+      <span class="mono">${esc(fileSizeText(file.size))}</span>
+    </span>`;
+  paintIcons(chip);
+  $('#pq-file-btn-text').textContent = t('print.change');
+
+  const bar = $('#pq-progress');
+  const fill = $('#pq-progress-fill');
+  bar.hidden = false;
+  fill.style.width = '0%';
+  $('#pq-submit').disabled = true;
+
+  try {
+    printState.upload = await uploadDocument(file, percent => {
+      fill.style.width = percent + '%';
+      chip.querySelector('.mono').textContent = t('print.uploading', { n: percent });
+    });
+    fill.style.width = '100%';
+    chip.querySelector('.mono').textContent = t('print.uploaded');
+  } catch (err) {
+    bar.hidden = true;
+    chip.hidden = true;
+    printState.file = null;
+    event.target.value = '';
+    $('#pq-file-btn-text').textContent = t('print.choose');
+    showPrintError(err.message);
+  } finally {
+    paintColourFields();     // restores the disabled state correctly
+  }
+}
+
+function showPrintError(message) {
+  const node = $('#pq-error');
+  node.textContent = message;
+  node.hidden = false;
+  node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+async function onSubmitPrint(event) {
+  event.preventDefault();
+  if (printState.busy) return;
+  $('#pq-error').hidden = true;
+
+  if (!printState.upload) {
+    showPrintError(t('print.errNoFile'));
+    return;
+  }
+
+  const locationValue = $('#pq-location').value;
+  const input = {
+    requesterName:   $('#pq-name').value,
+    uploadId:        printState.upload.upload_id,
+    buildingId:      locationValue === CUSTOM ? null : locationValue,
+    customLocation:  locationValue === CUSTOM ? $('#pq-location-custom').value : null,
+    title:           $('#pq-title').value,
+    paperSize:       $('#pq-paper').value,
+    colorMode:       $('#pq-colour input:checked')?.value ?? 'bw',
+    colorPermission: $('#pq-permission input:checked')?.value === 'yes',
+    printSides:      $('#pq-sides input:checked')?.value ?? 'single',
+    copies:          Number($('#pq-copies').value),
+    gradeId:         $('#pq-grade').value || null,
+    note:            $('#pq-note').value,
+    priority:        $('#pq-priority input:checked')?.value ?? 'normal'
+  };
+
+  printState.busy = true;
+  try {
+    await withBusy($('#pq-submit'), async () => {
+      const result = await createPrintRequest(input);
+      rememberRequest(result);
+      prefs.set('lastName', input.requesterName.trim());
+      showPrintSuccess(result);
+      refreshBoard();
+      refreshMine();
+    });
+  } catch (err) {
+    showPrintError(err.message);
+  } finally {
+    printState.busy = false;
+  }
+}
+
+function showPrintSuccess(result) {
+  $('#print-form').hidden = true;
+  $('#request-form').hidden = true;
+  $('.reqtabs').hidden = true;
+  $('#rq-success').hidden = false;
+  $('#rq-number').textContent = result.request_number;
+  $('#rq-eta').textContent = result.people_ahead > 0
+    ? t('form.peopleAhead', { n: result.people_ahead })
+    : t('form.youAreNext');
+  resetPrintForm();
+}
+
+function resetPrintForm() {
+  const name = $('#pq-name').value;
+  $('#print-form').reset();
+  $('#pq-name').value = name;
+  printState.file = null;
+  printState.upload = null;
+  $('#pq-file-chip').hidden = true;
+  $('#pq-progress').hidden = true;
+  $('#pq-file-btn-text').textContent = t('print.choose');
+  $('#pq-location-custom-field').hidden = true;
+  $('#pq-note-count').textContent = '0';
+  paintSections();
+  paintColourFields();
+  paintPrintQuip();
+}
+
 /* ================================================================== */
 /* My requests (this device)                                          */
 /* ================================================================== */
@@ -478,8 +764,10 @@ function openMyRequest(token) {
         <span class="badge badge-${esc(status.tone)}">${status.icon} ${esc(status.label)}</span>
         <span class="badge badge-${esc(priority.tone)}">${priority.icon} ${esc(priority.label)}</span>
       </div>
-      <p class="req-title" style="font-size:18px">${esc(requestCategory(request))}</p>
+      <p class="req-title" style="font-size:18px">${esc(
+        request.print?.title || requestCategory(request))}</p>
       <p class="muted">${icon('pin')} ${esc(requestLocation(request))}</p>
+      ${request.print ? printOwnerBlock(request) : ''}
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>
       ${request.accepted_at ? `<p class="small faint">${esc(REQUEST_STATUS_META.accepted.label)} · ${esc(fmtDateTime(request.accepted_at))}</p>` : ''}
@@ -488,6 +776,8 @@ function openMyRequest(token) {
     </div>`;
 
   openSheet('#detail-sheet');
+
+  if (request.print) appendDownloadButton(body, request);
 
   // Editing is for pending only; after that he has planned around it.
   if (request.status === 'pending') {
@@ -541,6 +831,47 @@ function openMyRequest(token) {
 }
 
 /** Change a pending request: more detail, or a different urgency. */
+/**
+ * What the person who sent a print request sees about their own document.
+ * Their filename and their settings - nothing they did not already know,
+ * and nothing another colleague could reach even with this token missing,
+ * because the server checks it again.
+ */
+function printOwnerBlock(request) {
+  const job = request.print;
+  const where = destinationText(job);
+  return `
+    <div class="printbox">
+      <p class="printbox-file">${icon('files')} <span class="mono">${esc(job.original_filename)}</span></p>
+      <p class="printbox-line">${esc(settingsLine(job))}</p>
+      ${where ? `<p class="printbox-line">${esc(t('print.destination'))}: ${esc(where)}</p>` : ''}
+      ${job.note ? `<p class="printbox-line">${esc(job.note)}</p>` : ''}
+    </div>`;
+}
+
+/**
+ * Fetching the document is a round trip, not a link: the bucket is
+ * private, so the Edge Function has to authorise first and mint a URL
+ * that dies in a minute. Opening in a new tab keeps the board loaded.
+ */
+function appendDownloadButton(body, request) {
+  const btn = el('button', {
+    class: 'btn btn-soft btn-block',
+    type: 'button',
+    html: `${icon('inbox')} <span>${esc(t('print.openDoc'))}</span>`,
+    style: 'margin-top:14px'
+  });
+  btn.addEventListener('click', () => withBusy(btn, async () => {
+    try {
+      const { url } = await openPrintDocument(request.id ?? request.request_id, request.token);
+      window.open(url, '_blank', 'noopener');
+    } catch (err) {
+      toastError(err.message);
+    }
+  }));
+  body.append(btn);
+}
+
 function openEditRequest(request) {
   const body = $('#detail-body');
   $('#detail-title').textContent = t('mine.editTitle');

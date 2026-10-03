@@ -130,7 +130,24 @@
       <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close"><span class="ico" data-icon="close" aria-hidden="true"></span></button>
     </div>
 
-    <form id="request-form" class="stack" novalidate>
+    <!-- Two kinds of request. The help form below is exactly what it has
+         always been; printing is a second tab beside it, not a change to
+         it. -->
+    <div class="reqtabs" role="tablist" aria-label="Request type">
+      <button class="reqtab" type="button" role="tab" id="tab-help"
+              data-reqtab="help" aria-selected="true" aria-controls="panel-help">
+        <span class="ico" data-icon="wrench" aria-hidden="true"></span>
+        <span data-i18n="print.tabHelp">Ask for help</span>
+      </button>
+      <button class="reqtab" type="button" role="tab" id="tab-print"
+              data-reqtab="print" aria-selected="false" aria-controls="panel-print">
+        <span class="ico" data-icon="files" aria-hidden="true"></span>
+        <span data-i18n="print.tabPrint">Print something</span>
+      </button>
+    </div>
+
+    <form id="request-form" class="stack" novalidate
+          role="tabpanel" aria-labelledby="tab-help">
       <p class="help" data-i18n="form.intro">No account needed.</p>
 
       <div class="field">
@@ -182,6 +199,137 @@
 
       <p class="error" id="rq-error" role="alert" hidden></p>
       <button class="btn btn-primary btn-lg btn-block" type="submit" id="rq-submit" data-i18n="form.submit">Send request</button>
+    </form>
+
+
+    <!-- ======================= PRINT ======================= -->
+    <form id="print-form" class="stack" novalidate hidden
+          role="tabpanel" aria-labelledby="tab-print">
+      <p class="help" data-i18n="print.intro">Attach the document and say how to print it.</p>
+
+      <div class="field">
+        <label class="label" for="pq-name" data-i18n="form.yourName">Your name</label>
+        <input class="input" id="pq-name" type="text" required maxlength="120"
+               autocomplete="name" data-i18n-ph="form.namePlaceholder">
+      </div>
+
+      <div class="field">
+        <label class="label" for="pq-location" data-i18n="form.where">Where are you?</label>
+        <select class="select" id="pq-location" required></select>
+      </div>
+      <div class="field" id="pq-location-custom-field" hidden>
+        <label class="label" for="pq-location-custom" data-i18n="form.typeLocation">Type the location</label>
+        <input class="input" id="pq-location-custom" type="text" maxlength="80" data-i18n-ph="form.locationPlaceholder">
+      </div>
+
+      <!-- ---- The document ---- -->
+      <h3 class="form-heading" data-i18n="print.docHeading">The document</h3>
+
+      <div class="field">
+        <label class="label" for="pq-title" data-i18n="print.titleLabel">Title (optional)</label>
+        <input class="input" id="pq-title" type="text" maxlength="120" data-i18n-ph="print.titlePh">
+        <p class="help" data-i18n="print.titleHelp">Colleagues see this title. They never see the file.</p>
+      </div>
+
+      <div class="field">
+        <span class="label" data-i18n="print.fileLabel">Document</span>
+        <input type="file" id="pq-file" class="sr-only" required>
+        <button class="btn btn-block" type="button" id="pq-file-btn">
+          <span class="ico" data-icon="inbox" aria-hidden="true"></span>
+          <span id="pq-file-btn-text" data-i18n="print.choose">Choose a file</span>
+        </button>
+        <div id="pq-file-chip" hidden></div>
+        <div class="upload-bar" id="pq-progress" hidden><span id="pq-progress-fill"></span></div>
+        <p class="help" id="pq-file-help"></p>
+      </div>
+
+      <!-- ---- How to print it ---- -->
+      <h3 class="form-heading" data-i18n="print.optionsHeading">How to print it</h3>
+
+      <div class="field">
+        <label class="label" for="pq-paper" data-i18n="print.paper">Paper size</label>
+        <select class="select" id="pq-paper"></select>
+      </div>
+
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label" data-i18n="print.colourLabel">Colour</legend>
+        <div class="segmented" id="pq-colour">
+          <input type="radio" name="pq_colour" id="pq-bw" value="bw" checked>
+          <label for="pq-bw"><span data-i18n="print.bw">Black &amp; white</span></label>
+          <input type="radio" name="pq_colour" id="pq-color" value="color">
+          <label for="pq-color"><span data-i18n="print.colour">Colour</span></label>
+        </div>
+      </fieldset>
+
+      <!-- Shown only when Colour is chosen. -->
+      <fieldset class="field" id="pq-permission-field" hidden style="border:0;padding:0;margin:0">
+        <legend class="label" data-i18n="print.permissionQ">Do you have permission?</legend>
+        <div class="segmented" id="pq-permission">
+          <input type="radio" name="pq_perm" id="pq-perm-yes" value="yes">
+          <label for="pq-perm-yes"><span data-i18n="print.yes">Yes</span></label>
+          <input type="radio" name="pq_perm" id="pq-perm-no" value="no">
+          <label for="pq-perm-no"><span data-i18n="print.no">No</span></label>
+        </div>
+        <p class="error" id="pq-permission-warn" hidden data-i18n="print.permissionNo"></p>
+      </fieldset>
+
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label" data-i18n="print.sides">Sides</legend>
+        <div class="segmented" id="pq-sides">
+          <input type="radio" name="pq_sides" id="pq-single" value="single" checked>
+          <label for="pq-single"><span data-i18n="print.single">1-sided</span></label>
+          <input type="radio" name="pq_sides" id="pq-double" value="double">
+          <label for="pq-double"><span data-i18n="print.double">Double-sided</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="pq-copies" data-i18n="print.copies">Copies</label>
+        <input class="input" id="pq-copies" type="number" inputmode="numeric"
+               min="1" max="500" step="1" value="1" required>
+      </div>
+
+      <!-- ---- Destination ---- -->
+      <h3 class="form-heading" data-i18n="print.destHeading">Who is it for?</h3>
+      <p class="help" data-i18n="print.destHelp">Optional. Leave empty if it is not for a class.</p>
+
+      <div class="field">
+        <label class="label" for="pq-section" data-i18n="print.section">School section</label>
+        <select class="select" id="pq-section"></select>
+      </div>
+      <div class="field" id="pq-level-field" hidden>
+        <label class="label" for="pq-level" data-i18n="print.level">Cycle</label>
+        <select class="select" id="pq-level"></select>
+      </div>
+      <div class="field" id="pq-grade-field" hidden>
+        <label class="label" for="pq-grade" data-i18n="print.grade">Grade</label>
+        <select class="select" id="pq-grade"></select>
+      </div>
+
+      <!-- ---- Note and urgency ---- -->
+      <div class="field">
+        <label class="label" for="pq-note" data-i18n="print.note">Note (optional)</label>
+        <input class="input" id="pq-note" type="text" maxlength="100" data-i18n-ph="print.notePh">
+        <p class="help"><span id="pq-note-count">0</span>/100</p>
+      </div>
+
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label" data-i18n="form.priority">How urgent?</legend>
+        <div class="segmented" id="pq-priority">
+          <input type="radio" name="pq_priority" id="pq-pr-normal" value="normal" checked>
+          <label for="pq-pr-normal"><span class="ico" data-icon="dot" data-icon-tone="warn-fill" aria-hidden="true"></span> <span data-i18n="priority.normal">Normal</span></label>
+          <input type="radio" name="pq_priority" id="pq-pr-urgent" value="urgent">
+          <label for="pq-pr-urgent"><span class="ico" data-icon="dot" data-icon-tone="urgent-fill" aria-hidden="true"></span> <span data-i18n="priority.urgent">Urgent</span></label>
+          <input type="radio" name="pq_priority" id="pq-pr-very" value="very_urgent">
+          <label for="pq-pr-very"><span class="ico" data-icon="dot" data-icon-tone="danger-fill" aria-hidden="true"></span> <span data-i18n="priority.very_urgent">Very urgent</span></label>
+          <input type="radio" name="pq_priority" id="pq-pr-life" value="life_death">
+          <label for="pq-pr-life" class="is-critical"><span class="ico" data-icon="siren" aria-hidden="true"></span> <span data-i18n="priority.life_death">Life &amp; death</span></label>
+        </div>
+        <p class="quip" id="pq-quip" role="status" aria-live="polite"></p>
+      </fieldset>
+
+      <p class="error" id="pq-error" role="alert" hidden></p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit" id="pq-submit" data-i18n="print.submit">Send print request</button>
     </form>
 
     <div id="rq-success" hidden style="text-align:center;padding:10px 0 6px">

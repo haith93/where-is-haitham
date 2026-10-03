@@ -19,21 +19,22 @@ waiting** — and send him a request instead of calling.
 1. [What it does](#1-what-it-does)
 2. [Architecture](#2-architecture)
 3. [The design system](#3-the-design-system)
-4. [Tech stack](#4-tech-stack)
-5. [Folder structure](#5-folder-structure)
-6. [Setup — Supabase](#6-setup--supabase)
-7. [Setup — the first administrator](#7-setup--the-first-administrator)
-8. [Setup — running it locally](#8-setup--running-it-locally)
-9. [Deploying to GitHub Pages](#9-deploying-to-github-pages)
-10. [Security model](#10-security-model)
-11. [How time is handled](#11-how-time-is-handled)
-12. [Realtime](#12-realtime)
-13. [PWA / installing on a phone](#13-pwa--installing-on-a-phone)
-14. [Push notifications](#14-push-notifications)
-15. [Reports and exports](#15-reports-and-exports)
-16. [Day-to-day admin](#16-day-to-day-admin)
-17. [Troubleshooting](#17-troubleshooting)
-18. [Known limitations](#18-known-limitations)
+4. [Print requests](#4-print-requests)
+5. [Tech stack](#5-tech-stack)
+6. [Folder structure](#6-folder-structure)
+7. [Setup — Supabase](#7-setup--supabase)
+8. [Setup — the first administrator](#8-setup--the-first-administrator)
+9. [Setup — running it locally](#9-setup--running-it-locally)
+10. [Deploying to GitHub Pages](#10-deploying-to-github-pages)
+11. [Security model](#11-security-model)
+12. [How time is handled](#12-how-time-is-handled)
+13. [Realtime](#13-realtime)
+14. [PWA / installing on a phone](#14-pwa--installing-on-a-phone)
+15. [Push notifications](#15-push-notifications)
+16. [Reports and exports](#16-reports-and-exports)
+17. [Day-to-day admin](#17-day-to-day-admin)
+18. [Troubleshooting](#18-troubleshooting)
+19. [Known limitations](#19-known-limitations)
 
 ---
 
@@ -233,7 +234,86 @@ status or urgency label, never instead of it.
 
 ---
 
-## 4. Tech stack
+## 4. Print requests
+
+A second kind of request, beside the existing one. The request sheet has
+two tabs: **Ask for help**, which is exactly what it always was, and
+**Print something**, which carries a document.
+
+### The privacy rule, and where it is actually enforced
+
+The document must never reach another colleague. That is not a UI
+concern, so it is not solved in the UI:
+
+| Layer | What stops a leak |
+|---|---|
+| Bucket | `print-jobs` is **private**. No policy on `storage.objects` grants `anon` or `authenticated` anything, so no browser can read it directly |
+| Table | `print_jobs` holds the filename and path. `anon` has no `select` on it at all, and the admin policy requires `is_admin()` |
+| Public board | `build_public_snapshot` — the only thing an anonymous visitor reads — emits a title or nothing. No filename, no path, no size |
+| Download | Every link is minted by `print-download` after it has checked the caller. It expires in 60 seconds |
+
+A colleague reading the raw JSON of the public board learns nothing the
+board does not already show them.
+
+### Who can open a document
+
+**Haitham, or any administrator** — proven by their Supabase session. The
+JWT is verified, then the profile is read with the service role to confirm
+the role is still `admin` and the account still active. A token alone is
+never taken as proof.
+
+**The person who sent it** — proven by the request's `public_token`, the
+same unguessable value that already lets them view and cancel their own
+request. It is matched against the request row, so it cannot be pointed at
+a different request.
+
+Nobody else. There is no third branch. A storage path is never accepted
+from the caller — the path is read from the database *after*
+authorisation, so guessing one gains nothing, and "no such request" and
+"not yours" return the same 404 so the endpoint cannot be used to discover
+which requests exist.
+
+### The school's class structure
+
+Three levels, **Section → Cycle → Grade**, seeded from the school's own
+spreadsheet into `public.school_grades`. It is data: next year's structure
+is an edit in that table, not a release.
+
+There is no class (A/B/C) level, because the spreadsheet does not contain
+one. Adding it later is a column and a fourth dropdown; `js/school.js`
+derives each list from the rows rather than hard-coding any of them, so
+an impossible combination is never selectable.
+
+The seed reproduces the sheet verbatim, including the rows where a
+support (مساند) grade sits under a different section than its neighbours.
+
+### One-time setup
+
+```bash
+# A PRIVATE bucket. Not public — the whole design depends on this.
+supabase storage create-bucket print-jobs
+
+supabase functions deploy print-upload
+supabase functions deploy print-download
+```
+
+Both functions use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, which
+Supabase injects automatically. Neither key ever reaches the frontend.
+
+### Limits
+
+15 MB per file. PDF, Word, Excel, PowerPoint, OpenDocument, RTF, plain
+text and common images. The extension is checked *and* the first bytes are
+compared against what that extension claims, because an extension is a
+claim by the uploader, not a fact.
+
+Colour printing asks whether permission was given. Answering "no" disables
+the submit button and says why; the RPC refuses it again server-side,
+because a browser can be edited and that one costs money.
+
+---
+
+## 5. Tech stack
 
 | Layer | Choice | Why |
 |---|---|---|
@@ -249,7 +329,7 @@ an exact version from jsDelivr.
 
 ---
 
-## 5. Folder structure
+## 6. Folder structure
 
 ```
 where-is-haitham/
@@ -288,6 +368,8 @@ where-is-haitham/
 │   ├── i18n.js             Arabic / English strings and RTL
 │   ├── messages.js         Every playful status line, EN + AR, in one table
 │   ├── icons.js            The whole icon set, drawn as inline SVG
+│   ├── print.js            Print requests: upload, submit, fetch back
+│   ├── school.js           The section → cycle → grade cascade
 │   ├── dashboard.js        index.html controller
 │   ├── admin.js            admin.html controller
 │   └── staff.js            staff.html controller
@@ -300,13 +382,16 @@ where-is-haitham/
 │   └── migration-public-requests.sql
 │                           Public submission + channels (one-time)
 │
-├── supabase/functions/send-push/   Optional Web Push sender
+├── supabase/functions/
+│   ├── send-push/          Optional Web Push sender
+│   ├── print-upload/       Validates and stores a document (service role)
+│   └── print-download/     Authorises, then mints a 60-second signed URL
 └── .github/workflows/deploy.yml    Builds env.js and publishes Pages
 ```
 
 ---
 
-## 6. Setup — Supabase
+## 7. Setup — Supabase
 
 1. **Create a project** at [supabase.com](https://supabase.com). Pick a region
    near Lebanon (Frankfurt works well).
@@ -341,7 +426,7 @@ where-is-haitham/
 
 ---
 
-## 7. Setup — the first administrator
+## 8. Setup — the first administrator
 
 Roles are never self-assigned — new sign-ups are always `employee`. Promote the
 first admin by hand:
@@ -404,7 +489,7 @@ the split.
 
 ---
 
-## 8. Setup — running it locally
+## 9. Setup — running it locally
 
 ```bash
 cp js/env.example.js js/env.js
@@ -425,7 +510,7 @@ what to do instead of failing silently.
 
 ---
 
-## 9. Deploying to GitHub Pages
+## 10. Deploying to GitHub Pages
 
 1. Push this folder to a GitHub repository.
 
@@ -454,7 +539,7 @@ Supabase's Redirect URLs too.
 
 ---
 
-## 10. Security model
+## 11. Security model
 
 **Authentication** is Supabase Auth (e-mail + password). The JWT carries the user
 id; the role lives in `public.profiles` and is read server-side.
@@ -501,7 +586,7 @@ await sb.from('buildings').update({ name: 'x' }).neq('id', '');
 
 ---
 
-## 11. How time is handled
+## 12. How time is handled
 
 This is the part most worth understanding.
 
@@ -546,7 +631,7 @@ honestly tell you that jobs planned for 10 minutes take 17.
 
 ---
 
-## 12. Realtime
+## 13. Realtime
 
 Nothing polls. `js/realtime.js` opens subscriptions and the screen re-renders
 when the database says something changed:
@@ -568,7 +653,7 @@ when the tab becomes visible again or the network returns.
 
 ---
 
-## 13. PWA / installing on a phone
+## 14. PWA / installing on a phone
 
 The app is installable and has an offline shell.
 
@@ -585,7 +670,7 @@ to pretend a save succeeded.
 
 ---
 
-## 14. Push notifications
+## 15. Push notifications
 
 In-app notifications always work: a row is written to `notifications`, Realtime
 delivers it, and the app shows an alert and a badge. That needs no setup.
@@ -638,7 +723,7 @@ on the current browser.
 
 ---
 
-## 15. Reports and exports
+## 16. Reports and exports
 
 *Admin → Reports* generates everything from the historical tables. Nothing is
 typed in and nothing is pre-aggregated, so a report always reflects what actually
@@ -662,7 +747,7 @@ without an import wizard.
 
 ---
 
-## 16. Day-to-day admin
+## 17. Day-to-day admin
 
 **Adding a building or task.** *Admin → Buildings* (or *Tasks*) → type the name →
 **Add**. Reorder with the ▲▼ arrows; that order is what the dropdowns use.
@@ -685,7 +770,7 @@ in*. Turning it off is enforced by the RLS policies, not just by hiding the page
 
 ---
 
-## 17. Troubleshooting
+## 18. Troubleshooting
 
 **"Almost ready" / setup screen.** `js/env.js` is missing or still has
 placeholders. Locally: copy `env.example.js`. On Pages: check both repository
@@ -696,7 +781,7 @@ are enabled, the account must be confirmed first. You can confirm a user manuall
 in *Authentication → Users*.
 
 **Signed in but the admin console bounces to the board.** That account's role is
-still `employee`. Run the promote query in [section 7](#7-setup--the-first-administrator).
+still `employee`. Run the promote query in [section 8](#8-setup--the-first-administrator).
 
 **Board loads but stays empty for signed-out visitors.** `public_dashboard` is
 off. Turn it on in *Admin → Settings*, or check:
@@ -727,7 +812,7 @@ granted? *Settings → Notifications* reports which of these is the blocker.
 
 ---
 
-## 18. Known limitations
+## 19. Known limitations
 
 Stated plainly, because a tool you trust is one that does not overclaim.
 

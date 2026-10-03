@@ -19,7 +19,7 @@ import {
   fmtDateLong, fmtDateTime, fmtTime, weekdayName, toCSV, downloadFile
 } from './utils.js';
 import { getStatusHistory, historyLocation, historyTask, actualMinutes } from './status.js';
-import { getRequestsBetween, completionMinutes, requestLocation, requestCategory, requestChannel } from './requests.js';
+import { getRequestsBetween, completionMinutes, requestLocation, requestCategory, requestChannel , printJob, isPrintRequest } from './requests.js';
 import { PRIORITY_META, REQUEST_STATUS_META, STATUS_META, CHANNELS } from './config.js';
 
 /** Status types that do not count as working time. */
@@ -109,7 +109,14 @@ export async function buildReport(fromKey, toKey, filters = {}) {
     urgent: requests.filter(r => r.priority === 'urgent').length,
     veryUrgent: requests.filter(r => r.priority === 'very_urgent').length,
     lifeDeath: requests.filter(r => r.priority === 'life_death').length,
-    normal: requests.filter(r => r.priority === 'normal').length
+    normal: requests.filter(r => r.priority === 'normal').length,
+    print: requests.filter(isPrintRequest).length,
+    help:  requests.filter(r => !isPrintRequest(r)).length,
+    // Paper actually spent, which is the number that gets asked about at
+    // budget time. Copies, not requests.
+    copies: requests.reduce((sum, r) => sum + (printJob(r)?.copies ?? 0), 0),
+    colourCopies: requests.reduce(
+      (sum, r) => sum + (printJob(r)?.color_mode === 'color' ? (printJob(r)?.copies ?? 0) : 0), 0)
   };
 
   const completionTimes = requests.map(completionMinutes).filter(v => v != null);
@@ -255,6 +262,11 @@ export function exportSummaryCSV(report) {
     ['Urgent', report.counts.urgent],
     ['Very urgent', report.counts.veryUrgent],
     ['Life & death', report.counts.lifeDeath],
+    [],
+    ['Help requests', report.counts.help],
+    ['Print requests', report.counts.print],
+    ['Pages copies requested', report.counts.copies],
+    ['Of which colour', report.counts.colourCopies],
     ['Average per day', report.perDay],
     ['Average time to accept (min)', report.avgResponse ?? ''],
     ['Average time to complete (min)', report.avgCompletion ?? ''],
@@ -290,11 +302,47 @@ export function exportSummaryCSV(report) {
   downloadFile(`haitham-report-${report.range.fromKey}_to_${report.range.toKey}.csv`, toCSV(rows));
 }
 
+/**
+ * The print columns for one row, or eleven blanks for a help request.
+ *
+ * The FILENAME goes in, not the title. A colleague's title is optional
+ * and is whatever they felt like typing; the filename is what was
+ * actually printed, and it is the thing worth having in a report months
+ * later. The title follows it as a second column rather than replacing it.
+ */
+function printColumns(request) {
+  if (!isPrintRequest(request)) return ['help', '', '', '', '', '', '', '', '', '', ''];
+  const job = printJob(request);
+  if (!job) {
+    // A print request whose job row is not visible: this export was run
+    // by something without admin rights. Say so rather than fabricate.
+    return ['print', '(not available)', '', '', '', '', '', '', '', '', ''];
+  }
+  return [
+    'print',
+    job.original_filename,
+    job.title ?? '',
+    job.paper_size,
+    job.color_mode === 'color' ? 'Colour' : 'B&W',
+    job.print_sides === 'double' ? 'Double-sided' : '1-sided',
+    job.copies,
+    job.section_snapshot ?? '',
+    job.level_snapshot ?? '',
+    job.grade_snapshot ?? '',
+    job.note ?? ''
+  ];
+}
+
 export function exportRequestsCSV(report) {
   const rows = [
+    // The print columns sit after the existing ones, so a spreadsheet
+    // someone already built against this export keeps working: every
+    // column it knows is still in the same place.
     ['Request number', 'Created', 'Requester', 'Location', 'Category', 'Channel', 'Priority',
      'Status', 'Description', 'Notes', 'Accepted', 'Started', 'Completed',
-     'Minutes to accept', 'Minutes to complete'],
+     'Minutes to accept', 'Minutes to complete',
+     'Type', 'File name', 'Title', 'Paper', 'Colour', 'Sides', 'Copies',
+     'Section', 'Cycle', 'Grade', 'Print note'],
     ...report.requests.map(r => [
       r.request_number,
       fmtDateTime(r.created_at),
@@ -310,7 +358,8 @@ export function exportRequestsCSV(report) {
       r.started_at ? fmtDateTime(r.started_at) : '',
       r.completed_at ? fmtDateTime(r.completed_at) : '',
       r.accepted_at ? Math.round((new Date(r.accepted_at) - new Date(r.created_at)) / 60000) : '',
-      completionMinutes(r) ?? ''
+      completionMinutes(r) ?? '',
+      ...printColumns(r)
     ])
   ];
   downloadFile(`haitham-requests-${report.range.fromKey}_to_${report.range.toKey}.csv`, toCSV(rows));
