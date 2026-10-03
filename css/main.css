@@ -730,6 +730,14 @@ input[type='checkbox']:checked::after {
 }
 .req-key::first-letter { color: var(--danger); font-weight: 700; }
 
+/* Haitham disagreeing with how urgent somebody thinks their problem is.
+   It sits beside their own badge, never instead of it. */
+.flagline {
+  font-weight: 600;
+  color: var(--info);
+}
+.flagnotice { border-inline-start: 8px solid var(--info-fill); }
+
 /* ---------- Toasts --------------------------------------------------- */
 .toasts {
   position: fixed;

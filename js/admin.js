@@ -9,7 +9,7 @@
 import { configured } from './supabase.js';
 import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META, CHANNELS } from './config.js';
 import { icon, paintIcons } from './icons.js';
-import { settingsLine, openPrintDocument } from './print.js';
+import { settingsLine, downloadPrintDocument } from './print.js';
 import { destinationText } from './school.js';
 import { availabilityMessage } from './messages.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, getLang } from './i18n.js';
@@ -36,7 +36,7 @@ import {
 } from './status.js';
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
-  completeRequest, rejectRequest, setPriority, saveQueueOrder, sortQueue,
+  completeRequest, rejectRequest, flagPriority, saveQueueOrder, sortQueue,
   requestLocation, requestCategory, requestChannel, printJob, isPrintRequest, adminCreateRequest,
   pauseRequest, resumeRequest, deleteRequest, purgeRequests,
   getRequestTimeline, OPEN_STATUSES
@@ -748,7 +748,10 @@ function queueCardHTML(r) {
   const status = REQUEST_STATUS_META[r.status] ?? REQUEST_STATUS_META.pending;
   const closed = !OPEN_STATUSES.includes(r.status);
 
-  const actions = closed ? '' : `
+  const actions = closed ? `
+    <div class="acts">
+      <button class="btn btn-soft btn-sm" type="button" data-act="more" data-id="${esc(r.id)}">${esc(t('action.more'))}</button>
+    </div>` : `
     <div class="acts">
       ${r.status === 'pending' ? `
         <button class="btn btn-ok btn-sm" type="button" data-act="accept" data-id="${esc(r.id)}">${esc(t('admin.accept'))}</button>
@@ -781,6 +784,12 @@ function queueCardHTML(r) {
         ? `${icon('files')} ${esc(printJob(r)?.title || printJob(r)?.original_filename || t('print.aPrintJob'))}`
         : `${icon('wrench')} ${esc(requestCategory(r))}`}</p>
       ${isPrintRequest(r) ? printAdminBlock(r) : ''}
+      ${r.flagged_priority && r.flagged_priority !== r.priority ? `
+        <p class="desc flagline">
+          ${(PRIORITY_META[r.flagged_priority] ?? PRIORITY_META.normal).icon}
+          ${esc(t('admin.youSaid'))}: ${esc((PRIORITY_META[r.flagged_priority] ?? PRIORITY_META.normal).label)}${
+            r.flag_note ? ` — ${esc(r.flag_note)}` : ''}
+        </p>` : ''}
       ${r.description ? `<p class="desc">${esc(r.description)}</p>` : ''}
       ${r.status === 'paused' ? `<p class="desc" style="color:var(--urgent)">
         ${icon('pause')} ${esc(t('admin.pausedFor', { d: durationText(minutesBetween(r.paused_at, new Date()) ?? 0) }))}${
@@ -831,8 +840,7 @@ function wirePrintOpen() {
     event.preventDefault();
     await withBusy(btn, t('print.opening'), async () => {
       try {
-        const { url } = await openPrintDocument(btn.dataset.printOpen);
-        window.open(url, '_blank', 'noopener');
+        await downloadPrintDocument(btn.dataset.printOpen);
       } catch (err) {
         toastError(err.message);
       }
@@ -969,12 +977,16 @@ async function openRequestActions(request) {
   const body = $('#action-body');
   const priority = PRIORITY_META[request.priority];
   const status = REQUEST_STATUS_META[request.status];
+  const flagged = request.flagged_priority ? PRIORITY_META[request.flagged_priority] : null;
+  const closed = !OPEN_STATUSES.includes(request.status);
 
   body.innerHTML = `
     <div class="stack-sm">
       <div class="row-wrap">
         <span class="badge badge-${esc(status.tone)}">${status.icon} ${esc(status.label)}</span>
         <span class="badge badge-${esc(priority.tone)}">${priority.icon} ${esc(priority.label)}</span>
+        ${flagged ? `<span class="badge badge-${esc(flagged.tone)}">
+          ${flagged.icon} ${esc(t('admin.youSaid'))}: ${esc(flagged.label)}</span>` : ''}
       </div>
       <p style="font-size:18px;font-weight:750">${esc(request.requester_name_snapshot)}</p>
       <p class="muted">${icon('pin')} ${esc(requestLocation(request))} · ${icon('wrench')} ${esc(requestCategory(request))}</p>
@@ -982,13 +994,23 @@ async function openRequestActions(request) {
       <p class="small faint">Sent ${esc(fmtDateTime(request.created_at))}</p>
     </div>
 
+    ${closed ? '' : `
     <div class="field" style="margin-top:18px">
-      <span class="label">${esc(t('admin.changePriority'))}</span>
+      <span class="label">${esc(t('admin.flagSection'))}</span>
+      <p class="help">${esc(t('admin.flagHint'))}</p>
       <div class="row-wrap" id="pri-buttons">
         ${Object.entries(PRIORITY_META).map(([key, meta]) => `
-          <button class="btn btn-sm ${request.priority === key ? 'btn-primary' : 'btn-soft'}"
+          <button class="btn btn-sm ${request.flagged_priority === key ? 'btn-primary' : 'btn-soft'}"
                   type="button" data-priority="${esc(key)}">${meta.icon} ${esc(meta.label)}</button>`).join('')}
       </div>
+      <label class="label" for="flag-note" style="margin-top:10px">${esc(t('admin.flagNote'))}</label>
+      <input class="input" id="flag-note" type="text" maxlength="200"
+             placeholder="${esc(t('admin.flagNotePh'))}"
+             value="${esc(request.flag_note ?? '')}">
+      ${request.flagged_priority ? `
+        <button class="btn btn-sm btn-ghost" type="button" id="flag-clear" style="margin-top:8px">
+          ${esc(t('admin.flagClear'))}
+        </button>` : ''}
     </div>
 
     <div class="field" style="margin-top:18px">
@@ -998,7 +1020,7 @@ async function openRequestActions(request) {
         <button class="btn btn-sm btn-soft" type="button" data-move="down">${esc(t('admin.later'))}</button>
       </div>
       <p class="help">${esc(t('admin.orderHint'))}</p>
-    </div>
+    </div>`}
 
     <div id="action-timeline" style="margin-top:18px"></div>
 
@@ -1014,15 +1036,28 @@ async function openRequestActions(request) {
 
   $$('#pri-buttons [data-priority]', body).forEach(btn =>
     btn.addEventListener('click', async () => {
-      await withBusy(btn, 'Saving…', async () => {
+      await withBusy(btn, t('action.working'), async () => {
         try {
-          await setPriority(request.id, btn.dataset.priority);
-          toastOk('Priority updated.');
+          // Their priority is untouched; this records a second opinion
+          // and the message that explains it.
+          await flagPriority(request.id, btn.dataset.priority, $('#flag-note')?.value);
+          toastOk(t('admin.flagSaved'));
           await refreshQueue();
           closeSheet('#action-sheet');
         } catch (err) { toastError(err.message); }
       });
     }));
+
+  $('#flag-clear', body)?.addEventListener('click', async event => {
+    await withBusy(event.currentTarget, t('action.working'), async () => {
+      try {
+        await flagPriority(request.id, null, null);
+        toastOk(t('admin.flagRemoved'));
+        await refreshQueue();
+        closeSheet('#action-sheet');
+      } catch (err) { toastError(err.message); }
+    });
+  });
 
   $$('[data-move]', body).forEach(btn =>
     btn.addEventListener('click', async () => {

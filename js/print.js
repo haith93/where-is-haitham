@@ -258,6 +258,44 @@ export async function openPrintDocument(requestId, publicToken = null) {
   return payload;
 }
 
+/**
+ * Open the document and save it under the name it was uploaded with.
+ *
+ * `Content-Disposition` is an HTTP header and headers are latin-1, so a
+ * name like "3_أعداد_الأقسام.xlsx" came back as "3__.xlsx" - everything
+ * but the digits stripped. Fetching the bytes and handing them to an
+ * <a download> avoids the header completely: that attribute is a DOM
+ * string and takes any script.
+ *
+ * If the fetch fails - an expired link, a blocked cross-origin read - the
+ * signed URL is opened directly instead. A slightly wrong filename beats
+ * no document.
+ */
+export async function downloadPrintDocument(requestId, publicToken = null) {
+  const { url, filename } = await openPrintDocument(requestId, publicToken);
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('fetch failed');
+    const blob = await response.blob();
+
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename || 'document';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    // Revoked on the next turn of the event loop, after the click has
+    // been handled; revoking immediately cancels the download in Safari.
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+    return { filename };
+  } catch {
+    window.open(url, '_blank', 'noopener');
+    return { filename };
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Display                                                             */
 /* ------------------------------------------------------------------ */

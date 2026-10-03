@@ -19,7 +19,7 @@ import {
 } from './ui.js';
 import { getBuildings, getTasks, localName } from './data.js';
 import {
-  uploadDocument, createPrintRequest, getPaperSizes, openPrintDocument,
+  uploadDocument, createPrintRequest, getPaperSizes, downloadPrintDocument,
   checkFile, fileSizeText, settingsLine, publicPrintLine,
   MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
 } from './print.js';
@@ -754,6 +754,7 @@ function openMyRequest(token) {
       <p class="req-title" style="font-size:18px">${esc(
         request.print?.title || requestCategory(request))}</p>
       <p class="muted">${icon('pin')} ${esc(requestLocation(request))}</p>
+      ${flagBlock(request)}
       ${request.print ? printOwnerBlock(request) : ''}
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>
@@ -824,6 +825,24 @@ function openMyRequest(token) {
  * and nothing another colleague could reach even with this token missing,
  * because the server checks it again.
  */
+/**
+ * Haitham's second opinion on how urgent this is, if he has given one.
+ *
+ * Their own choice is untouched and still shown in the badge above; this
+ * sits beside it rather than replacing it. Shown only when the two
+ * actually differ - agreeing with somebody is not news.
+ */
+function flagBlock(request) {
+  const flagged = request.flagged_priority;
+  if (!flagged || flagged === request.priority) return '';
+  const meta = PRIORITY_META[flagged] ?? PRIORITY_META.normal;
+  return `
+    <div class="notice notice-info flagnotice">
+      <p style="font-weight:700">${meta.icon} ${esc(t('mine.flaggedTitle', { priority: meta.label }))}</p>
+      ${request.flag_note ? `<p class="small" style="margin-top:4px">${esc(request.flag_note)}</p>` : ''}
+    </div>`;
+}
+
 function printOwnerBlock(request) {
   const job = request.print;
   const where = destinationText(job);
@@ -850,8 +869,7 @@ function appendDownloadButton(body, request) {
   });
   btn.addEventListener('click', () => withBusy(btn, t('print.opening'), async () => {
     try {
-      const { url } = await openPrintDocument(request.id ?? request.request_id, request.token);
-      window.open(url, '_blank', 'noopener');
+      await downloadPrintDocument(request.id ?? request.request_id, request.token);
     } catch (err) {
       toastError(err.message);
     }

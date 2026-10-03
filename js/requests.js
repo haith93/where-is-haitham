@@ -18,7 +18,7 @@ const REQUEST_COLUMNS = `
   created_at, accepted_at, started_at, completed_at, cancelled_at, updated_at,
   channel, notes, created_by, paused_at, pause_reason,
   location_name_ar_snapshot, category_name_ar_snapshot,
-  request_type,
+  request_type, flagged_priority, flag_note, flagged_at,
   print_jobs (
     title, original_filename, mime_type, file_size,
     paper_size, color_mode, color_permission, print_sides, copies,
@@ -320,6 +320,39 @@ export async function purgeRequests() {
   return data;
 }
 
+/**
+ * Record what Haitham thinks the urgency is, without touching what the
+ * colleague said.
+ *
+ * Their `priority` is their judgement of their own situation, and it is
+ * what orders the queue. Overwriting it used to settle the queue but lose
+ * the disagreement entirely. Passing null clears the flag.
+ */
+export async function flagPriority(id, priority, note = null) {
+  if (priority !== null && !PRIORITY_META[priority]) {
+    throw new Error('Please choose a priority.');
+  }
+  const trimmed = trimOrNull(note);
+  if (trimmed && trimmed.length > 200) {
+    throw new Error('Please shorten the message (200 characters maximum).');
+  }
+  const { data, error } = await sb.rpc('flag_request_priority', {
+    p_request_id: id,
+    p_priority:   priority,
+    p_note:       trimmed
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not flag that request.'));
+  return data;
+}
+
+/**
+ * Overwrite the urgency outright.
+ *
+ * Nothing in the console calls this any more - flagPriority above is what
+ * the Requests screen uses, because overwriting a colleague's judgement
+ * lost the disagreement. Kept because it is still the only way to really
+ * change a priority, and the RPC behind it is still granted.
+ */
 export async function setPriority(id, priority) {
   if (!PRIORITY_META[priority]) throw new Error('Unknown priority.');
   const { data, error } = await sb.rpc('set_request_priority', { p_request_id: id, p_priority: priority });

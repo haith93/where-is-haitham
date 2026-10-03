@@ -19,7 +19,8 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 5 | `migration-edit-request.sql` | Requester can change a pending request |
 | 6 | `migration-life-death.sql` | A fourth urgency above "very urgent" |
 | 7 | `migration-print-requests.sql` | Print requests, the school's class list, the private document store |
-| 8 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
+| 8 | `migration-priority-flag.sql` | Flag the urgency instead of overwriting it |
+| 9 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
 
 There used to be a seventh file, `migration-ui-skin.sql`, which stored a
 site-wide interface style. The interface now has one deliberate design
