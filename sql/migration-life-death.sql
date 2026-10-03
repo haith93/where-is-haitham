@@ -495,7 +495,7 @@ grant execute on function public.set_request_priority(uuid, text) to authenticat
 -- ---------------------------------------------------------------------
 update public.public_board
    set snapshot = public.build_public_snapshot(), updated_at = now()
- where id = true;
+ where id = 1;
 
 commit;
 
