@@ -464,12 +464,6 @@ function wirePrintForm() {
   $('#pq-file-btn').addEventListener('click', () => file.click());
   file.addEventListener('change', onPickFile);
 
-  $('#pq-location').addEventListener('change', event => {
-    const custom = event.target.value === CUSTOM;
-    $('#pq-location-custom-field').hidden = !custom;
-    if (custom) $('#pq-location-custom').focus();
-  });
-
   // Colour is the only field that reveals another. Asking the permission
   // question for a black and white job would be noise.
   $('#pq-colour').addEventListener('change', paintColourFields);
@@ -491,13 +485,6 @@ function wirePrintForm() {
 async function preparePrintForm() {
   const help = $('#pq-file-help');
   if (help) help.textContent = t('print.fileHelp', { max: fileSizeText(MAX_FILE_BYTES) });
-
-  // The location list is the same one the help form uses.
-  const buildings = await getBuildings().catch(() => []);
-  const options = [`<option value="">${esc(t('form.selectLocation'))}</option>`]
-    .concat(buildings.map(b => `<option value="${esc(b.id)}">${esc(localName(b))}</option>`))
-    .concat(`<option value="${CUSTOM}">${esc(t('form.customLocation'))}</option>`);
-  $('#pq-location').innerHTML = options.join('');
 
   const sizes = await getPaperSizes();
   $('#pq-paper').innerHTML = sizes
@@ -635,12 +622,13 @@ async function onSubmitPrint(event) {
     return;
   }
 
-  const locationValue = $('#pq-location').value;
   const input = {
     requesterName:   $('#pq-name').value,
     uploadId:        printState.upload.upload_id,
-    buildingId:      locationValue === CUSTOM ? null : locationValue,
-    customLocation:  locationValue === CUSTOM ? $('#pq-location-custom').value : null,
+    // No location: a print job is collected from wherever Haitham prints,
+    // so the form does not ask and the RPC fills it in.
+    buildingId:      null,
+    customLocation:  null,
     title:           $('#pq-title').value,
     paperSize:       $('#pq-paper').value,
     colorMode:       $('#pq-colour input:checked')?.value ?? 'bw',
@@ -654,7 +642,7 @@ async function onSubmitPrint(event) {
 
   printState.busy = true;
   try {
-    await withBusy($('#pq-submit'), async () => {
+    await withBusy($('#pq-submit'), t('action.sending'), async () => {
       const result = await createPrintRequest(input);
       rememberRequest(result);
       prefs.set('lastName', input.requesterName.trim());
@@ -690,7 +678,6 @@ function resetPrintForm() {
   $('#pq-file-chip').hidden = true;
   $('#pq-progress').hidden = true;
   $('#pq-file-btn-text').textContent = t('print.choose');
-  $('#pq-location-custom-field').hidden = true;
   $('#pq-note-count').textContent = '0';
   paintSections();
   paintColourFields();
@@ -861,7 +848,7 @@ function appendDownloadButton(body, request) {
     html: `${icon('inbox')} <span>${esc(t('print.openDoc'))}</span>`,
     style: 'margin-top:14px'
   });
-  btn.addEventListener('click', () => withBusy(btn, async () => {
+  btn.addEventListener('click', () => withBusy(btn, t('print.opening'), async () => {
     try {
       const { url } = await openPrintDocument(request.id ?? request.request_id, request.token);
       window.open(url, '_blank', 'noopener');

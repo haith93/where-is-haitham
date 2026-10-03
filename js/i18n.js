@@ -228,6 +228,7 @@ const STRINGS = {
   'print.errNote':      { en: 'The note is limited to {max} characters.', ar: 'الملاحظة محدودة بـ{max} حرفاً.' },
   'print.errTitle':     { en: 'Please shorten the title.', ar: 'اختصر العنوان.' },
 
+  'form.requiredKey':   { en: '* required',     ar: '* حقل مطلوب' },
   'form.title':         { en: 'Request Haitham',  ar: 'اطلب هيثم' },
   'form.intro':         { en: 'No account needed. Fill this in and Haitham sees it immediately.',
                           ar: 'لا حاجة لحساب. املأ النموذج وسيصل الطلب إلى هيثم فوراً.' },

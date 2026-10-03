@@ -149,16 +149,17 @@
     <form id="request-form" class="stack" novalidate
           role="tabpanel" aria-labelledby="tab-help">
       <p class="help" data-i18n="form.intro">No account needed.</p>
+      <p class="help req-key" data-i18n="form.requiredKey">* required</p>
 
       <div class="field">
-        <label class="label" for="rq-name" data-i18n="form.yourName">Your name</label>
+        <label class="label" for="rq-name"><span data-i18n="form.yourName">Your name</span><abbr class="req" title="Required">*</abbr></label>
         <input class="input" id="rq-name" type="text" required maxlength="120"
                autocomplete="name" data-i18n-ph="form.namePlaceholder" data-autofocus>
         <p class="help" data-i18n="form.nameHelp">So Haitham knows who to come to.</p>
       </div>
 
       <div class="field">
-        <label class="label" for="rq-location" data-i18n="form.where">Where are you?</label>
+        <label class="label" for="rq-location"><span data-i18n="form.where">Where are you?</span><abbr class="req" title="Required">*</abbr></label>
         <select class="select" id="rq-location" required></select>
       </div>
       <div class="field" id="rq-location-custom-field" hidden>
@@ -167,7 +168,7 @@
       </div>
 
       <div class="field">
-        <label class="label" for="rq-category" data-i18n="form.need">What do you need?</label>
+        <label class="label" for="rq-category"><span data-i18n="form.need">What do you need?</span><abbr class="req" title="Required">*</abbr></label>
         <select class="select" id="rq-category" required></select>
       </div>
       <div class="field" id="rq-category-custom-field" hidden>
@@ -182,7 +183,7 @@
       </div>
 
       <fieldset class="field" style="border:0;padding:0;margin:0">
-        <legend class="label" data-i18n="form.priority">How urgent?</legend>
+        <legend class="label"><span data-i18n="form.priority">How urgent?</span><abbr class="req" title="Required">*</abbr></legend>
         <div class="segmented" id="rq-priority">
           <input type="radio" name="priority" id="pr-normal" value="normal" checked>
           <label for="pr-normal"><span class="ico" data-icon="dot" data-icon-tone="warn-fill" aria-hidden="true"></span> <span data-i18n="priority.normal">Normal</span></label>
@@ -206,20 +207,12 @@
     <form id="print-form" class="stack" novalidate hidden
           role="tabpanel" aria-labelledby="tab-print">
       <p class="help" data-i18n="print.intro">Attach the document and say how to print it.</p>
+      <p class="help req-key" data-i18n="form.requiredKey">* required</p>
 
       <div class="field">
-        <label class="label" for="pq-name" data-i18n="form.yourName">Your name</label>
+        <label class="label" for="pq-name"><span data-i18n="form.yourName">Your name</span><abbr class="req" title="Required">*</abbr></label>
         <input class="input" id="pq-name" type="text" required maxlength="120"
                autocomplete="name" data-i18n-ph="form.namePlaceholder">
-      </div>
-
-      <div class="field">
-        <label class="label" for="pq-location" data-i18n="form.where">Where are you?</label>
-        <select class="select" id="pq-location" required></select>
-      </div>
-      <div class="field" id="pq-location-custom-field" hidden>
-        <label class="label" for="pq-location-custom" data-i18n="form.typeLocation">Type the location</label>
-        <input class="input" id="pq-location-custom" type="text" maxlength="80" data-i18n-ph="form.locationPlaceholder">
       </div>
 
       <!-- ---- The document ---- -->
@@ -232,7 +225,7 @@
       </div>
 
       <div class="field">
-        <span class="label" data-i18n="print.fileLabel">Document</span>
+        <span class="label"><span data-i18n="print.fileLabel">Document</span><abbr class="req" title="Required">*</abbr></span>
         <input type="file" id="pq-file" class="sr-only" required>
         <button class="btn btn-block" type="button" id="pq-file-btn">
           <span class="ico" data-icon="inbox" aria-hidden="true"></span>
@@ -284,7 +277,7 @@
       </fieldset>
 
       <div class="field">
-        <label class="label" for="pq-copies" data-i18n="print.copies">Copies</label>
+        <label class="label" for="pq-copies"><span data-i18n="print.copies">Copies</span><abbr class="req" title="Required">*</abbr></label>
         <input class="input" id="pq-copies" type="number" inputmode="numeric"
                min="1" max="500" step="1" value="1" required>
       </div>
@@ -314,7 +307,7 @@
       </div>
 
       <fieldset class="field" style="border:0;padding:0;margin:0">
-        <legend class="label" data-i18n="form.priority">How urgent?</legend>
+        <legend class="label"><span data-i18n="form.priority">How urgent?</span><abbr class="req" title="Required">*</abbr></legend>
         <div class="segmented" id="pq-priority">
           <input type="radio" name="pq_priority" id="pq-pr-normal" value="normal" checked>
           <label for="pq-pr-normal"><span class="ico" data-icon="dot" data-icon-tone="warn-fill" aria-hidden="true"></span> <span data-i18n="priority.normal">Normal</span></label>

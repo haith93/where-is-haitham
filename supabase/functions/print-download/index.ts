@@ -115,11 +115,18 @@ Deno.serve(async req => {
 
     if (!job) return json({ error: 'Not found.' }, 404);
 
+    // Content-Disposition is a header, and a header is latin-1. Supabase
+    // percent-encodes this value, but a name that is entirely non-latin
+    // can still arrive mangled, so an ASCII fallback is prepared. The
+    // browser gets a usable filename either way, and the true name is
+    // always shown in the interface beside the button.
+    const asciiName = job.original_filename.replace(/[^\x20-\x7e]/g, '').trim();
+    const ext = /\.([A-Za-z0-9]{1,5})$/.exec(job.original_filename)?.[1] ?? 'bin';
+    const downloadAs = asciiName.length > 4 ? asciiName : `document.${ext}`;
+
     const { data: signed, error } = await admin.storage
       .from(BUCKET)
-      .createSignedUrl(job.storage_path, URL_TTL_SECONDS, {
-        download: job.original_filename
-      });
+      .createSignedUrl(job.storage_path, URL_TTL_SECONDS, { download: downloadAs });
 
     if (error || !signed?.signedUrl) {
       console.error('[print-download] sign', error?.message);

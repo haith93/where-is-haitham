@@ -829,7 +829,7 @@ function wirePrintOpen() {
     const btn = event.target.closest('[data-print-open]');
     if (!btn) return;
     event.preventDefault();
-    await withBusy(btn, async () => {
+    await withBusy(btn, t('print.opening'), async () => {
       try {
         const { url } = await openPrintDocument(btn.dataset.printOpen);
         window.open(url, '_blank', 'noopener');

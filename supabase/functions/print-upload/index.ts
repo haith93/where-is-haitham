@@ -85,9 +85,10 @@ const json = (body: unknown, status = 200) =>
   });
 
 /**
- * The name is used for display and for the monthly report, never as a
- * path. Strip anything that could climb out of a directory or confuse a
- * Content-Disposition header, and keep it short.
+ * The name is used for display, for the report and for the download
+ * header - never as a storage key. Strip path separators and control
+ * characters, keep everything else: Arabic, accents and spaces are all
+ * ordinary parts of a filename here.
  */
 function safeName(raw: string): string {
   const base = (raw ?? '').split(/[\\/]/).pop() ?? 'document';
@@ -154,10 +155,19 @@ Deno.serve(async req => {
       }
     }
 
-    // An unguessable directory per upload. Enumerating the bucket is
-    // pointless even if its name leaks, because nothing can list it.
+    // The key is a uuid and an extension - never the uploaded name.
+    //
+    // Two reasons. A name like "3_أعداد_الأقسام.xlsx" is perfectly valid
+    // and perfectly common here, but object keys are not a safe home for
+    // arbitrary user text, and putting it there was returning 500 on every
+    // Arabic filename. And a key that carries no name leaks nothing if one
+    // ever appears in a log.
+    //
+    // The real name is kept in print_uploads, which is where it is wanted:
+    // the report, the admin card and the download header all read it from
+    // the database.
     const id = crypto.randomUUID();
-    const path = `${new Date().toISOString().slice(0, 7)}/${id}/${filename}`;
+    const path = `${new Date().toISOString().slice(0, 7)}/${id}.${ext}`;
 
     const { error: upErr } = await supabase.storage
       .from(BUCKET)

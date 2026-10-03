@@ -379,6 +379,13 @@ begin
     end if;
   end if;
 
+  -- Where the job is collected, not where the colleague is sitting.
+  --
+  -- The print form does not ask, because the answer is always the same
+  -- place and nobody reads it. If a building looking like the photocopy
+  -- room is configured, that is used; otherwise the request carries a
+  -- plain label. Either way the column is never null, so the queue card,
+  -- the history and the reports keep working unchanged.
   if p_building_id is not null then
     select name into v_loc from public.buildings where id = p_building_id and active;
     if v_loc is null then
@@ -386,9 +393,20 @@ begin
     end if;
   else
     v_loc := nullif(trim(coalesce(p_custom_location, '')), '');
-    if v_loc is null then
-      raise exception 'Please say where you are' using errcode = '22023';
-    end if;
+  end if;
+
+  if v_loc is null then
+    select id, name into p_building_id, v_loc
+      from public.buildings
+     where active and (lower(name) like '%photocop%'
+                    or lower(name) like '%print%'
+                    or lower(name) like '%copy%')
+     order by display_order
+     limit 1;
+  end if;
+
+  if v_loc is null then
+    v_loc := 'Photocopy Centre';
   end if;
 
   -- Printing is a task the school already configures; fall back to free

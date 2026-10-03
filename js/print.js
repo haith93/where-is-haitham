@@ -160,8 +160,9 @@ export async function createPrintRequest(input) {
   if (name.length > 120) throw new Error(t('print.errNameLong'));
   if (!input.uploadId) throw new Error(t('print.errNoFile'));
 
+  // The print form does not ask where the colleague is - see the RPC,
+  // which supplies the collection point instead.
   const customLocation = trimOrNull(input.customLocation);
-  if (!input.buildingId && !customLocation) throw new Error(t('print.errWhere'));
 
   const copies = Number(input.copies);
   if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
