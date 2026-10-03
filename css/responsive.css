@@ -1,59 +1,105 @@
 /* =====================================================================
    responsive.css
    The base stylesheet is the phone layout. This file only widens it.
+
+   Widening never softens the design: the borders, the shadows and the
+   square geometry are identical at every size. What changes is how many
+   things sit side by side, and whether navigation is a bottom bar or a
+   rail. Touch targets stay full size on tablets, because a tablet is
+   still touched.
+
    Breakpoints: 380 (small phone), 600 (large phone), 768 (tablet),
                 1024 (desktop), 1400 (large desktop).
    ===================================================================== */
 
+/* ---------- Phones: give the app bar room -----------------------------
+   Brand mark, clock, language and theme do not all fit beside a wordmark
+   at 375px, and the clock must stay legible because tapping it ten times
+   is the way into the admin console. The wordmark is clipped rather than
+   display:none'd, so the link keeps its accessible name.
+   -------------------------------------------------------------------- */
+@media (max-width: 430px) {
+  .brand > span:not(.brand-mark) {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .appbar-inner { gap: var(--s-1); padding-inline: var(--s-2); }
+  .appbar-clock { flex: none; }
+}
+
 /* ---------- Very small phones ---------------------------------------- */
 @media (max-width: 380px) {
-  :root { --tap: 46px; }
-  .container { padding: 12px; }
-  .hero { padding: 16px 14px 14px; }
+  :root {
+    --tap: 46px;
+    --bd: 2.5px;              /* 3px eats a 320px screen alive           */
+    --sh-2: 4px;
+    --sh-3: 6px;
+  }
+  .container { padding: var(--s-3); }
+  .hero { padding: var(--s-4) var(--s-3) var(--s-3); }
   .duration-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .counters { gap: 7px; }
-  .counter .n { font-size: 22px; }
-  .btn-lg { min-height: 54px; font-size: 16px; }
+  .counter .n { font-size: 25px; }
+  .counter .l { font-size: 9.5px; letter-spacing: .04em; }
+  .btn-lg { min-height: 54px; font-size: 15px; }
+  .cta { min-height: 62px; font-size: 17px; }
+  .section-head { padding: var(--s-2) var(--s-3); }
+  .section-head h1 { font-size: 19px; }
 }
 
 /* ---------- Large phones --------------------------------------------- */
 @media (min-width: 600px) {
-  .container { padding: 26px 20px 20px; }
-  .hero-facts { flex-direction: row; flex-wrap: wrap; gap: 20px; }
-  .fact { flex: 1 1 200px; }
+  .container { padding: var(--s-6) var(--s-5) var(--s-5); }
+
+  /* Place and task become two columns, with the divider running down
+     between them instead of across. */
+  .hero-facts { flex-direction: row; flex-wrap: nowrap; }
+  .fact { flex: 1 1 0; }
+  .fact + .fact {
+    border-top: 0;
+    border-inline-start: var(--bd-hair) solid var(--border);
+  }
+
   .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .btn-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .btn-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
-/* ---------- Tablet and up: side navigation replaces bottom bar ------- */
+/* ---------- Tablet and up: top navigation replaces the bottom bar ----- */
 @media (min-width: 768px) {
-  :root { --maxw: 900px; }
+  :root { --maxw: 920px; }
 
   .bottomnav { display: none; }
-  .page { padding-bottom: 40px; }
-  .cta-wrap { position: static; }
+  .page { padding-bottom: var(--s-7); }
 
-  .desktop-nav { display: flex !important; align-items: center; gap: 4px; }
+  /* Tabs, drawn as the reference does: the current one is a filled plate
+     standing on its shadow, the rest are plain. */
+  .desktop-nav { display: flex !important; align-items: center; gap: var(--s-2); }
   .desktop-nav a, .desktop-nav button {
-    padding: 9px 13px;
-    border-radius: var(--radius-sm);
-    font-size: 14px;
-    font-weight: 600;
+    padding: var(--s-2) var(--s-3);
+    font-size: 13.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
     color: var(--text-muted);
-    background: none;
-    border: 0;
+    background: transparent;
+    border: var(--bd-thin) solid transparent;
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;
-  }
-  .desktop-nav a:hover, .desktop-nav button:hover {
-    background: var(--surface-2);
-    color: var(--text);
     text-decoration: none;
   }
-  .desktop-nav [aria-current='page'] {
+  .desktop-nav a:hover, .desktop-nav button:hover {
     background: var(--accent-soft);
-    color: var(--accent-text);
+    border-color: var(--ink);
+    color: var(--text);
+  }
+  .desktop-nav [aria-current='page'] {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    border-color: var(--ink);
+    box-shadow: var(--shadow-sm);
   }
 
   /* Must stay scoped to [open]: a bare `.sheet` rule would beat the
@@ -65,74 +111,99 @@
     inset: auto;
     width: min(620px, 94vw);
     max-height: 88dvh;
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
-    padding: 10px 24px 24px;
+    border: var(--bd) solid var(--ink);
+    box-shadow: var(--shadow-lg);
+    padding: var(--s-3) var(--s-5) var(--s-5);
   }
   .sheet-grip { display: none; }
 
-  .toasts { bottom: 20px; }
+  .toasts { bottom: var(--s-5); }
 
   .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .duration-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 
-/* ---------- Desktop: two-column admin -------------------------------- */
+/* ---------- Desktop: two-column admin --------------------------------- */
 @media (min-width: 1024px) {
-  :root { --maxw: 1180px; }
+  /* Only the console earns the extra width: it has a rail and a content
+     column. The public board is one column of prose and numbers, and a
+     1180px-wide status card just looks stretched. */
+  :root[data-app='admin'] { --maxw: 1180px; }
 
   .admin-shell {
     display: grid;
-    grid-template-columns: 228px minmax(0, 1fr);
-    gap: 28px;
+    grid-template-columns: 236px minmax(0, 1fr);
+    gap: var(--s-6);
     align-items: start;
   }
+
+  /* The rail is one bordered block with ink rules between its rows, not
+     a column of floating pills. */
   .admin-side {
     display: block;
     position: sticky;
-    top: calc(var(--header-h) + 20px);
+    top: calc(var(--header-h) + var(--s-5));
   }
-  .admin-side nav { display: flex; flex-direction: column; gap: 2px; }
+  .admin-side nav {
+    display: flex;
+    flex-direction: column;
+    border: var(--bd) solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+  }
   .admin-side a {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 11px 14px;
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-3);
+    color: var(--text);
     font-weight: 600;
-    font-size: 14.5px;
+    font-size: var(--t-small);
+    text-decoration: none;
   }
-  .admin-side a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+  .admin-side a + a { border-top: var(--bd-hair) solid var(--border); }
+  .admin-side a:hover { background: var(--accent-soft); color: var(--text); }
   .admin-side a[aria-current='page'] {
-    background: var(--accent-soft);
-    color: var(--accent-text);
-    box-shadow: inset 3px 0 0 var(--accent);
+    background: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 700;
   }
-  [dir='rtl'] .admin-side a[aria-current='page'] { box-shadow: inset -3px 0 0 var(--accent); }
-  .admin-side .ico { font-size: 17px; width: 22px; text-align: center; }
+  .admin-side .ico {
+    font-size: 15px;
+    width: 26px; height: 26px;
+    flex: none;
+    display: grid; place-items: center;
+    background: var(--surface-2);
+    border: var(--bd-hair) solid var(--ink);
+  }
+  .admin-side a[aria-current='page'] .ico { background: var(--surface); }
 
   .dash-split {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 16px;
+    gap: var(--s-4);
     align-items: start;
   }
 
   .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .counters  { max-width: 560px; }
+  .counters  { max-width: 580px; }
+
+  /* With room to spare, the hero can carry a heavier shadow again. */
+  :root { --sh-3: 10px; }
 }
 
-/* ---------- Large desktop -------------------------------------------- */
+/* ---------- Large desktop ---------------------------------------------- */
 @media (min-width: 1400px) {
-  :root { --maxw: 1320px; }
+  :root[data-app='admin'] { --maxw: 1320px; }
   .stat-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
-/* ---------- Landscape phone: keep the hero compact ------------------- */
+/* ---------- Landscape phone: keep the hero compact --------------------- */
 @media (max-height: 480px) and (orientation: landscape) {
-  .hero { padding: 14px; }
-  .hero-status { font-size: 22px; }
-  .hero-facts { flex-direction: row; flex-wrap: wrap; }
-  .board-title { margin-bottom: 8px; }
+  .hero { padding: var(--s-3); }
+  .hero-status { font-size: 23px; }
+  .hero-facts { flex-direction: row; }
+  .fact + .fact { border-top: 0; border-inline-start: var(--bd-hair) solid var(--border); }
+  .board-title { margin-bottom: var(--s-1); }
+  .cta { min-height: 56px; }
 }

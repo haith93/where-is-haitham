@@ -34,7 +34,7 @@ export function barChart(data, {
     return `
       <g>
         <title>${esc(d.title ?? `${d.label}: ${valueFormat(d.value)}`)}</title>
-        <rect class="bar" x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="5"></rect>
+        <rect class="bar" x="${x}" y="${y}" width="${barWidth}" height="${h}"></rect>
         <text class="val-text" x="${x + barWidth / 2}" y="${y - 6}" text-anchor="middle">${esc(valueFormat(d.value))}</text>
         <text class="axis-text" x="${x + barWidth / 2}" y="${height - 10}" text-anchor="middle">${esc(d.label)}</text>
       </g>`;

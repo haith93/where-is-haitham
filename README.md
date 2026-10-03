@@ -18,21 +18,22 @@ waiting** — and send him a request instead of calling.
 
 1. [What it does](#1-what-it-does)
 2. [Architecture](#2-architecture)
-3. [Tech stack](#3-tech-stack)
-4. [Folder structure](#4-folder-structure)
-5. [Setup — Supabase](#5-setup--supabase)
-6. [Setup — the first administrator](#6-setup--the-first-administrator)
-7. [Setup — running it locally](#7-setup--running-it-locally)
-8. [Deploying to GitHub Pages](#8-deploying-to-github-pages)
-9. [Security model](#9-security-model)
-10. [How time is handled](#10-how-time-is-handled)
-11. [Realtime](#11-realtime)
-12. [PWA / installing on a phone](#12-pwa--installing-on-a-phone)
-13. [Push notifications](#13-push-notifications)
-14. [Reports and exports](#14-reports-and-exports)
-15. [Day-to-day admin](#15-day-to-day-admin)
-16. [Troubleshooting](#16-troubleshooting)
-17. [Known limitations](#17-known-limitations)
+3. [The design system](#3-the-design-system)
+4. [Tech stack](#4-tech-stack)
+5. [Folder structure](#5-folder-structure)
+6. [Setup — Supabase](#6-setup--supabase)
+7. [Setup — the first administrator](#7-setup--the-first-administrator)
+8. [Setup — running it locally](#8-setup--running-it-locally)
+9. [Deploying to GitHub Pages](#9-deploying-to-github-pages)
+10. [Security model](#10-security-model)
+11. [How time is handled](#11-how-time-is-handled)
+12. [Realtime](#12-realtime)
+13. [PWA / installing on a phone](#13-pwa--installing-on-a-phone)
+14. [Push notifications](#14-push-notifications)
+15. [Reports and exports](#15-reports-and-exports)
+16. [Day-to-day admin](#16-day-to-day-admin)
+17. [Troubleshooting](#17-troubleshooting)
+18. [Known limitations](#18-known-limitations)
 
 ---
 
@@ -103,11 +104,53 @@ database for people who should not see them.
 
 ---
 
-## 3. Tech stack
+## 3. The design system
+
+The interface is **neo-brutalist / retro-tech**: ink borders you cannot
+miss, hard offset shadows with no blur, flat fills, square corners, and
+controls that physically move onto their own shadow when pressed. Yellow
+is the action colour; green, blue, amber, orange and red carry meaning
+and nothing else.
+
+`css/tokens.css` is the only file that decides any of this. Everything
+else spends its tokens and invents no hex code, border width or shadow of
+its own, so retuning the system is one file:
+
+| Token group | Controls |
+|---|---|
+| `--bd`, `--bd-thin`, `--bd-hair` | How heavy every edge in the app is |
+| `--sh-1/2/3`, `--sh-dir` | Shadow depth, and which way shadows fall |
+| `--press`, `--press-deep` | How far a control travels when pressed |
+| `--s-1` … `--s-7` | The whole spacing scale |
+| `--t-display` … `--t-meta` | The type scale |
+| `--accent`, `--secondary` | Brand and action colour |
+| `--ok`, `--info`, `--warn`, `--urgent`, `--danger` | Meaning, as **text** |
+| `--ok-fill`, `--info-fill`, … | The same meanings as **fills** |
+
+Two details worth knowing before you change anything:
+
+**Every tone has a text value and a fill value.** A 13px label on a pale
+ground needs a dark, low-chroma colour. A 14px stripe sitting against a
+3px ink border needs the opposite — if it is as dark as the ink, it just
+reads as a thicker border and the signal disappears. Pick whichever one
+matches the job.
+
+**Shadow direction flips once.** `--sh-dir` is `1`, or `-1` under
+`:root[dir='rtl']`, and every shadow and press animation is built from
+it with `calc()`. That is why Arabic mirrors correctly without a single
+RTL override anywhere in the component sheets.
+
+Status colour is never the only signal: every badge prints its own words,
+so the board still works for a colour-blind reader and in a photocopy.
+
+---
+
+## 4. Tech stack
 
 | Layer | Choice | Why |
 |---|---|---|
 | Markup / styling | HTML5, CSS3 with custom properties | No framework to learn or upgrade |
+| Design system | Neo-brutalist, defined entirely in `css/tokens.css` | One file decides how everything looks |
 | Scripting | Vanilla JavaScript, ES modules | Runs straight from static hosting |
 | Backend | Supabase (PostgreSQL) | Database, auth, realtime and RLS in one |
 | Charts | Hand-written inline SVG (`js/charts.js`) | No dependency; themeable and printable |
@@ -118,7 +161,7 @@ an exact version from jsDelivr.
 
 ---
 
-## 4. Folder structure
+## 5. Folder structure
 
 ```
 where-is-haitham/
@@ -134,7 +177,8 @@ where-is-haitham/
 ├── assets/icons/           App icons (PNG + SVG)
 │
 ├── css/
-│   ├── main.css            Design tokens, reset, component set
+│   ├── tokens.css          THE design system: colour, geometry, rhythm, type
+│   ├── main.css            Reset + the shared component set
 │   ├── dashboard.css       The status board
 │   ├── admin.css           Admin screens
 │   └── responsive.css      Breakpoints (mobile first)
@@ -156,7 +200,7 @@ where-is-haitham/
 │   ├── i18n.js             Arabic / English strings and RTL
 │   ├── dashboard.js        index.html controller
 │   ├── admin.js            admin.html controller
-│   └── login.js            login.html controller
+│   └── staff.js            staff.html controller
 │
 ├── sql/
 │   ├── schema.sql          Tables, indexes, triggers, publication
@@ -172,7 +216,7 @@ where-is-haitham/
 
 ---
 
-## 5. Setup — Supabase
+## 6. Setup — Supabase
 
 1. **Create a project** at [supabase.com](https://supabase.com). Pick a region
    near Lebanon (Frankfurt works well).
@@ -207,7 +251,7 @@ where-is-haitham/
 
 ---
 
-## 6. Setup — the first administrator
+## 7. Setup — the first administrator
 
 Roles are never self-assigned — new sign-ups are always `employee`. Promote the
 first admin by hand:
@@ -270,7 +314,7 @@ the split.
 
 ---
 
-## 7. Setup — running it locally
+## 8. Setup — running it locally
 
 ```bash
 cp js/env.example.js js/env.js
@@ -291,7 +335,7 @@ what to do instead of failing silently.
 
 ---
 
-## 8. Deploying to GitHub Pages
+## 9. Deploying to GitHub Pages
 
 1. Push this folder to a GitHub repository.
 
@@ -320,7 +364,7 @@ Supabase's Redirect URLs too.
 
 ---
 
-## 9. Security model
+## 10. Security model
 
 **Authentication** is Supabase Auth (e-mail + password). The JWT carries the user
 id; the role lives in `public.profiles` and is read server-side.
@@ -367,7 +411,7 @@ await sb.from('buildings').update({ name: 'x' }).neq('id', '');
 
 ---
 
-## 10. How time is handled
+## 11. How time is handled
 
 This is the part most worth understanding.
 
@@ -412,7 +456,7 @@ honestly tell you that jobs planned for 10 minutes take 17.
 
 ---
 
-## 11. Realtime
+## 12. Realtime
 
 Nothing polls. `js/realtime.js` opens subscriptions and the screen re-renders
 when the database says something changed:
@@ -434,7 +478,7 @@ when the tab becomes visible again or the network returns.
 
 ---
 
-## 12. PWA / installing on a phone
+## 13. PWA / installing on a phone
 
 The app is installable and has an offline shell.
 
@@ -451,7 +495,7 @@ to pretend a save succeeded.
 
 ---
 
-## 13. Push notifications
+## 14. Push notifications
 
 In-app notifications always work: a row is written to `notifications`, Realtime
 delivers it, and the app shows an alert and a badge. That needs no setup.
@@ -504,7 +548,7 @@ on the current browser.
 
 ---
 
-## 14. Reports and exports
+## 15. Reports and exports
 
 *Admin → Reports* generates everything from the historical tables. Nothing is
 typed in and nothing is pre-aggregated, so a report always reflects what actually
@@ -528,7 +572,7 @@ without an import wizard.
 
 ---
 
-## 15. Day-to-day admin
+## 16. Day-to-day admin
 
 **Adding a building or task.** *Admin → Buildings* (or *Tasks*) → type the name →
 **Add**. Reorder with the ▲▼ arrows; that order is what the dropdowns use.
@@ -551,7 +595,7 @@ in*. Turning it off is enforced by the RLS policies, not just by hiding the page
 
 ---
 
-## 16. Troubleshooting
+## 17. Troubleshooting
 
 **"Almost ready" / setup screen.** `js/env.js` is missing or still has
 placeholders. Locally: copy `env.example.js`. On Pages: check both repository
@@ -562,7 +606,7 @@ are enabled, the account must be confirmed first. You can confirm a user manuall
 in *Authentication → Users*.
 
 **Signed in but the admin console bounces to the board.** That account's role is
-still `employee`. Run the promote query in [section 6](#6-setup--the-first-administrator).
+still `employee`. Run the promote query in [section 7](#7-setup--the-first-administrator).
 
 **Board loads but stays empty for signed-out visitors.** `public_dashboard` is
 off. Turn it on in *Admin → Settings*, or check:
@@ -593,7 +637,7 @@ granted? *Settings → Notifications* reports which of these is the blocker.
 
 ---
 
-## 17. Known limitations
+## 18. Known limitations
 
 Stated plainly, because a tool you trust is one that does not overclaim.
 

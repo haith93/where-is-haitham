@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Where Is Haitham Now?</title>
   <meta name="description" content="See where Haitham is, what he is doing and when he will be free — and ask for help without phoning him.">
-  <meta name="theme-color" content="#f4f6fa">
+  <meta name="theme-color" content="#fffdf5">
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
@@ -17,10 +17,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/responsive.css">
-  <link rel="stylesheet" href="css/brutal.css">
 </head>
 <body>
 <div class="app">
@@ -55,7 +55,12 @@
       <h1 class="board-title" id="board-heading" data-i18n="board.heading">Where is Haitham now?</h1>
 
       <div id="hero-host">
-        <div class="skeleton" style="height:220px;border-radius:20px"></div>
+        <div class="skeleton" style="height:220px"></div>
+      </div>
+
+      <!-- Primary action -->
+      <div class="cta-wrap">
+        <button class="btn btn-primary cta" type="button" id="request-btn" data-i18n="board.requestBtn">Request Haitham</button>
       </div>
 
       <!-- Currently serving -->
@@ -80,11 +85,6 @@
         <div class="counter"><span class="n" id="c-waiting">0</span><span class="l" data-i18n="counters.waiting">Waiting</span></div>
         <div class="counter" data-tone="urgent"><span class="n" id="c-urgent">0</span><span class="l" data-i18n="counters.urgent">Urgent</span></div>
         <div class="counter" data-tone="danger"><span class="n" id="c-very">0</span><span class="l" data-i18n="counters.veryUrgent">Very urgent</span></div>
-      </div>
-
-      <!-- Primary action -->
-      <div class="cta-wrap">
-        <button class="btn btn-primary cta" type="button" id="request-btn" data-i18n="board.requestBtn">Request Haitham</button>
       </div>
 
       <p class="small faint" style="text-align:center" data-i18n="board.footer">

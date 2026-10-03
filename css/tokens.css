@@ -1,0 +1,274 @@
+/* =====================================================================
+   tokens.css  --  the design system, as values.
+
+   This is the ONLY file that decides what the interface looks like at the
+   level of colour, weight, geometry and rhythm. Every other stylesheet
+   spends these tokens; none of them invents a hex code, a border width or
+   a shadow of its own. Retune the system here and the whole application
+   follows.
+
+   THE SYSTEM
+   ----------
+   Neo-brutalist / retro-tech: ink borders you cannot miss, hard offset
+   shadows with no blur, flat fills, square corners, and controls that
+   physically move when pressed. Yellow is the action colour and carries
+   the brand; green, blue, amber, orange and red carry meaning and nothing
+   else. Nothing is decorative.
+
+   SHADOW DIRECTION
+   ----------------
+   A hard shadow has a direction, and the direction has to agree with the
+   reading direction or the page looks lit from the wrong side. `--sh-dir`
+   flips once, here, on the root element - which is also the element that
+   carries `dir` - so every shadow and every press animation in the whole
+   stylesheet mirrors for Arabic without a single RTL override elsewhere.
+   ===================================================================== */
+
+:root {
+  /* ---------- Geometry ---------------------------------------------- */
+  --bd:       3px;     /* structural: cards, panels, inputs, buttons     */
+  --bd-thin:  2px;     /* small parts: badges, chips, rank markers       */
+  --bd-hair:  2px;     /* table rules and dividers                       */
+
+  /* Square. Brutalism is not negotiable about this, and a stray radius
+     anywhere reads as an accident rather than a choice. No rule spends
+     these, because the answer is always zero and writing `0` is clearer
+     at the call site; they are here so that a future variant of the
+     system has somewhere to say otherwise. */
+  --radius-sm: 0;
+  --radius:    0;
+  --radius-lg: 0;
+  --radius-pill: 0;
+
+  /* ---------- Elevation --------------------------------------------- */
+  /* Offsets only. No blur, no spread, no opacity. */
+  --sh-dir: 1;                   /* flipped to -1 for RTL, below         */
+  --sh-1: 3px;                   /* chips, small buttons                 */
+  --sh-2: 5px;                   /* cards, inputs, panels                */
+  --sh-3: 8px;                   /* the primary action, modals, the hero */
+
+  --shadow-sm: calc(var(--sh-1) * var(--sh-dir)) var(--sh-1) 0 var(--ink);
+  --shadow-md: calc(var(--sh-2) * var(--sh-dir)) var(--sh-2) 0 var(--ink);
+  --shadow-lg: calc(var(--sh-3) * var(--sh-dir)) var(--sh-3) 0 var(--ink);
+
+  /* How far a control travels when pressed, and what is left under it. */
+  --press:        translate(calc(var(--sh-1) * var(--sh-dir)), var(--sh-1));
+  --press-deep:   translate(calc(var(--sh-2) * var(--sh-dir)), var(--sh-2));
+  --shadow-flat:  0 0 0 var(--ink);
+
+  /* ---------- Rhythm ------------------------------------------------- */
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  --gap-tight: var(--s-3);       /* rows inside one list                 */
+  --gap:       var(--s-4);       /* cards inside one group               */
+  --gap-group: var(--s-6);       /* groups that mean different things    */
+
+  --tap: 48px;                   /* minimum comfortable touch target     */
+  --header-h: 60px;
+  --nav-h: 66px;
+  --maxw: 780px;
+
+  /* ---------- Type --------------------------------------------------- */
+  /* IBM Plex throughout. It is kept over a heavier display face such as
+     Archivo Black for one decisive reason: Plex ships a genuine Arabic
+     companion drawn to the same skeleton, and half of this application is
+     Arabic. Weight 700 with tight tracking and uppercase carries the
+     display work; Plex Mono carries anything a machine produced. */
+  --font:    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+             'Helvetica Neue', Arial, sans-serif;
+  --font-ar: 'IBM Plex Sans Arabic', 'Noto Naskh Arabic', 'Segoe UI', Tahoma, sans-serif;
+  --mono:    'IBM Plex Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --t-display: clamp(27px, 7.6vw, 38px);
+  --t-h1:      23px;
+  --t-h2:      18px;
+  --t-body:    16px;
+  --t-small:   14px;
+  --t-meta:    11.5px;           /* mono, uppercase, tracked             */
+
+  --track-tight: -.025em;        /* display and headings                 */
+  --track-wide:  .1em;           /* the little mono labels               */
+
+  /* ---------- Colour: light ------------------------------------------ */
+  color-scheme: light;
+
+  --ink:         #0d0d0d;        /* every border and every hard shadow   */
+  --paper:       #fffdf5;        /* the page itself                      */
+
+  --bg:            var(--paper);
+  --bg-elevated:   #ffffff;
+  --surface:       #ffffff;
+  --surface-2:     #fff8e1;
+  --border:        var(--ink);
+  --border-strong: var(--ink);
+
+  --text:        var(--ink);
+  --text-muted:  #3d3a33;
+  --text-faint:  #6d6758;
+  --text-invert: #ffffff;
+
+  /* Action. Yellow means "this is the thing to press" and, on a badge,
+     "someone has taken this on". It never means a warning. */
+  --accent:          #f5c518;
+  --accent-hover:    #ffd84a;
+  --accent-soft:     #fff3bd;
+  --accent-text:     var(--ink);
+  --accent-contrast: var(--ink);
+
+  --secondary:       #0a8f54;
+  --secondary-hover: #0aa661;
+  --secondary-soft:  #c6f3dc;
+  --secondary-text:  #044f2f;
+
+  /* Meaning. One colour, one job. */
+  --ok:          #0a8f54;        /* done                                 */
+  --ok-soft:     #c6f3dc;
+  --info:        #1550c4;        /* received / seen                      */
+  --info-soft:   #d4e2ff;
+  --warn:        #a05a00;        /* in progress                          */
+  --warn-soft:   #ffe6b0;
+  --urgent:      #c24a05;        /* on hold / urgent                     */
+  --urgent-soft: #ffdcc2;
+  --danger:      #c01919;        /* stopped, refused, very urgent        */
+  --danger-soft: #ffd5d5;
+  --muted-soft:  #ece6d4;        /* no state worth a colour              */
+
+  /* Fills, as opposed to text.
+     A 13px label on a pale ground needs a dark, low-chroma colour to stay
+     legible. A 14px stripe or a 12px band sitting directly against a 3px
+     ink border needs the opposite: if it is as dark as the ink it just
+     reads as a thicker border and the signal is lost. So every tone has
+     two values, and a rule picks whichever job it is doing. */
+  --ok-fill:     #12b86c;
+  --info-fill:   #2f6fe4;
+  --warn-fill:   #e89000;
+  --urgent-fill: #f2680c;
+  --danger-fill: #e02424;
+  --muted-fill:  #8a8373;
+}
+
+/* Mirror every hard shadow and every press for right-to-left. */
+:root[dir='rtl'] { --sh-dir: -1; }
+
+/* ---------- Colour: dark ---------------------------------------------
+   Dark brutalism inverts the logic rather than dimming it: the border
+   stops being the dark line on paper and becomes the bright line on a
+   near-black ground, while the shadow goes to pure black so the offset
+   still reads as a physical edge.
+   -------------------------------------------------------------------- */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --ink:         #000000;
+  --paper:       #15130b;
+
+  --bg:            var(--paper);
+  --bg-elevated:   #211e10;
+  --surface:       #211e10;
+  --surface-2:     #2c2814;
+  --border:        #f5c518;
+  --border-strong: #f5c518;
+
+  --text:        #fffbe9;
+  --text-muted:  #d8d1b2;
+  --text-faint:  #a09a80;
+  --text-invert: #000000;
+
+  --accent:          #f5c518;
+  --accent-hover:    #ffd84a;
+  --accent-soft:     #3b2f00;
+  --accent-text:     #ffd84a;
+  --accent-contrast: #000000;
+
+  --secondary:       #2fd48a;
+  --secondary-hover: #52e2a2;
+  --secondary-soft:  #0a3c25;
+  --secondary-text:  #8af0c0;
+
+  --ok:          #2fd48a;
+  --ok-soft:     #0a3c25;
+  --info:        #74a8ff;
+  --info-soft:   #0e2350;
+  --warn:        #ffb020;
+  --warn-soft:   #3b2b00;
+  --urgent:      #ff8a3d;
+  --urgent-soft: #3b2010;
+  --danger:      #ff5f5f;
+  --danger-soft: #3b1212;
+  --muted-soft:  #2c2814;
+
+  --ok-fill:     var(--ok);
+  --info-fill:   var(--info);
+  --warn-fill:   var(--warn);
+  --urgent-fill: var(--urgent);
+  --danger-fill: var(--danger);
+  --muted-fill:  var(--text-faint);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --ink:         #000000;
+    --paper:       #15130b;
+
+    --bg:            var(--paper);
+    --bg-elevated:   #211e10;
+    --surface:       #211e10;
+    --surface-2:     #2c2814;
+    --border:        #f5c518;
+    --border-strong: #f5c518;
+
+    --text:        #fffbe9;
+    --text-muted:  #d8d1b2;
+    --text-faint:  #a09a80;
+    --text-invert: #000000;
+
+    --accent:          #f5c518;
+    --accent-hover:    #ffd84a;
+    --accent-soft:     #3b2f00;
+    --accent-text:     #ffd84a;
+    --accent-contrast: #000000;
+
+    --secondary:       #2fd48a;
+    --secondary-hover: #52e2a2;
+    --secondary-soft:  #0a3c25;
+    --secondary-text:  #8af0c0;
+
+    --ok:          #2fd48a;
+    --ok-soft:     #0a3c25;
+    --info:        #74a8ff;
+    --info-soft:   #0e2350;
+    --warn:        #ffb020;
+    --warn-soft:   #3b2b00;
+    --urgent:      #ff8a3d;
+    --urgent-soft: #3b2010;
+    --danger:      #ff5f5f;
+    --danger-soft: #3b1212;
+    --muted-soft:  #2c2814;
+
+    --ok-fill:     var(--ok);
+    --info-fill:   var(--info);
+    --warn-fill:   var(--warn);
+    --urgent-fill: var(--urgent);
+    --danger-fill: var(--danger);
+    --muted-fill:  var(--text-faint);
+  }
+}
+
+/* ---------- Arabic ----------------------------------------------------
+   Same family, Arabic companion face. Plex Mono carries no Arabic glyphs,
+   so an Arabic AM/PM marker inside a time would otherwise fall through to
+   whatever the system offers; naming the Arabic sans next in the mono
+   stack keeps "٣:٠٢ م" inside one family.
+   -------------------------------------------------------------------- */
+:root[lang='ar'] {
+  --font:  var(--font-ar);
+  --mono:  'IBM Plex Mono', 'IBM Plex Sans Arabic', ui-monospace, SFMono-Regular, monospace;
+}

@@ -10,13 +10,12 @@ import { configured } from './supabase.js';
 import { PRIORITY_META, REQUEST_STATUS_META } from './config.js';
 import { $, $$, esc, el, fmtTime, fmtDateTime, relativeTime, durationText, prefs } from './utils.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
-import { initSkin, syncSkinFromSettings } from './skins.js';
 import {
   initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toastOk, toastError, toast, withBusy, renderEmpty, renderError,
   renderSetupNeeded, confirmAction, registerServiceWorker
 } from './ui.js';
-import { getBuildings, getTasks, getSettings, localName } from './data.js';
+import { getBuildings, getTasks, localName } from './data.js';
 import { getPublicStatus, describeStatus, statusLabel } from './status.js';
 import {
   createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
@@ -41,7 +40,6 @@ const state = {
 /* ================================================================== */
 
 applyDocument();
-initSkin();
 initTheme();
 initThemeToggle();
 initLangToggle();
@@ -71,13 +69,6 @@ if (!configured) {
 
 async function boot() {
   state.booted = true;
-
-  // app_settings is readable without an account, so the board can pick up
-  // the site-wide interface style. Failure is harmless: the cached value
-  // already applied at start-up.
-  getSettings()
-    .then(syncSkinFromSettings)
-    .catch(err => console.warn('[skin]', err));
 
   wireViews();
   wireRequestForm();

@@ -1,302 +1,363 @@
 /* =====================================================================
-   dashboard.css  --  the employee / public board
-   The status hero is deliberately sized so that status, place, task and
-   expected availability all fit above the fold on a small phone.
+   dashboard.css  --  the public board that colleagues see.
+
+   Reading order on a phone, top to bottom:
+       1. WHERE IS HE          the hero, sized to answer the question alone
+       2. REQUEST HAITHAM      the primary action, directly under it
+       3. who he is with       currently serving
+       4. who is waiting       the queue
+       5. the numbers          counters
+
+   The hero and the action are both above the fold on a small phone. That
+   ordering is the whole design: a colleague either gets their answer and
+   leaves, or asks for help without hunting for a button.
    ===================================================================== */
 
 .board-title {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .14em;
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text);
   text-align: center;
-  margin-bottom: 12px;
+  padding: var(--s-2) 0;
+  border-block: var(--bd-hair) solid var(--border);
+  margin-bottom: var(--s-2);
 }
 
-/* ---------- Status hero ---------------------------------------------- */
+/* ---------- Status hero -----------------------------------------------
+   The most important block on the site, so it gets the deepest shadow
+   and the only full-bleed colour band in the design.
+   -------------------------------------------------------------------- */
 .hero {
   position: relative;
   overflow: hidden;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: var(--bd) solid var(--border);
   background: var(--surface);
-  box-shadow: var(--shadow-md);
-  padding: 24px 20px 20px;
+  box-shadow: var(--shadow-lg);
+  padding: var(--s-5) var(--s-4) var(--s-4);
 }
+
+/* The tone band. A solid 12px bar, not a hairline: this is the first
+   thing the eye lands on and it has to carry at a glance. */
 .hero::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
-  height: 5px;
+  height: 12px;
   background: var(--hero-accent, var(--text-faint));
+  border-bottom: var(--bd-hair) solid var(--ink);
 }
-.hero::after {
-  content: '';
-  position: absolute;
-  inset-inline-end: -60px; top: -70px;
-  width: 190px; height: 190px;
-  border-radius: 50%;
-  background: var(--hero-accent, var(--text-faint));
-  opacity: .07;
-  pointer-events: none;
-}
+.hero > :first-child { margin-top: var(--s-2); }
 
-.hero[data-tone='ok']     { --hero-accent: var(--secondary); }
-.hero[data-tone='warn']   { --hero-accent: var(--warn); }
-.hero[data-tone='info']   { --hero-accent: var(--info); }
-.hero[data-tone='danger'] { --hero-accent: var(--danger); }
-.hero[data-tone='muted']  { --hero-accent: var(--text-faint); }
+.hero[data-tone='ok']     { --hero-accent: var(--ok-fill); }
+.hero[data-tone='warn']   { --hero-accent: var(--warn-fill); }
+.hero[data-tone='info']   { --hero-accent: var(--info-fill); }
+.hero[data-tone='danger'] { --hero-accent: var(--danger-fill); }
+.hero[data-tone='muted']  { --hero-accent: var(--muted-fill); }
 
 .hero-status {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: clamp(24px, 7.5vw, 33px);
+  gap: var(--s-3);
+  font-size: var(--t-display);
   font-weight: 700;
-  letter-spacing: -.025em;
-  color: var(--hero-accent, var(--text));
-  line-height: 1.1;
+  letter-spacing: var(--track-tight);
+  text-transform: uppercase;
+  color: var(--text);
+  line-height: 1.05;
 }
+/* A square marker, not a bead. It is filled with the tone colour and
+   outlined in ink so it survives on any background. */
 .hero-status .dot {
-  width: 13px; height: 13px;
-  border-radius: 50%;
-  background: currentColor;
+  width: 20px; height: 20px;
+  background: var(--hero-accent, var(--text-faint));
+  border: var(--bd-thin) solid var(--ink);
   flex: none;
-  box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 18%, transparent);
 }
-.hero-status.live .dot { animation: pulse 2.4s ease-in-out infinite; }
-@keyframes pulse {
-  50% { box-shadow: 0 0 0 11px color-mix(in srgb, currentColor 4%, transparent); }
+.hero-status.live .dot { animation: blink 2.2s steps(1, end) infinite; }
+@keyframes blink { 50% { background: var(--surface); } }
+
+.hero-hint {
+  color: var(--text-muted);
+  font-size: var(--t-small);
+  margin-top: var(--s-2);
 }
 
-.hero-hint { color: var(--text-muted); font-size: 14px; margin-top: 2px; }
-
+/* ---------- Facts: where, and doing what ------------------------------ */
 .hero-facts {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 0;
+  margin-top: var(--s-4);
+  border: var(--bd-hair) solid var(--border);
 }
 .fact {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
+  gap: var(--s-3);
+  padding: var(--s-3);
   font-size: 17px;
   font-weight: 600;
   min-width: 0;
 }
-.fact .ico { font-size: 19px; line-height: 1.3; flex: none; width: 22px; text-align: center; }
+.fact + .fact { border-top: var(--bd-hair) solid var(--border); }
+.fact .ico {
+  font-size: 17px;
+  line-height: 1.4;
+  flex: none;
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  background: var(--accent);
+  border: var(--bd-hair) solid var(--ink);
+}
 .fact .k {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .09em;
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .fact .v { display: block; overflow-wrap: anywhere; }
 
+/* ---------- The clock panel -------------------------------------------
+   Everything a machine computed: started at, expected until, free when.
+   Mono throughout, on its own sunken ground, so it reads as instrument
+   output rather than prose.
+   -------------------------------------------------------------------- */
 .hero-time {
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px dashed var(--border-strong);
+  margin-top: var(--s-4);
+  padding: var(--s-3);
+  background: var(--surface-2);
+  border: var(--bd-hair) solid var(--border);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--s-3);
 }
 .hero-time .k {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .09em;
+  font-family: var(--mono);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: var(--track-wide);
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 .hero-time .v {
   font-family: var(--mono);
   font-size: 17px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.01em;
 }
-.hero-time .v.big { font-size: 20px; color: var(--hero-accent, var(--text)); }
+/* "Free at 12:40" is the single number most people came for. */
+.hero-time .v.big {
+  font-size: 24px;
+  font-weight: 700;
+  display: inline-block;
+  margin-top: 2px;
+  padding: 2px var(--s-2);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: var(--bd-thin) solid var(--ink);
+}
 
 .hero-foot {
-  margin-top: 14px;
+  margin-top: var(--s-3);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
+  gap: var(--s-2);
+  font-family: var(--mono);
+  font-size: 11.5px;
   color: var(--text-faint);
 }
 
 .expired-note {
-  margin-top: 14px;
+  margin-top: var(--s-3);
   display: flex;
-  gap: 10px;
+  gap: var(--s-2);
   align-items: flex-start;
-  padding: 12px 14px;
-  border-radius: var(--radius);
+  padding: var(--s-3);
   background: var(--warn-soft);
   color: var(--warn);
-  font-size: 14px;
+  font-size: var(--t-small);
   font-weight: 600;
-  border: 1px solid color-mix(in srgb, var(--warn) 32%, transparent);
+  border: var(--bd-thin) solid var(--warn);
 }
 
-/* ---------- Serving card --------------------------------------------- */
-.serving {
-  border-inline-start: 4px solid var(--secondary);
-}
-.serving-person {
+/* ---------- Primary call to action ------------------------------------
+   Sits immediately under the hero. Nothing else on this page is yellow
+   and 68px tall, so there is never a question about where to press.
+   -------------------------------------------------------------------- */
+.cta-wrap { padding: var(--s-1) 0; }
+.cta {
+  width: 100%;
+  min-height: 68px;
   font-size: 19px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  box-shadow: var(--shadow-lg);
+}
+.cta:active { transform: var(--press-deep); box-shadow: var(--shadow-flat); }
+
+/* ---------- Currently serving ----------------------------------------- */
+.serving { border-inline-start: 12px solid var(--ok-fill); }
+.serving-person {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: var(--track-tight);
 }
 
-/* ---------- Queue ---------------------------------------------------- */
+/* ---------- Queue ------------------------------------------------------ */
 .queue-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--gap-tight);
+  gap: var(--s-2);
 }
 .queue-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-inline-start-width: 4px;
-  border-inline-start-color: var(--text-faint);
+  gap: var(--s-3);
+  padding: var(--s-3);
+  background: var(--surface);
+  border: var(--bd-thin) solid var(--border);
+  border-inline-start: 10px solid var(--muted-fill);
+  box-shadow: var(--shadow-sm);
 }
-.queue-item[data-priority='urgent']      { border-inline-start-color: var(--urgent); }
-.queue-item[data-priority='very_urgent'] { border-inline-start-color: var(--danger); }
-.queue-item[data-priority='normal']      { border-inline-start-color: var(--secondary); }
+.queue-item[data-priority='urgent']      { border-inline-start-color: var(--urgent-fill); }
+.queue-item[data-priority='very_urgent'] { border-inline-start-color: var(--danger-fill); }
+.queue-item[data-priority='normal']      { border-inline-start-color: var(--ok-fill); }
 
+/* Position in the queue, as a stamped number. */
 .queue-rank {
   font-family: var(--mono);
-  width: 26px; height: 26px;
+  width: 30px; height: 30px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  background: var(--bg-sunken);
-  font-size: 12.5px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: var(--bd-thin) solid var(--ink);
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-muted);
 }
 .queue-main { min-width: 0; flex: 1; }
-.queue-name { font-weight: 700; font-size: 15.5px; }
-.queue-meta { font-size: 13px; color: var(--text-muted); }
+/* Both are <span>s inside a <span>, so they need blockifying by hand or
+   the name and the location run together on one line. */
+.queue-name { display: block; font-weight: 700; font-size: 16px; }
+.queue-meta { display: block; font-size: 13px; color: var(--text-muted); }
 
-/* ---------- Counters ------------------------------------------------- */
+/* ---------- Counters ---------------------------------------------------
+   Three instrument readouts. Big mono figures, flat ground, hard edge.
+   -------------------------------------------------------------------- */
 .counters {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--gap-tight);
+  gap: var(--s-2);
 }
 .counter {
   text-align: center;
-  padding: 14px 8px;
-  border-radius: var(--radius);
+  padding: var(--s-3) var(--s-2);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bd-thin) solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 .counter .n {
   display: block;
   font-family: var(--mono);
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .counter .l {
-  font-size: 11px;
-  font-weight: 700;
+  display: block;
+  margin-top: var(--s-1);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
   letter-spacing: .07em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
+.counter[data-tone='danger'] { border-color: var(--danger-fill); border-width: var(--bd); }
 .counter[data-tone='danger'] .n { color: var(--danger); }
+.counter[data-tone='urgent'] { border-color: var(--urgent-fill); border-width: var(--bd); }
 .counter[data-tone='urgent'] .n { color: var(--urgent); }
 
-/* ---------- Primary call to action ----------------------------------- */
-.cta-wrap {
-  position: sticky;
-  bottom: calc(var(--nav-h) + 10px);
-  z-index: 30;
-  padding: 14px 0 6px;
-  /* The button floats over whatever is behind it, so fade the page out
-     underneath instead of letting text collide with it. */
-  background: linear-gradient(to bottom, transparent, var(--bg) 38%);
-}
-.cta {
-  width: 100%;
-  min-height: 60px;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: .02em;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-
-/* ---------- My requests ---------------------------------------------- */
+/* ---------- My requests ------------------------------------------------ */
 .req-card {
   display: block;
   width: 100%;
-  text-align: left;
-  padding: 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  border-inline-start-width: 4px;
+  text-align: start;
+  padding: var(--s-3);
+  border: var(--bd-thin) solid var(--border);
+  border-inline-start: 10px solid var(--border-strong);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   font: inherit;
   color: inherit;
   cursor: pointer;
+  transition: transform .05s ease, box-shadow .05s ease, background .12s ease;
 }
-.req-card[data-priority='urgent']      { border-inline-start-color: var(--urgent); }
-.req-card[data-priority='very_urgent'] { border-inline-start-color: var(--danger); }
-.req-card[data-priority='normal']      { border-inline-start-color: var(--border-strong); }
-.req-card:hover { border-color: var(--accent); }
+.req-card[data-priority='urgent']      { border-inline-start-color: var(--urgent-fill); }
+.req-card[data-priority='very_urgent'] { border-inline-start-color: var(--danger-fill); }
+.req-card[data-priority='normal']      { border-inline-start-color: var(--ok-fill); }
+.req-card:hover  { background: var(--accent-soft); }
+.req-card:active { transform: var(--press); box-shadow: var(--shadow-flat); }
 
 .req-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-1);
 }
-.req-num { font-size: 12.5px; color: var(--text-faint); }
-.req-title { font-weight: 700; font-size: 16px; }
-.req-sub { font-size: 13.5px; color: var(--text-muted); }
+/* All <span>s inside a <button>, so they are blockified here rather than
+   relying on the markup. */
+.req-num { font-family: var(--mono); font-size: 12px; color: var(--text-faint); }
+.req-title { display: block; font-weight: 700; font-size: 16px; }
+.req-sub { display: block; font-size: 13px; color: var(--text-muted); }
 .req-desc {
-  margin-top: 8px;
-  font-size: 14px;
+  margin-top: var(--s-2);
+  font-size: var(--t-small);
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
 
+/* ---------- Request timeline ------------------------------------------- */
 .timeline {
   list-style: none;
-  margin: 12px 0 0;
+  margin: var(--s-3) 0 0;
   padding: 0;
-  padding-inline-start: 18px;
-  border-inline-start: 2px solid var(--border);
+  padding-inline-start: var(--s-5);
+  border-inline-start: var(--bd) solid var(--border);
 }
-.timeline li { position: relative; padding: 0 0 12px; padding-inline-start: 12px; font-size: 14px; }
+.timeline li {
+  position: relative;
+  padding: 0 0 var(--s-3);
+  padding-inline-start: var(--s-3);
+  font-size: var(--t-small);
+}
 .timeline li::before {
   content: '';
   position: absolute;
-  inset-inline-start: -21px; top: 6px;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--border-strong);
+  inset-inline-start: -28px; top: 5px;
+  width: 11px; height: 11px;
+  background: var(--surface);
+  border: var(--bd-thin) solid var(--ink);
 }
 .timeline li:last-child { padding-bottom: 0; }
 .timeline li:last-child::before { background: var(--accent); }
-.timeline time { display: block; font-family: var(--mono); font-size: 12px; color: var(--text-faint); }
+.timeline time {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-faint);
+}

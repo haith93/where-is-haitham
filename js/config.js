@@ -93,10 +93,18 @@ export const PRIORITY_META = Object.freeze(Object.fromEntries(
   })])
 ));
 
+/*
+ * One colour per state, and never the same colour twice. A request walks
+ * RECEIVED (blue, it has been seen) -> ACCEPTED (yellow, he has taken it
+ * on) -> IN PROGRESS (amber, he is at it) -> DONE (green). On hold is
+ * orange because it is the one state that needs chasing, and refused is
+ * red. The badge always prints its own words, so none of this depends on
+ * the reader seeing colour at all.
+ */
 export const REQUEST_STATUS_META = Object.freeze(Object.fromEntries(
   [
-    ['pending',     '⏳', 'muted'],
-    ['accepted',    '👍', 'info'],
+    ['pending',     '⏳', 'info'],
+    ['accepted',    '👍', 'accent'],
     ['in_progress', '🔧', 'warn'],
     ['paused',      '⏸️', 'urgent'],
     ['completed',   '✅', 'ok'],

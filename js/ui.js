@@ -37,7 +37,8 @@ function syncThemeColor() {
     meta = el('meta', { name: 'theme-color' });
     document.head.append(meta);
   }
-  meta.setAttribute('content', dark ? '#0b1020' : '#f4f6fa');
+  // Matches --paper in css/tokens.css for each scheme.
+  meta.setAttribute('content', dark ? '#15130b' : '#fffdf5');
 }
 
 /* ------------------------------------------------------------------ */

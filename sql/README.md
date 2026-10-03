@@ -17,8 +17,13 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 3 | `migration-buildings-and-interruptions.sql` | Real building names; putting a job on hold |
 | 4 | `migration-test-cleanup.sql` | Delete one request; clear test data |
 | 5 | `migration-edit-request.sql` | Requester can change a pending request |
-| 6 | `migration-ui-skin.sql` | Site-wide interface style, defaulting to brutalist |
-| 7 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
+| 6 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
+
+There used to be a seventh file, `migration-ui-skin.sql`, which stored a
+site-wide interface style. The interface now has one deliberate design
+system instead of a choice of skins, so that file is gone and nothing
+reads the setting any more. If you already ran it, leave the `ui_skin`
+row where it is: it is ignored and harmless.
 
 The order matters: 2 adds columns that 3 writes to, and 3 redefines a
 function that 2 created.

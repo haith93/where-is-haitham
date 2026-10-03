@@ -96,11 +96,11 @@ const STRINGS = {
   'priority.very_urgent': { en: 'Very urgent', ar: 'عاجل جداً' },
 
   /* ================= request status ================= */
-  'reqstatus.pending':     { en: 'Pending',     ar: 'بالانتظار' },
+  'reqstatus.pending':     { en: 'Received',    ar: 'تم الاستلام' },
   'reqstatus.accepted':    { en: 'Accepted',    ar: 'تم القبول' },
   'reqstatus.in_progress': { en: 'In progress', ar: 'قيد التنفيذ' },
-  'reqstatus.paused':      { en: 'Paused',      ar: 'موقوف مؤقتاً' },
-  'reqstatus.completed':   { en: 'Completed',   ar: 'منجز' },
+  'reqstatus.paused':      { en: 'On hold',     ar: 'موقوف مؤقتاً' },
+  'reqstatus.completed':   { en: 'Done',        ar: 'منجز' },
   'reqstatus.rejected':    { en: 'Rejected',    ar: 'مرفوض' },
   'reqstatus.cancelled':   { en: 'Cancelled',   ar: 'ملغى' },
 
@@ -434,25 +434,6 @@ const STRINGS = {
   /* ================= admin: settings ================= */
   'admin.settingsIntro':{ en: "Application configuration and this device's notifications.",
                           ar: 'إعدادات التطبيق وإشعارات هذا الجهاز.' },
-  'admin.appearance':   { en: 'Appearance',      ar: 'المظهر' },
-  'admin.skinSite':     { en: 'Interface style for everyone', ar: 'نمط الواجهة للجميع' },
-  'admin.skinSiteHint': { en: 'Applies to every colleague, on their next visit.',
-                          ar: 'يُطبَّق على كل الزملاء عند زيارتهم التالية.' },
-  'admin.skinDevice':   { en: 'Override on this device', ar: 'تجاوز على هذا الجهاز' },
-  'admin.skinDeviceHint': { en: 'Only for this phone or browser. Useful for previewing a change before applying it to everyone.',
-                            ar: 'لهذا الهاتف أو المتصفح فقط. مفيد لمعاينة التغيير قبل تطبيقه على الجميع.' },
-  'admin.skinFollowSite': { en: 'Follow the site setting ({name})', ar: 'اتّبع إعداد الموقع ({name})' },
-  'admin.skinSaved':    { en: 'Interface style changed for everyone.', ar: 'تم تغيير نمط الواجهة للجميع.' },
-  'admin.skinSavedOverridden': { en: 'Saved for everyone. This device still shows your own override.',
-                                 ar: 'تم الحفظ للجميع. لا يزال هذا الجهاز يعرض التجاوز الخاص بك.' },
-  'admin.skinStandardHint': { en: 'Rounded cards and soft shadows.', ar: 'بطاقات دائرية وظلال ناعمة.' },
-  'admin.skinBrutalHint': { en: 'Heavy borders, hard shadows, square corners.',
-                            ar: 'حدود سميكة وظلال حادة وزوايا قائمة.' },
-  'admin.skinStandard': { en: 'Standard',         ar: 'قياسي' },
-  'admin.skinBrutal':   { en: 'Brutalist',        ar: 'بروتالي' },
-  'admin.skinHint':     { en: 'Changes only this device, so you can try it before deciding.',
-                          ar: 'يغيّر هذا الجهاز فقط، لتجربته قبل اتخاذ القرار.' },
-  'admin.skinChanged':  { en: 'Interface style changed.', ar: 'تم تغيير نمط الواجهة.' },
   'admin.naming':       { en: 'Naming', ar: 'التسمية' },
 
   /* ================= staff sign-in ================= */

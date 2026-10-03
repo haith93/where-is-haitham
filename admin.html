@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-title-key="app.admin">
+<html lang="en" dir="ltr" data-title-key="app.admin" data-app="admin">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Admin · Where Is Haitham Now?</title>
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#f4f6fa">
+  <meta name="theme-color" content="#fffdf5">
 
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
@@ -16,11 +16,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/dashboard.css">
   <link rel="stylesheet" href="css/admin.css">
   <link rel="stylesheet" href="css/responsive.css">
-  <link rel="stylesheet" href="css/brutal.css">
 </head>
 <body>
 <div class="app">
@@ -73,7 +73,7 @@
           </div>
 
           <div id="now-host">
-            <div class="skeleton" style="height:120px;border-radius:20px"></div>
+            <div class="skeleton" style="height:120px"></div>
           </div>
 
           <div class="btn-grid">
@@ -426,26 +426,6 @@
                 </span>
               </span>
             </label>
-          </div>
-
-          <div class="card stack">
-            <h2 class="card-title" data-i18n="admin.appearance">Appearance</h2>
-            <div class="field">
-              <span class="label" data-i18n="admin.skinSite">Interface style for everyone</span>
-              <div class="segmented" id="skin-picker"></div>
-              <p class="help" data-i18n="admin.skinSiteHint">
-                Applies to every colleague, on their next visit.
-              </p>
-            </div>
-
-            <div class="field">
-              <label class="label" for="skin-override" data-i18n="admin.skinDevice">Override on this device</label>
-              <select class="select" id="skin-override"></select>
-              <p class="help" data-i18n="admin.skinDeviceHint">
-                Only for this phone or browser. Useful for previewing a change
-                before applying it to everyone.
-              </p>
-            </div>
           </div>
 
           <div class="card stack">
