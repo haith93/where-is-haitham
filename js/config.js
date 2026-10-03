@@ -82,11 +82,21 @@ export const STATUS_META = Object.freeze(Object.fromEntries(
   })])
 ));
 
+/*
+ * Four levels, ranked 0 (drop everything) to 3 (whenever you can).
+ *
+ * The fourth exists because three stopped discriminating: once "very
+ * urgent" was the top of the scale, everything that actually stopped
+ * work got filed there and the genuine emergencies were buried among
+ * the merely annoying ones. `life_death` gives the top somewhere to go
+ * and leaves "very urgent" meaning what it says.
+ */
 export const PRIORITY_META = Object.freeze(Object.fromEntries(
   [
-    ['normal',      '🟡', 2, 'warn'],
-    ['urgent',      '🟠', 1, 'urgent'],
-    ['very_urgent', '🔴', 0, 'danger']
+    ['normal',      '🟡', 3, 'warn'],
+    ['urgent',      '🟠', 2, 'urgent'],
+    ['very_urgent', '🔴', 1, 'danger'],
+    ['life_death',  '🚨', 0, 'critical']
   ].map(([key, icon, rank, tone]) => [key, Object.freeze({
     icon, rank, tone,
     get label() { return t(`priority.${key}`); }

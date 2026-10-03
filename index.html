@@ -35,7 +35,7 @@
       <span class="grow"></span>
 
       <nav class="desktop-nav" style="display:none" aria-label="Sections">
-        <button type="button" data-view="now" aria-current="page" data-i18n="board.heading">Now</button>
+        <button type="button" data-view="now" aria-current="page" data-i18n="board.now">Now</button>
         <button type="button" data-view="mine" data-i18n="mine.title">My requests</button>
         <a href="admin.html" id="admin-link-desktop" data-i18n="app.admin" hidden>Admin console</a>
       </nav>
@@ -85,6 +85,7 @@
         <div class="counter"><span class="n" id="c-waiting">0</span><span class="l" data-i18n="counters.waiting">Waiting</span></div>
         <div class="counter" data-tone="urgent"><span class="n" id="c-urgent">0</span><span class="l" data-i18n="counters.urgent">Urgent</span></div>
         <div class="counter" data-tone="danger"><span class="n" id="c-very">0</span><span class="l" data-i18n="counters.veryUrgent">Very urgent</span></div>
+        <div class="counter" data-tone="critical"><span class="n" id="c-life">0</span><span class="l" data-i18n="priority.life_death">Life &amp; death</span></div>
       </div>
 
       <p class="small faint" style="text-align:center" data-i18n="board.footer">
@@ -172,7 +173,10 @@
           <label for="pr-urgent">🟠 <span data-i18n="priority.urgent">Urgent</span></label>
           <input type="radio" name="priority" id="pr-very" value="very_urgent">
           <label for="pr-very">🔴 <span data-i18n="priority.very_urgent">Very urgent</span></label>
+          <input type="radio" name="priority" id="pr-life" value="life_death">
+          <label for="pr-life" class="is-critical">🚨 <span data-i18n="priority.life_death">Life &amp; death</span></label>
         </div>
+        <p class="quip" id="rq-quip" role="status" aria-live="polite"></p>
         <p class="help" data-i18n="form.priorityHelp">Keep "Very urgent" for things that stop work right now.</p>
       </fieldset>
 

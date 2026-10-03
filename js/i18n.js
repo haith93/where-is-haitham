@@ -94,6 +94,7 @@ const STRINGS = {
   'priority.normal':      { en: 'Normal',      ar: 'عادي' },
   'priority.urgent':      { en: 'Urgent',      ar: 'عاجل' },
   'priority.very_urgent': { en: 'Very urgent', ar: 'عاجل جداً' },
+  'priority.life_death':  { en: 'Life & death', ar: 'حياة أو موت' },
 
   /* ================= request status ================= */
   'reqstatus.pending':     { en: 'Received',    ar: 'تم الاستلام' },
@@ -166,8 +167,8 @@ const STRINGS = {
   'form.descPlaceholder': { en: 'Printer in room 204 is not printing.', ar: 'الطابعة في الغرفة ٢٠٤ لا تطبع.' },
   'form.descHelp':      { en: 'Room numbers and machine names help a lot.', ar: 'ذكر رقم الغرفة واسم الجهاز يساعد كثيراً.' },
   'form.priority':      { en: 'How urgent?',      ar: 'ما مدى الاستعجال؟' },
-  'form.priorityHelp':  { en: 'Please keep "Very urgent" for things that stop teaching or work right now.',
-                          ar: 'يُرجى استخدام "عاجل جداً" فقط لما يوقف التدريس أو العمل فوراً.' },
+  'form.priorityHelp':  { en: 'Keep "Very urgent" for things that stop work right now, and "Life & death" for a real emergency.',
+                          ar: 'احتفظ بـ"عاجل جداً" لما يوقف العمل فوراً، و"حياة أو موت" للطوارئ الحقيقية.' },
   'form.submit':        { en: 'Send request',     ar: 'إرسال الطلب' },
   'form.successTitle':  { en: 'Request sent',     ar: 'تم إرسال الطلب' },
   'form.successBody':   { en: 'Haitham has been notified. Your reference is', ar: 'تم إبلاغ هيثم. رقم طلبك هو' },

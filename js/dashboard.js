@@ -10,6 +10,7 @@ import { configured } from './supabase.js';
 import { PRIORITY_META, REQUEST_STATUS_META } from './config.js';
 import { $, $$, esc, el, fmtTime, fmtDateTime, relativeTime, durationText, prefs } from './utils.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
+import { priorityMessage, availabilityMessage } from './messages.js';
 import {
   initTheme, initThemeToggle, initOffline, initSheets, openSheet, closeSheet,
   startClock, toastOk, toastError, toast, withBusy, renderEmpty, renderError,
@@ -54,6 +55,7 @@ onLangChange(() => {
   applyI18n(document);
   if (state.snapshot) paintBoard(state.snapshot, { silent: true });
   paintMine();
+  paintPriorityQuip();
 });
 
 if (!configured) {
@@ -144,6 +146,11 @@ function paintBoard(snapshot, { silent = false } = {}) {
 
 function paintHero(view, snapshot) {
   const servingName = snapshot.serving?.requester ?? null;
+  // The joke sits next to the plain hint, never instead of it: somebody
+  // deciding whether to walk across the complex needs the fact first.
+  const quip = view.known && !view.expired
+    ? availabilityMessage(snapshot.status?.status_type)
+    : '';
   const locationLine = view.location
     ? `<div class="fact"><span class="ico" aria-hidden="true">📍</span>
          <span class="grow"><span class="k">${esc(t('board.location'))}</span>
@@ -188,6 +195,7 @@ function paintHero(view, snapshot) {
         <span>${esc(view.known ? statusLabel(view, servingName) : t('board.noStatus'))}</span>
       </p>
       <p class="hero-hint">${esc(view.known ? view.meta.hint : t('board.noStatusHint'))}</p>
+      ${quip ? `<p class="quip quip-quiet">${esc(quip)}</p>` : ''}
       ${locationLine || taskLine ? `<div class="hero-facts">${locationLine}${taskLine}</div>` : ''}
       ${timeBlock}
       ${expiredNote}
@@ -263,6 +271,7 @@ function paintCounters(counts) {
   $('#c-waiting').textContent = counts.waiting ?? 0;
   $('#c-urgent').textContent = counts.urgent ?? 0;
   $('#c-very').textContent = counts.very_urgent ?? 0;
+  $('#c-life').textContent = counts.life_death ?? 0;
 }
 
 /* ================================================================== */
@@ -289,7 +298,19 @@ function wireRequestForm() {
     $('#rq-desc-count').textContent = event.target.value.length;
   });
 
+  // Delegated, so a fifth urgency would need no new listener.
+  $('#rq-priority').addEventListener('change', paintPriorityQuip);
+
   $('#request-form').addEventListener('submit', onSubmitRequest);
+}
+
+/** The playful line under the urgency picker. Wording lives in messages.js. */
+function paintPriorityQuip() {
+  const chosen = $('#rq-priority input:checked')?.value ?? 'normal';
+  const node = $('#rq-quip');
+  if (!node) return;
+  node.textContent = priorityMessage(chosen);
+  node.dataset.priority = chosen;
 }
 
 async function openRequestSheet() {
@@ -298,6 +319,7 @@ async function openRequestSheet() {
   $('#rq-error').hidden = true;
 
   await populateRequestSelects();
+  paintPriorityQuip();
 
   // Most people ask from the same room, and type the same name, every time.
   const lastName = prefs.get('lastName');
@@ -384,6 +406,7 @@ function resetRequestForm() {
   $('#rq-location-custom-field').hidden = true;
   $('#rq-category-custom-field').hidden = true;
   $('#rq-desc-count').textContent = '0';
+  paintPriorityQuip();
 }
 
 /* ================================================================== */
@@ -577,11 +600,24 @@ function openEditRequest(request) {
 /* a password, and RLS still refuses anyone who is not an admin.       */
 /* ================================================================== */
 
+/* How long a reveal lasts. Long enough that Haitham taps once at the
+   start of a shift and the link is there all day; short enough that a
+   colleague who borrows the device tomorrow finds the door shut again.
+   Without an expiry the first reveal was permanent, which quietly
+   undid the concealment it was supposed to provide. */
+const ADMIN_REVEAL_MS = 12 * 60 * 60 * 1000;
+
 /* Declared as a function, not a const: boot() calls wireAdminGesture during
    module evaluation, and a const declared further down the file is still in
    its temporal dead zone at that point. */
 function adminUnlocked() {
-  return prefs.get('adminUnlocked', false) === true;
+  const until = Number(prefs.get('adminUnlockedUntil', 0));
+  if (!until) return false;
+  if (Date.now() > until) {
+    prefs.remove('adminUnlockedUntil');
+    return false;
+  }
+  return true;
 }
 
 function revealAdminLinks() {
@@ -597,6 +633,10 @@ function wireAdminGesture() {
   const clock = $('#clock');
   if (!clock) return;
 
+  /* The counter starts at zero on every page load, is cleared the moment
+     the door opens, and is cleared again after a pause: ten taps have to
+     be ten deliberate taps in one go, so no amount of idle fidgeting
+     with the clock will ever get there by accident. */
   let taps = 0;
   let reset;
 
@@ -613,7 +653,8 @@ function wireAdminGesture() {
     const left = 10 - taps;
     if (left <= 0) {
       taps = 0;
-      prefs.set('adminUnlocked', true);
+      clearTimeout(reset);
+      prefs.set('adminUnlockedUntil', Date.now() + ADMIN_REVEAL_MS);
       revealAdminLinks();
       toastOk(t('admin.unlocked'));
       setTimeout(() => { location.href = 'admin.html'; }, 900);

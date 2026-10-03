@@ -17,7 +17,8 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 3 | `migration-buildings-and-interruptions.sql` | Real building names; putting a job on hold |
 | 4 | `migration-test-cleanup.sql` | Delete one request; clear test data |
 | 5 | `migration-edit-request.sql` | Requester can change a pending request |
-| 6 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
+| 6 | `migration-life-death.sql` | A fourth urgency above "very urgent" |
+| 7 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
 
 There used to be a seventh file, `migration-ui-skin.sql`, which stored a
 site-wide interface style. The interface now has one deliberate design

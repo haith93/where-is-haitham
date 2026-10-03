@@ -143,6 +143,45 @@ RTL override anywhere in the component sheets.
 Status colour is never the only signal: every badge prints its own words,
 so the board still works for a colour-blind reader and in a photocopy.
 
+### The four urgency levels
+
+| Level | Shown as | Meaning |
+|---|---|---|
+| `normal` | Normal | Whenever he gets to it |
+| `urgent` | Urgent | Today, please |
+| `very_urgent` | Very urgent | This is stopping work right now |
+| `life_death` | **Life & death** | Everything else waits |
+
+The fourth exists because three stopped discriminating. Once "very
+urgent" was the top of the scale, everything that genuinely stopped work
+got filed there, and the real emergencies were buried among the merely
+annoying ones.
+
+`life_death` is the one thing in the entire interface drawn as solid ink
+rather than coloured text on a pale ground — the `--critical` tone. That
+treatment is deliberately reserved: if a second thing ever uses it, it
+stops meaning anything.
+
+Adding a fifth level would mean: a row in `PRIORITY_META`
+(`js/config.js`), a string in `js/i18n.js`, a radio in the two request
+forms, and a migration extending the check constraint and the four
+functions that validate, order or count a priority. `sql/migration-life-death.sql`
+is the worked example.
+
+### Where the playful lines live
+
+`js/messages.js` holds every informal line in the application — the
+urgency quips ("DROP EVERYTHING."), and the availability ones ("In the
+office. Coffee mode."), in English and Arabic side by side. Nothing
+playful is written anywhere else, so changing the tone of the app is
+editing one table rather than grepping render functions.
+
+The Arabic is written to be funny in Arabic. The two halves of a row say
+the same thing; they do not say it the same way.
+
+The joke never replaces the fact. Every quip sits next to the plain
+status or urgency label, never instead of it.
+
 ---
 
 ## 4. Tech stack
@@ -198,6 +237,7 @@ where-is-haitham/
 │   ├── utils.js            Timezone-correct formatting, DOM helpers
 │   ├── ui.js               Toasts, sheets, busy states, theme
 │   ├── i18n.js             Arabic / English strings and RTL
+│   ├── messages.js         Every playful status line, EN + AR, in one table
 │   ├── dashboard.js        index.html controller
 │   ├── admin.js            admin.html controller
 │   └── staff.js            staff.html controller

@@ -131,6 +131,7 @@
   box-shadow: var(--shadow-sm);
   padding: var(--s-4);
 }
+.queue-card[data-priority='life_death']  { --q-accent: var(--critical-fill); }
 .queue-card[data-priority='very_urgent'] { --q-accent: var(--danger-fill); }
 .queue-card[data-priority='urgent']      { --q-accent: var(--urgent-fill); }
 .queue-card[data-priority='normal']      { --q-accent: var(--ok-fill); }

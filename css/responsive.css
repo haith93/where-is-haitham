@@ -64,6 +64,7 @@
 
   .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .btn-grid  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .counters  { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* ---------- Tablet and up: top navigation replaces the bottom bar ----- */
@@ -100,6 +101,10 @@
     color: var(--accent-contrast);
     border-color: var(--ink);
     box-shadow: var(--shadow-sm);
+  }
+  .desktop-nav a:active, .desktop-nav button:active {
+    transform: var(--press);
+    box-shadow: var(--shadow-flat);
   }
 
   /* Must stay scoped to [open]: a bare `.sheet` rule would beat the
@@ -186,7 +191,6 @@
   }
 
   .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .counters  { max-width: 580px; }
 
   /* With room to spare, the hero can carry a heavier shadow again. */
   :root { --sh-3: 10px; }

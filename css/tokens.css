@@ -137,6 +137,12 @@
   --urgent-soft: #ffdcc2;
   --danger:      #c01919;        /* stopped, refused, very urgent        */
   --danger-soft: #ffd5d5;
+  /* Above danger. Reserved for life & death, which is why it is the one
+     tone drawn as solid ink rather than coloured text on a pale ground:
+     it has to stop the eye without a single other thing on the page
+     competing for the same treatment. */
+  --critical:      #ffffff;
+  --critical-soft: #b00000;
   --muted-soft:  #ece6d4;        /* no state worth a colour              */
 
   /* Fills, as opposed to text.
@@ -150,7 +156,14 @@
   --warn-fill:   #e89000;
   --urgent-fill: #f2680c;
   --danger-fill: #e02424;
+  --critical-fill: #b00000;
   --muted-fill:  #8a8373;
+
+  /* The <select> arrow. It lives here, as one token per scheme, because
+     it is the only image in the design system and it has to change with
+     the theme. Declaring it in exactly one place means no specificity
+     race can ever reintroduce a second arrow. */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%230d0d0d' d='M4 7h12l-6 7z'/%3E%3C/svg%3E");
 }
 
 /* Mirror every hard shadow and every press for right-to-left. */
@@ -201,6 +214,8 @@
   --urgent-soft: #3b2010;
   --danger:      #ff5f5f;
   --danger-soft: #3b1212;
+  --critical:      #ffffff;
+  --critical-soft: #c20000;
   --muted-soft:  #2c2814;
 
   --ok-fill:     var(--ok);
@@ -208,7 +223,9 @@
   --warn-fill:   var(--warn);
   --urgent-fill: var(--urgent);
   --danger-fill: var(--danger);
+  --critical-fill: #c20000;
   --muted-fill:  var(--text-faint);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23fffbe9' d='M4 7h12l-6 7z'/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -251,6 +268,8 @@
     --urgent-soft: #3b2010;
     --danger:      #ff5f5f;
     --danger-soft: #3b1212;
+    --critical:      #ffffff;
+    --critical-soft: #c20000;
     --muted-soft:  #2c2814;
 
     --ok-fill:     var(--ok);
@@ -258,7 +277,9 @@
     --warn-fill:   var(--warn);
     --urgent-fill: var(--urgent);
     --danger-fill: var(--danger);
+    --critical-fill: #c20000;
     --muted-fill:  var(--text-faint);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23fffbe9' d='M4 7h12l-6 7z'/%3E%3C/svg%3E");
   }
 }
 

@@ -84,6 +84,7 @@
           </div>
 
           <div class="counters">
+            <div class="counter" data-tone="critical"><span class="n" id="d-life">0</span><span class="l" data-i18n="priority.life_death">Life &amp; death</span></div>
             <div class="counter" data-tone="danger"><span class="n" id="d-very">0</span><span class="l" data-i18n="priority.very_urgent">Very urgent</span></div>
             <div class="counter" data-tone="urgent"><span class="n" id="d-urgent">0</span><span class="l" data-i18n="priority.urgent">Urgent</span></div>
             <div class="counter"><span class="n" id="d-pending">0</span><span class="l" data-i18n="reqstatus.pending">Pending</span></div>
@@ -344,6 +345,7 @@
                   <option value="normal" data-i18n="priority.normal">Normal</option>
                   <option value="urgent" data-i18n="priority.urgent">Urgent</option>
                   <option value="very_urgent" data-i18n="priority.very_urgent">Very urgent</option>
+                  <option value="life_death" data-i18n="priority.life_death">Life &amp; death</option>
                 </select>
               </div>
               <div class="field">
@@ -589,6 +591,8 @@
           <label for="bp-urgent">🟠 <span data-i18n="priority.urgent">Urgent</span></label>
           <input type="radio" name="bh_priority" id="bp-very" value="very_urgent">
           <label for="bp-very">🔴 <span data-i18n="priority.very_urgent">Very urgent</span></label>
+          <input type="radio" name="bh_priority" id="bp-life" value="life_death">
+          <label for="bp-life" class="is-critical">🚨 <span data-i18n="priority.life_death">Life &amp; death</span></label>
         </div>
       </fieldset>
 

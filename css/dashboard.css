@@ -13,16 +13,22 @@
    leaves, or asks for help without hunting for a button.
    ===================================================================== */
 
+/* The page's one and only "Where is Haitham now?". The desktop tab used
+   to repeat it word for word; that tab now says "Now", like the bottom
+   bar always did, so this is the single place the question is asked.
+   Drawn as a plate - thick border, hard shadow, bold - because it is the
+   title of the thing the whole site exists to answer. */
 .board-title {
-  font-family: var(--mono);
-  font-size: var(--t-meta);
-  font-weight: 600;
-  letter-spacing: var(--track-wide);
+  font-size: var(--t-h2);
+  font-weight: 700;
+  letter-spacing: var(--track-tight);
   text-transform: uppercase;
-  color: var(--text);
+  color: var(--accent-contrast);
+  background: var(--accent);
   text-align: center;
-  padding: var(--s-2) 0;
-  border-block: var(--bd-hair) solid var(--border);
+  padding: var(--s-3) var(--s-4);
+  border: var(--bd) solid var(--ink);
+  box-shadow: var(--shadow-sm);
   margin-bottom: var(--s-2);
 }
 
@@ -223,7 +229,11 @@
 .queue-item {
   display: flex;
   align-items: center;
-  gap: var(--s-3);
+  /* The urgency badge never shrinks and "Life & death" is a wide one, so
+     on a narrow phone it drops to its own line underneath rather than
+     squeezing the requester's name into a two-line column. */
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
   padding: var(--s-3);
   background: var(--surface);
   border: var(--bd-thin) solid var(--border);
@@ -232,6 +242,7 @@
 }
 .queue-item[data-priority='urgent']      { border-inline-start-color: var(--urgent-fill); }
 .queue-item[data-priority='very_urgent'] { border-inline-start-color: var(--danger-fill); }
+.queue-item[data-priority='life_death']  { border-inline-start-color: var(--critical-fill); }
 .queue-item[data-priority='normal']      { border-inline-start-color: var(--ok-fill); }
 
 /* Position in the queue, as a stamped number. */
@@ -247,7 +258,8 @@
   font-size: 13px;
   font-weight: 700;
 }
-.queue-main { min-width: 0; flex: 1; }
+.queue-main { min-width: 0; flex: 1 1 140px; }
+.queue-item > .badge { margin-inline-start: auto; }
 /* Both are <span>s inside a <span>, so they need blockifying by hand or
    the name and the location run together on one line. */
 .queue-name { display: block; font-weight: 700; font-size: 16px; }
@@ -256,14 +268,27 @@
 /* ---------- Counters ---------------------------------------------------
    Three instrument readouts. Big mono figures, flat ground, hard edge.
    -------------------------------------------------------------------- */
+/* Four readouts, and the admin board sometimes shows five. Two columns
+   on a phone, four once there is room; equal widths come from 1fr and
+   equal heights come from the grid row, so nothing has to be measured.
+   A trailing odd tile - the fifth, or a third of three - spans the full
+   width instead of sitting alone against empty space. */
 .counters {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--s-2);
+  align-items: stretch;
+}
+.counters > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.counter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .counter {
   text-align: center;
   padding: var(--s-3) var(--s-2);
+  min-height: 78px;
   background: var(--surface);
   border: var(--bd-thin) solid var(--border);
   box-shadow: var(--shadow-sm);
@@ -290,6 +315,14 @@
 .counter[data-tone='danger'] .n { color: var(--danger); }
 .counter[data-tone='urgent'] { border-color: var(--urgent-fill); border-width: var(--bd); }
 .counter[data-tone='urgent'] .n { color: var(--urgent); }
+/* Life and death is the only readout drawn inverted. */
+.counter[data-tone='critical'] {
+  background: var(--critical-soft);
+  border-color: var(--ink);
+  border-width: var(--bd);
+}
+.counter[data-tone='critical'] .n,
+.counter[data-tone='critical'] .l { color: var(--critical); }
 
 /* ---------- My requests ------------------------------------------------ */
 .req-card {
@@ -308,6 +341,7 @@
 }
 .req-card[data-priority='urgent']      { border-inline-start-color: var(--urgent-fill); }
 .req-card[data-priority='very_urgent'] { border-inline-start-color: var(--danger-fill); }
+.req-card[data-priority='life_death']  { border-inline-start-color: var(--critical-fill); }
 .req-card[data-priority='normal']      { border-inline-start-color: var(--ok-fill); }
 .req-card:hover  { background: var(--accent-soft); }
 .req-card:active { transform: var(--press); box-shadow: var(--shadow-flat); }

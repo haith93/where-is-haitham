@@ -108,6 +108,7 @@ export async function buildReport(fromKey, toKey, filters = {}) {
     rejected: requests.filter(r => r.status === 'rejected').length,
     urgent: requests.filter(r => r.priority === 'urgent').length,
     veryUrgent: requests.filter(r => r.priority === 'very_urgent').length,
+    lifeDeath: requests.filter(r => r.priority === 'life_death').length,
     normal: requests.filter(r => r.priority === 'normal').length
   };
 
@@ -175,6 +176,7 @@ export async function buildReport(fromKey, toKey, filters = {}) {
         tone: row.label === 'app' ? 'ok' : 'info'
       })),
       byPriority: [
+        { key: 'life_death',  label: PRIORITY_META.life_death.label,  value: counts.lifeDeath,  tone: 'danger' },
         { key: 'very_urgent', label: PRIORITY_META.very_urgent.label, value: counts.veryUrgent, tone: 'danger' },
         { key: 'urgent',      label: PRIORITY_META.urgent.label,      value: counts.urgent,     tone: 'urgent' },
         { key: 'normal',      label: PRIORITY_META.normal.label,      value: counts.normal,     tone: 'warn' }
@@ -252,6 +254,7 @@ export function exportSummaryCSV(report) {
     ['Rejected', report.counts.rejected],
     ['Urgent', report.counts.urgent],
     ['Very urgent', report.counts.veryUrgent],
+    ['Life & death', report.counts.lifeDeath],
     ['Average per day', report.perDay],
     ['Average time to accept (min)', report.avgResponse ?? ''],
     ['Average time to complete (min)', report.avgCompletion ?? ''],

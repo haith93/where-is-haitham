@@ -364,6 +364,7 @@ function wireDashboard() {
 
 async function paintDashboardExtras() {
   const queue = state.openRequests;
+  $('#d-life').textContent = queue.filter(r => r.priority === 'life_death' && r.status !== 'in_progress').length;
   $('#d-very').textContent = queue.filter(r => r.priority === 'very_urgent' && r.status !== 'in_progress').length;
   $('#d-urgent').textContent = queue.filter(r => r.priority === 'urgent' && r.status !== 'in_progress').length;
   $('#d-pending').textContent = queue.filter(r => r.status === 'pending').length;
@@ -1623,7 +1624,10 @@ function wireSettings() {
   $('#hide-admin-link').addEventListener('click', async event => {
     const ok = await confirmAction(t('admin.hideLinkConfirm'), { confirmText: t('action.confirm') });
     if (!ok) return;
+    // Both keys: the old boolean so a device unlocked before the reveal
+    // gained an expiry is cleared too, and the current timestamp.
     prefs.remove('adminUnlocked');
+    prefs.remove('adminUnlockedUntil');
     toastOk(t('admin.hiddenToast'));
   });
 
