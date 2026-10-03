@@ -5,6 +5,7 @@
  * only need to send a request should never be shown a password form.
  */
 import { configured, sb } from './supabase.js';
+import { paintIcons } from './icons.js';
 import { $, esc } from './utils.js';
 import { applyDocument, initLangToggle, apply as applyI18n, onLangChange } from './i18n.js';
 import { getSettings } from './data.js';
@@ -18,6 +19,7 @@ import {
 } from './auth.js';
 
 applyDocument();
+paintIcons();
 initTheme();
 initThemeToggle();
 initLangToggle();

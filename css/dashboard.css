@@ -110,8 +110,7 @@
 }
 .fact + .fact { border-top: var(--bd-hair) solid var(--border); }
 .fact .ico {
-  font-size: 17px;
-  line-height: 1.4;
+  line-height: 1;
   flex: none;
   width: 30px; height: 30px;
   display: grid; place-items: center;

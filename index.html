@@ -29,7 +29,7 @@
   <header class="appbar">
     <div class="appbar-inner">
       <a class="brand" href="index.html">
-        <span class="brand-mark" aria-hidden="true">📍</span>
+        <span class="brand-mark" aria-hidden="true" data-icon="pin"></span>
         <span class="grow" data-i18n="app.name">Where Is Haitham Now?</span>
       </a>
       <span class="grow"></span>
@@ -43,7 +43,7 @@
       <span class="appbar-clock tabnum" id="clock" data-i18n-aria="common.time"></span>
 
       <button class="btn btn-ghost btn-sm" type="button" data-lang-toggle lang="ar">العربية</button>
-      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle data-i18n-aria="common.theme">🌙</button>
+      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle data-i18n-aria="common.theme"><span class="ico" data-icon="moon" aria-hidden="true"></span></button>
     </div>
   </header>
 
@@ -109,14 +109,14 @@
   <!-- ================= Bottom navigation ================= -->
   <nav class="bottomnav" aria-label="Main">
     <button type="button" data-view="now" aria-current="page">
-      <span class="ico" aria-hidden="true">📍</span><span data-i18n="board.now">Now</span>
+      <span class="ico" aria-hidden="true" data-icon="pin"></span><span data-i18n="board.now">Now</span>
     </button>
     <button type="button" data-view="mine">
-      <span class="ico" aria-hidden="true">📋</span><span data-i18n="mine.title">My requests</span>
+      <span class="ico" aria-hidden="true" data-icon="clipboard"></span><span data-i18n="mine.title">My requests</span>
     </button>
     <!-- Revealed only on a device where the clock gesture has been used. -->
     <a href="admin.html" id="admin-link-nav" hidden>
-      <span class="ico" aria-hidden="true">🛠</span><span data-i18n="app.admin">Admin console</span>
+      <span class="ico" aria-hidden="true" data-icon="wrench"></span><span data-i18n="app.admin">Admin console</span>
     </a>
   </nav>
 </div>
@@ -127,7 +127,7 @@
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
       <h2 id="request-sheet-title" data-i18n="form.title">Request Haitham</h2>
-      <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close">✕</button>
+      <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close"><span class="ico" data-icon="close" aria-hidden="true"></span></button>
     </div>
 
     <form id="request-form" class="stack" novalidate>
@@ -168,13 +168,13 @@
         <legend class="label" data-i18n="form.priority">How urgent?</legend>
         <div class="segmented" id="rq-priority">
           <input type="radio" name="priority" id="pr-normal" value="normal" checked>
-          <label for="pr-normal">🟡 <span data-i18n="priority.normal">Normal</span></label>
+          <label for="pr-normal"><span class="ico" data-icon="dot" data-icon-tone="warn-fill" aria-hidden="true"></span> <span data-i18n="priority.normal">Normal</span></label>
           <input type="radio" name="priority" id="pr-urgent" value="urgent">
-          <label for="pr-urgent">🟠 <span data-i18n="priority.urgent">Urgent</span></label>
+          <label for="pr-urgent"><span class="ico" data-icon="dot" data-icon-tone="urgent-fill" aria-hidden="true"></span> <span data-i18n="priority.urgent">Urgent</span></label>
           <input type="radio" name="priority" id="pr-very" value="very_urgent">
-          <label for="pr-very">🔴 <span data-i18n="priority.very_urgent">Very urgent</span></label>
+          <label for="pr-very"><span class="ico" data-icon="dot" data-icon-tone="danger-fill" aria-hidden="true"></span> <span data-i18n="priority.very_urgent">Very urgent</span></label>
           <input type="radio" name="priority" id="pr-life" value="life_death">
-          <label for="pr-life" class="is-critical">🚨 <span data-i18n="priority.life_death">Life &amp; death</span></label>
+          <label for="pr-life" class="is-critical"><span class="ico" data-icon="siren" aria-hidden="true"></span> <span data-i18n="priority.life_death">Life &amp; death</span></label>
         </div>
         <p class="quip" id="rq-quip" role="status" aria-live="polite"></p>
         <p class="help" data-i18n="form.priorityHelp">Keep "Very urgent" for things that stop work right now.</p>
@@ -185,7 +185,7 @@
     </form>
 
     <div id="rq-success" hidden style="text-align:center;padding:10px 0 6px">
-      <p class="empty-icon" aria-hidden="true">✅</p>
+      <p class="empty-icon" aria-hidden="true"><span class="ico" data-icon="check" aria-hidden="true"></span></p>
       <h3 style="font-size:19px" data-i18n="form.successTitle">Request sent</h3>
       <p class="muted small" style="margin-top:6px" data-i18n="form.successBody">Haitham has been notified.</p>
       <p class="mono" style="font-size:20px;font-weight:800;margin:8px 0" id="rq-number">—</p>
@@ -201,7 +201,7 @@
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
       <h2 id="detail-title">—</h2>
-      <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close">✕</button>
+      <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close"><span class="ico" data-icon="close" aria-hidden="true"></span></button>
     </div>
     <div id="detail-body"></div>
   </div>

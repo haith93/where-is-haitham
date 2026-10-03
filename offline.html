@@ -14,7 +14,7 @@
 <body>
   <main class="container" style="min-height:100dvh;display:grid;place-items:center">
     <div class="card" style="text-align:center;max-width:420px">
-      <p style="font-size:44px;margin-bottom:8px" aria-hidden="true">📡</p>
+      <p style="font-size:44px;margin-bottom:8px" aria-hidden="true"><span class="ico" data-icon="offline" aria-hidden="true"></span></p>
       <h1 style="font-size:21px;margin-bottom:10px">You are offline</h1>
       <p class="muted" style="margin-bottom:18px">
         The status board needs a connection, because it shows what is happening right now.
@@ -26,5 +26,10 @@
       </p>
     </div>
   </main>
+<script type="module">
+  // No controller on this page; it only needs its icons drawn.
+  import { paintIcons } from './js/icons.js';
+  paintIcons();
+</script>
 </body>
 </html>

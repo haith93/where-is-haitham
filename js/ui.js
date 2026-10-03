@@ -5,6 +5,7 @@
  * Nothing here touches the database.
  */
 import { $, $$, el, esc, fmtClock, prefs } from './utils.js';
+import { icon } from './icons.js';
 
 /* ------------------------------------------------------------------ */
 /* Theme                                                               */
@@ -59,9 +60,9 @@ function toastHost() {
  * @param {'ok'|'error'|'info'} type
  */
 export function toast(message, type = 'info', timeout = type === 'error' ? 7000 : 3500) {
-  const icon = type === 'ok' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  const mark = type === 'ok' ? icon('check') : type === 'error' ? icon('ban') : icon('warning');
   const node = el('div', { class: `toast toast-${type}` }, [
-    el('span', { text: icon, 'aria-hidden': 'true' }),
+    el('span', { html: mark, 'aria-hidden': 'true' }),
     el('span', { class: 'grow', text: message }),
     el('button', { type: 'button', 'aria-label': 'Dismiss', text: '×', onclick: () => node.remove() })
   ]);
@@ -233,7 +234,7 @@ export function initOffline(onChange) {
       offlineBar = el('div', {
         class: 'offline-bar',
         role: 'status',
-        text: '⚠️ You are offline. Changes cannot be saved until you reconnect.'
+        text: 'You are offline. Changes cannot be saved until you reconnect.'
       });
       document.body.prepend(offlineBar);
     } else if (online && offlineBar) {
@@ -260,11 +261,17 @@ export function renderSkeleton(container, rows = 3) {
   ).join('');
 }
 
-export function renderEmpty(container, icon, title, hint = '') {
+/**
+ * @param {Element} container
+ * @param {string} mark  markup from icon(), not a character. It is our own
+ *                       drawing, so it goes in unescaped - escaping it
+ *                       would print the SVG source on the page.
+ */
+export function renderEmpty(container, mark, title, hint = '') {
   if (!container) return;
   container.innerHTML = `
     <div class="empty">
-      <div class="empty-icon" aria-hidden="true">${esc(icon)}</div>
+      <div class="empty-icon" aria-hidden="true">${mark}</div>
       <p style="font-weight:700">${esc(title)}</p>
       ${hint ? `<p class="small" style="margin-top:4px">${esc(hint)}</p>` : ''}
     </div>`;
@@ -342,7 +349,7 @@ export function initThemeToggle(selector = '[data-theme-toggle]') {
     const paint = () => {
       const dark = document.documentElement.dataset.theme === 'dark'
         || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
-      btn.textContent = dark ? '☀️' : '🌙';
+      btn.innerHTML = dark ? icon('sun') : icon('moon');
       btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
     };
     btn.addEventListener('click', () => { toggleTheme(); paint(); });

@@ -66,6 +66,84 @@ a:hover { background: var(--accent); color: var(--accent-contrast); }
   .btn:active, .filter-pill:active, .req-card:active { transform: none !important; }
 }
 
+/* ---------- Icons -----------------------------------------------------
+   Drawn in js/icons.js, 24x24, outlined in currentColor and filled from
+   tokens. Sized in `em` so an icon always matches the type beside it,
+   and nudged down a fraction so its optical centre lands on the baseline
+   of the text rather than above it.
+   -------------------------------------------------------------------- */
+.icon {
+  width: 1em;
+  height: 1em;
+  flex: none;
+  vertical-align: -0.14em;
+  overflow: visible;
+}
+
+/* Directional drawings - an arrow, a walking figure - have to face the
+   way the language reads. */
+:root[dir='rtl'] .icon-flip { transform: scaleX(-1); }
+
+/* A `data-icon` span is only a holder; the drawing inside carries the
+   size, so the span must not add a line box of its own. */
+[data-icon] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* An icon's own colour can vanish on a filled control - a yellow wrench
+   on a yellow nav tab. On anything already wearing the action colour the
+   body becomes paper and the cut-outs become the ground, which keeps
+   both halves of every two-tone drawing readable. */
+.btn-primary .icon,
+.bottomnav [aria-current='page'] .icon,
+.desktop-nav [aria-current='page'] .icon,
+.admin-side a[aria-current='page'] .icon,
+.section-head .icon,
+.day-head .icon,
+.time-preview .icon,
+.badge-accent .icon,
+.queue-rank .icon,
+.brand-mark .icon,
+.table th .icon {
+  --ic: var(--surface);
+  --ic2: var(--accent);
+}
+
+/* Where the ground is already dark, the fill goes the other way. */
+.badge-critical .icon,
+.counter[data-tone='critical'] .icon,
+.segmented label.is-critical .icon {
+  --ic: var(--critical);
+  --ic2: var(--critical-soft);
+}
+
+/* The green "I'm available now" button and the red refuse button are
+   filled too, just not in the action colour. */
+.btn-ok:hover .icon,
+.btn-secondary .icon { --ic: var(--surface); --ic2: var(--secondary); }
+.btn-danger:hover .icon { --ic: var(--surface); --ic2: var(--danger); }
+
+/* A tone dot sets --ic inline, and an inline style already beats every
+   rule above, so the signal colour survives any ground without help. */
+
+/* Icons that stand alone rather than beside words - the app bar, the
+   nav, an empty state - want to be bigger than the type around them. */
+.brand-mark .icon { font-size: 17px; }
+.bottomnav .ico .icon { font-size: 21px; }
+.admin-side .ico .icon { font-size: 15px; }
+.fact .ico .icon { font-size: 17px; }
+.empty-icon .icon { font-size: 34px; }
+.sheet-close .icon { font-size: 15px; }
+.btn-icon .icon { font-size: 18px; }
+.hero-status .icon,
+.now-status .icon { font-size: .8em; }
+
+/* The old emoji holders set a font-size for a character; with a drawing
+   inside they only need to stop adding their own leading. */
+.empty-icon { line-height: 1; }
+
 /* ---------- Layout --------------------------------------------------- */
 .app {
   min-height: 100dvh;

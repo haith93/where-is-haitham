@@ -7,6 +7,7 @@
  * request without an account.
  */
 import { configured } from './supabase.js';
+import { icon, paintIcons } from './icons.js';
 import { PRIORITY_META, REQUEST_STATUS_META } from './config.js';
 import { $, $$, esc, el, fmtTime, fmtDateTime, relativeTime, durationText, prefs } from './utils.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange } from './i18n.js';
@@ -41,6 +42,7 @@ const state = {
 /* ================================================================== */
 
 applyDocument();
+paintIcons();
 initTheme();
 initThemeToggle();
 initLangToggle();
@@ -149,15 +151,15 @@ function paintHero(view, snapshot) {
   // The joke sits next to the plain hint, never instead of it: somebody
   // deciding whether to walk across the complex needs the fact first.
   const quip = view.known && !view.expired
-    ? availabilityMessage(snapshot.status?.status_type)
+    ? availabilityMessage(snapshot.status?.status_type, snapshot.status?.updated_at)
     : '';
   const locationLine = view.location
-    ? `<div class="fact"><span class="ico" aria-hidden="true">📍</span>
+    ? `<div class="fact"><span class="ico">${icon('pin')}</span>
          <span class="grow"><span class="k">${esc(t('board.location'))}</span>
          <span class="v">${esc(view.location)}</span></span></div>`
     : '';
   const taskLine = view.task
-    ? `<div class="fact"><span class="ico" aria-hidden="true">🛠️</span>
+    ? `<div class="fact"><span class="ico">${icon('wrench')}</span>
          <span class="grow"><span class="k">${esc(t('board.doing'))}</span>
          <span class="v">${esc(view.task)}</span></span></div>`
     : '';
@@ -180,11 +182,11 @@ function paintHero(view, snapshot) {
 
   const expiredNote = view.expired ? `
     <div class="expired-note" role="status">
-      <span aria-hidden="true">⏰</span>
+      ${icon('alarm')}
       <span><strong>${esc(t('board.expiredTitle'))}</strong> ${esc(t('board.expiredBody'))}</span>
     </div>` : (view.stale ? `
     <div class="expired-note" role="status">
-      <span aria-hidden="true">⏰</span>
+      ${icon('alarm')}
       <span><strong>${esc(t('board.staleTitle'))}</strong> ${esc(t('board.expiredBody'))}</span>
     </div>` : '');
 
@@ -220,8 +222,8 @@ function paintServing(serving, next) {
   if (serving) {
     body.innerHTML = `
       <p class="serving-person">${esc(serving.requester)}</p>
-      <p class="muted">📍 ${esc(requestLocation(serving))}</p>
-      <p style="margin-top:6px;font-weight:650">🔧 ${esc(requestCategory(serving))}</p>
+      <p class="muted">${icon('pin')} ${esc(requestLocation(serving))}</p>
+      <p style="margin-top:6px;font-weight:650">${icon('wrench')} ${esc(requestCategory(serving))}</p>
       ${serving.started_at ? `<p class="small faint" style="margin-top:8px">
         ${esc(t('board.started'))} ${esc(fmtTime(serving.started_at))} · ${esc(relativeTime(serving.started_at))}</p>` : ''}
       <p class="small faint mono" style="margin-top:4px">${esc(serving.request_number)}</p>`;
@@ -230,7 +232,7 @@ function paintServing(serving, next) {
     body.innerHTML = `
       <p class="muted small" style="margin-bottom:6px">${esc(t('board.nextUp'))}</p>
       <p class="serving-person">${esc(next.requester)}</p>
-      <p class="muted">📍 ${esc(requestLocation(next))} · 🔧 ${esc(requestCategory(next))}</p>`;
+      <p class="muted">${icon('pin')} ${esc(requestLocation(next))} · ${icon('wrench')} ${esc(requestCategory(next))}</p>`;
     card.hidden = false;
   } else {
     card.hidden = true;
@@ -244,7 +246,7 @@ function paintQueue(queue) {
     : t('board.countWaiting', { n: queue.length });
 
   if (!queue.length) {
-    renderEmpty(body, '🎉', t('board.nobodyWaiting'), t('board.nobodyWaitingHint'));
+    renderEmpty(body, icon('party'), t('board.nobodyWaiting'), t('board.nobodyWaitingHint'));
     return;
   }
 
@@ -256,7 +258,7 @@ function paintQueue(queue) {
         <span class="queue-rank" aria-hidden="true">${index + 1}</span>
         <span class="queue-main">
           <span class="queue-name">${esc(item.requester)}</span>
-          <span class="queue-meta">📍 ${esc(requestLocation(item))} · ${esc(requestCategory(item))}</span>
+          <span class="queue-meta">${icon('pin')} ${esc(requestLocation(item))} · ${esc(requestCategory(item))}</span>
         </span>
         <span class="badge badge-${esc(priority.tone)}">
           <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}
@@ -432,7 +434,7 @@ function paintMine() {
   if (!body) return;
 
   if (!state.myRequests.length) {
-    renderEmpty(body, '📋', t('mine.empty'), t('mine.emptyHint'));
+    renderEmpty(body, icon('clipboard'), t('mine.empty'), t('mine.emptyHint'));
     return;
   }
 
@@ -448,9 +450,9 @@ function paintMine() {
           </span>
         </span>
         <span class="req-title">${esc(requestCategory(r))}</span>
-        <span class="req-sub">📍 ${esc(requestLocation(r))} · ${esc(t('mine.sent'))} ${esc(fmtDateTime(r.created_at))}</span>
+        <span class="req-sub">${icon('pin')} ${esc(requestLocation(r))} · ${esc(t('mine.sent'))} ${esc(fmtDateTime(r.created_at))}</span>
         ${r.status === 'pending' && r.people_ahead > 0
-          ? `<span class="req-sub">⏳ ${esc(t('mine.ahead', { n: r.people_ahead }))}</span>` : ''}
+          ? `<span class="req-sub">${icon('hourglass')} ${esc(t('mine.ahead', { n: r.people_ahead }))}</span>` : ''}
         ${r.priority !== 'normal'
           ? `<span class="badge badge-${esc(priority.tone)}" style="margin-top:8px">
                <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}</span>` : ''}
@@ -477,7 +479,7 @@ function openMyRequest(token) {
         <span class="badge badge-${esc(priority.tone)}">${priority.icon} ${esc(priority.label)}</span>
       </div>
       <p class="req-title" style="font-size:18px">${esc(requestCategory(request))}</p>
-      <p class="muted">📍 ${esc(requestLocation(request))}</p>
+      <p class="muted">${icon('pin')} ${esc(requestLocation(request))}</p>
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>
       ${request.accepted_at ? `<p class="small faint">${esc(REQUEST_STATUS_META.accepted.label)} · ${esc(fmtDateTime(request.accepted_at))}</p>` : ''}

@@ -52,35 +52,46 @@ export const STATUS_MESSAGES = Object.freeze({
     ar: 'كل شيء يتوقّف الآن.'
   },
 
-  /* ---- Availability, shown on the board ---------------------------- */
-  available: {
-    en: 'Free right now — go ahead.',
-    ar: 'فاضي الآن، تفضّل.'
-  },
-  office: {
-    en: 'In the office. Coffee mode. ☕',
-    ar: 'في المكتب ـ وضع القهوة ☕'
-  },
-  busy: {
-    en: 'Hands full at the moment.',
-    ar: 'يديه مشغولة حالياً.'
-  },
-  traveling: {
-    en: 'On the move between buildings.',
-    ar: 'بين المباني الآن.'
-  },
-  meeting: {
-    en: 'In a meeting. Back soon.',
-    ar: 'في اجتماع. يرجع قريباً.'
-  },
-  offsite: {
-    en: 'Out of the complex today.',
-    ar: 'خارج المجمّع اليوم.'
-  },
-  done: {
-    en: 'Day finished. See you tomorrow.',
-    ar: 'انتهى الدوام. نراكم غداً.'
-  }
+  /* ---- Availability, shown on the board ----------------------------
+     Several lines per status, so the board does not say the same thing
+     every day. The one shown is picked from the moment the status was
+     posted, which means it is stable while a status lasts and different
+     the next time he sets one - it never flickers while someone reads.
+     -------------------------------------------------------------- */
+  available: [
+    { en: 'Free right now — go ahead.',      ar: 'فاضي الآن، تفضّل.' },
+    { en: 'Chillaxing. Say the word.',        ar: 'مرتاح شوي ـ نادِ وبس.' },
+    { en: 'Idle. Dangerously idle.',          ar: 'فاضي… فاضي لدرجة خطيرة.' },
+    { en: 'Nothing on. Bring it over.',       ar: 'ما في شي عندي، هاته.' }
+  ],
+  office: [
+    { en: 'In the office. Coffee mode. ☕',   ar: 'في المكتب ـ وضع القهوة ☕' },
+    { en: 'Taking a breath. One minute.',     ar: 'ياخد نفس. دقيقة وبرجع.' },
+    { en: 'Five minutes of peace, then anything.', ar: 'خمس دقائق هدوء، وبعدها أي شي.' }
+  ],
+  busy: [
+    { en: 'Hands full at the moment.',        ar: 'يديه مشغولة حالياً.' },
+    { en: 'Deep in something. Queue up.',     ar: 'غارق بالشغل ـ احجز دورك.' }
+  ],
+  serving: [
+    { en: 'One at a time.',                   ar: 'واحد واحد.' },
+    { en: 'Mid-job. Nearly there.',           ar: 'بنص المهمة، قرّب يخلص.' }
+  ],
+  traveling: [
+    { en: 'On the move between buildings.',   ar: 'بين المباني الآن.' },
+    { en: 'Somewhere in a corridor.',         ar: 'في مكان ما بالممرات.' }
+  ],
+  meeting: [
+    { en: 'In a meeting. Back soon.',         ar: 'في اجتماع. يرجع قريباً.' },
+    { en: 'Trapped in a meeting.',            ar: 'محجوز في اجتماع.' }
+  ],
+  offsite: [
+    { en: 'Out of the complex today.',        ar: 'خارج المجمّع اليوم.' }
+  ],
+  done: [
+    { en: 'Day finished. See you tomorrow.',  ar: 'انتهى الدوام. نشوفكم بكرة.' },
+    { en: "Shop's closed. Tomorrow, promise.", ar: 'سكّرنا اليوم ـ بكرة، وعد.' }
+  ]
 });
 
 /** The database spells urgency with underscores; this table does not. */
@@ -96,10 +107,14 @@ const PRIORITY_KEYS = Object.freeze({
  * Returns '' for an unknown key, so a missing entry shows nothing at all
  * rather than breaking the line it sits in.
  */
-export function statusMessage(key) {
+export function statusMessage(key, seed = 0) {
   const row = STATUS_MESSAGES[key];
   if (!row) return '';
-  return row[getLang()] ?? row.en ?? '';
+  // A key holds either one line or several. With several, `seed` chooses;
+  // callers pass something stable, so the line does not change under a
+  // reader's eyes.
+  const line = Array.isArray(row) ? row[Math.abs(seed) % row.length] : row;
+  return line?.[getLang()] ?? line?.en ?? '';
 }
 
 /** The quip for a database priority value, e.g. 'very_urgent'. */
@@ -107,7 +122,18 @@ export function priorityMessage(priority) {
   return statusMessage(PRIORITY_KEYS[priority] ?? '');
 }
 
-/** The quip for a status type, e.g. 'available'. 'break' is coffee. */
-export function availabilityMessage(statusType) {
-  return statusMessage(statusType === 'break' ? 'office' : statusType);
+/**
+ * The quip for a status type, e.g. 'available'. 'break' is coffee.
+ * @param {string} statusType
+ * @param {string|number|Date} [since]  when the status was posted. Any two
+ *        calls with the same value get the same line, so it is steady for
+ *        as long as the status is, and different the next time.
+ */
+export function availabilityMessage(statusType, since = 0) {
+  const key = statusType === 'break' ? 'office' : statusType;
+  const ms = since ? new Date(since).getTime() : 0;
+  // Minutes, not milliseconds: two statuses posted in the same minute
+  // should not be forced to differ, and the arithmetic stays small.
+  const seed = Number.isFinite(ms) ? Math.floor(ms / 60000) : 0;
+  return statusMessage(key, seed);
 }

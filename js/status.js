@@ -7,6 +7,7 @@
  * so a start or end time can never be typed by hand.
  */
 import { sb, errorMessage } from './supabase.js';
+import { toneDot } from './icons.js';
 import { STATUS_META } from './config.js';
 import { toDate, minutesBetween, fmtTime, durationText } from './utils.js';
 import { getLang, t } from './i18n.js';
@@ -138,7 +139,7 @@ export function describeStatus(status, now = new Date()) {
   if (!status || !status.status_type) {
     return {
       known: false,
-      meta: { label: 'Not set yet', icon: '⚪', tone: 'muted', hint: 'No status has been posted yet.' },
+      meta: { label: 'Not set yet', icon: toneDot('muted-fill'), tone: 'muted', hint: 'No status has been posted yet.' },
       location: null, task: null,
       startedAt: null, expectedEndAt: null,
       expired: false, stale: false,

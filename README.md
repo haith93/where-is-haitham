@@ -168,6 +168,50 @@ forms, and a migration extending the check constraint and the four
 functions that validate, order or count a priority. `sql/migration-life-death.sql`
 is the worked example.
 
+### The icon set
+
+`js/icons.js` holds every icon in the application, drawn as inline SVG.
+There are no emoji left in the interface and no icon font or sprite to
+load.
+
+Emoji were replaced because they were never designed together: Apple,
+Google, Samsung and Windows each draw them differently, so the same
+screen looked like a different product on every phone in the building,
+and none of those drawings had anything to do with a system built on ink
+borders and flat fills.
+
+Each icon is a 24×24 box with a 2px outline and one or two solid fills.
+The outline is `currentColor`, so an icon takes the ink of whatever it
+sits in — black on paper, cream in dark mode, black again on a yellow
+button.
+
+Two custom properties make them survive being dropped anywhere:
+
+| Property | What it colours |
+|---|---|
+| `--ic` | The solid body of the drawing |
+| `--ic2` | A cut-out inside that body — a pin's hole, a gear's centre |
+
+Every fill is written `var(--ic, its-own-colour)`. Left alone, an icon
+keeps its own palette. On a filled control — a yellow nav tab, a red
+badge — one rule in `main.css` sets `--ic` to the paper colour and
+`--ic2` back to the ground, and both halves of a two-tone drawing stay
+readable. A yellow wrench on a yellow tab would otherwise vanish.
+
+Use them two ways:
+
+```html
+<span class="ico" data-icon="pin"></span>   <!-- static markup -->
+```
+```js
+`<p>${icon('pin')} ${esc(location)}</p>`     // inside a template
+```
+
+`paintIcons()` fills in every `data-icon` on the page; each controller
+calls it once at start-up. An unknown name draws nothing rather than a
+broken glyph. Directional drawings — `next`, `walk`, `phone` — are
+listed in `FLIPPED` and mirror for Arabic automatically.
+
 ### Where the playful lines live
 
 `js/messages.js` holds every informal line in the application — the
@@ -175,6 +219,11 @@ urgency quips ("DROP EVERYTHING."), and the availability ones ("In the
 office. Coffee mode."), in English and Arabic side by side. Nothing
 playful is written anywhere else, so changing the tone of the app is
 editing one table rather than grepping render functions.
+
+Most keys hold several lines rather than one. The line shown is chosen
+from the moment the status was posted, so it is steady for as long as
+that status lasts and different the next time he sets one — it never
+changes under a reader's eyes.
 
 The Arabic is written to be funny in Arabic. The two halves of a row say
 the same thing; they do not say it the same way.
@@ -238,6 +287,7 @@ where-is-haitham/
 │   ├── ui.js               Toasts, sheets, busy states, theme
 │   ├── i18n.js             Arabic / English strings and RTL
 │   ├── messages.js         Every playful status line, EN + AR, in one table
+│   ├── icons.js            The whole icon set, drawn as inline SVG
 │   ├── dashboard.js        index.html controller
 │   ├── admin.js            admin.html controller
 │   └── staff.js            staff.html controller

@@ -10,6 +10,7 @@
  */
 
 import { t } from './i18n.js';
+import { icon, toneDot } from './icons.js';
 
 const DEFAULTS = {
   supabaseUrl: '',
@@ -66,14 +67,14 @@ export function isConfigured() {
  */
 export const STATUS_META = Object.freeze(Object.fromEntries(
   [
-    ['available', '🟢', 'ok'],
-    ['busy',      '🟡', 'warn'],
-    ['serving',   '🔵', 'info'],
-    ['traveling', '🚶', 'info'],
-    ['break',     '☕', 'muted'],
-    ['meeting',   '📋', 'warn'],
-    ['offsite',   '🚗', 'muted'],
-    ['done',      '🌙', 'muted']
+    ['available', icon('check'),     'ok'],
+    ['busy',      icon('wrench'),    'warn'],
+    ['serving',   icon('users'),     'info'],
+    ['traveling', icon('walk'),      'info'],
+    ['break',     icon('coffee'),    'muted'],
+    ['meeting',   icon('clipboard'), 'warn'],
+    ['offsite',   icon('car'),       'muted'],
+    ['done',      icon('moon'),      'muted']
   ].map(([key, icon, tone]) => [key, Object.freeze({
     icon, tone,
     get label() { return t(`status.${key}`); },
@@ -93,10 +94,10 @@ export const STATUS_META = Object.freeze(Object.fromEntries(
  */
 export const PRIORITY_META = Object.freeze(Object.fromEntries(
   [
-    ['normal',      '🟡', 3, 'warn'],
-    ['urgent',      '🟠', 2, 'urgent'],
-    ['very_urgent', '🔴', 1, 'danger'],
-    ['life_death',  '🚨', 0, 'critical']
+    ['normal',      toneDot('warn-fill'),   3, 'warn'],
+    ['urgent',      toneDot('urgent-fill'), 2, 'urgent'],
+    ['very_urgent', toneDot('danger-fill'), 1, 'danger'],
+    ['life_death',  icon('siren'),          0, 'critical']
   ].map(([key, icon, rank, tone]) => [key, Object.freeze({
     icon, rank, tone,
     get label() { return t(`priority.${key}`); }
@@ -113,13 +114,13 @@ export const PRIORITY_META = Object.freeze(Object.fromEntries(
  */
 export const REQUEST_STATUS_META = Object.freeze(Object.fromEntries(
   [
-    ['pending',     '⏳', 'info'],
-    ['accepted',    '👍', 'accent'],
-    ['in_progress', '🔧', 'warn'],
-    ['paused',      '⏸️', 'urgent'],
-    ['completed',   '✅', 'ok'],
-    ['rejected',    '⛔', 'danger'],
-    ['cancelled',   '✖️', 'muted']
+    ['pending',     icon('hourglass'), 'info'],
+    ['accepted',    icon('thumbUp'),   'accent'],
+    ['in_progress', icon('wrench'),    'warn'],
+    ['paused',      icon('pause'),     'urgent'],
+    ['completed',   icon('check'),     'ok'],
+    ['rejected',    icon('ban'),       'danger'],
+    ['cancelled',   icon('close'),     'muted']
   ].map(([key, icon, tone]) => [key, Object.freeze({
     icon, tone,
     get label() { return t(`reqstatus.${key}`); }
@@ -135,11 +136,11 @@ export const REQUEST_STATUS_META = Object.freeze(Object.fromEntries(
 
 export const CHANNELS = Object.freeze(Object.fromEntries(
   [
-    ['app',       '📱'],
-    ['whatsapp',  '💬'],
-    ['phone',     '📞'],
-    ['in_person', '🚶'],
-    ['other',     '📝']
+    ['app',       icon('mobile')],
+    ['whatsapp',  icon('chat')],
+    ['phone',     icon('phone')],
+    ['in_person', icon('walk')],
+    ['other',     icon('note')]
   ].map(([key, icon]) => [key, Object.freeze({
     icon,
     get label() { return t(`channel.${key}`); }

@@ -28,16 +28,16 @@
   <header class="appbar">
     <div class="appbar-inner">
       <a class="brand" href="admin.html">
-        <span class="brand-mark" aria-hidden="true">🛠</span>
+        <span class="brand-mark" aria-hidden="true" data-icon="wrench"></span>
         <span data-i18n="app.admin">Admin console</span>
       </a>
       <span class="grow"></span>
       <span class="appbar-clock tabnum" id="clock" data-i18n-aria="common.time"></span>
       <button class="btn btn-ghost btn-sm" type="button" data-lang-toggle lang="ar">العربية</button>
       <button class="btn btn-ghost btn-icon" type="button" id="bell" aria-label="Notifications" data-i18n-aria="common.notifications" style="position:relative">
-        🔔<span class="nav-dot" id="bell-dot" hidden>0</span>
+        <span class="ico" data-icon="bell" aria-hidden="true"></span><span class="nav-dot" id="bell-dot" hidden>0</span>
       </button>
-      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme" data-i18n-aria="common.theme">🌙</button>
+      <button class="btn btn-ghost btn-icon" type="button" data-theme-toggle aria-label="Switch theme" data-i18n-aria="common.theme"><span class="ico" data-icon="moon" aria-hidden="true"></span></button>
     </div>
   </header>
 
@@ -48,16 +48,16 @@
       <!-- ============ Desktop side navigation ============ -->
       <aside class="admin-side">
         <nav aria-label="Admin sections">
-          <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span><span data-i18n="admin.dashboard">Dashboard</span></a>
-          <a href="#/status"><span class="ico" aria-hidden="true">📍</span><span data-i18n="admin.myStatus">My status</span></a>
-          <a href="#/requests"><span class="ico" aria-hidden="true">📥</span><span data-i18n="admin.requests">Requests</span><span class="badge badge-danger" id="side-queue-count" hidden>0</span></a>
-          <a href="#/buildings"><span class="ico" aria-hidden="true">🏢</span><span data-i18n="admin.buildings">Buildings</span></a>
-          <a href="#/tasks"><span class="ico" aria-hidden="true">🧰</span><span data-i18n="admin.tasks">Tasks</span></a>
-          <a href="#/users"><span class="ico" aria-hidden="true">👥</span><span data-i18n="admin.users">Users</span></a>
-          <a href="#/reports"><span class="ico" aria-hidden="true">📈</span><span data-i18n="admin.reports">Reports</span></a>
-          <a href="#/history"><span class="ico" aria-hidden="true">🕘</span><span data-i18n="admin.history">History</span></a>
-          <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span><span data-i18n="admin.settings">Settings</span></a>
-          <a href="index.html"><span class="ico" aria-hidden="true">👁</span><span data-i18n="admin.viewBoard">View public board</span></a>
+          <a href="#/dashboard"><span class="ico" aria-hidden="true" data-icon="dashboard"></span><span data-i18n="admin.dashboard">Dashboard</span></a>
+          <a href="#/status"><span class="ico" aria-hidden="true" data-icon="pin"></span><span data-i18n="admin.myStatus">My status</span></a>
+          <a href="#/requests"><span class="ico" aria-hidden="true" data-icon="inbox"></span><span data-i18n="admin.requests">Requests</span><span class="badge badge-danger" id="side-queue-count" hidden>0</span></a>
+          <a href="#/buildings"><span class="ico" aria-hidden="true" data-icon="building"></span><span data-i18n="admin.buildings">Buildings</span></a>
+          <a href="#/tasks"><span class="ico" aria-hidden="true" data-icon="toolbox"></span><span data-i18n="admin.tasks">Tasks</span></a>
+          <a href="#/users"><span class="ico" aria-hidden="true" data-icon="users"></span><span data-i18n="admin.users">Users</span></a>
+          <a href="#/reports"><span class="ico" aria-hidden="true" data-icon="chart"></span><span data-i18n="admin.reports">Reports</span></a>
+          <a href="#/history"><span class="ico" aria-hidden="true" data-icon="clock"></span><span data-i18n="admin.history">History</span></a>
+          <a href="#/settings"><span class="ico" aria-hidden="true" data-icon="gear"></span><span data-i18n="admin.settings">Settings</span></a>
+          <a href="index.html"><span class="ico" aria-hidden="true" data-icon="eye"></span><span data-i18n="admin.viewBoard">View public board</span></a>
         </nav>
       </aside>
 
@@ -127,21 +127,21 @@
               <span class="label" data-i18n="admin.status">Status</span>
               <div class="segmented" id="st-type">
                 <input type="radio" name="status_type" id="st-busy" value="busy" checked>
-                <label for="st-busy">🟡 <span data-i18n="status.busy">Busy</span></label>
+                <label for="st-busy"><span class="ico" data-icon="dot" data-icon-tone="warn-fill" aria-hidden="true"></span> <span data-i18n="status.busy">Busy</span></label>
                 <input type="radio" name="status_type" id="st-serving" value="serving">
-                <label for="st-serving">🔵 <span data-i18n="status.serving">With someone</span></label>
+                <label for="st-serving"><span class="ico" data-icon="dot" data-icon-tone="info-fill" aria-hidden="true"></span> <span data-i18n="status.serving">With someone</span></label>
                 <input type="radio" name="status_type" id="st-traveling" value="traveling">
-                <label for="st-traveling">🚶 <span data-i18n="status.traveling">On the way</span></label>
+                <label for="st-traveling"><span class="ico" data-icon="walk" aria-hidden="true"></span> <span data-i18n="status.traveling">On the way</span></label>
                 <input type="radio" name="status_type" id="st-available" value="available">
-                <label for="st-available">🟢 <span data-i18n="status.available">Available</span></label>
+                <label for="st-available"><span class="ico" data-icon="dot" data-icon-tone="ok-fill" aria-hidden="true"></span> <span data-i18n="status.available">Available</span></label>
                 <input type="radio" name="status_type" id="st-meeting" value="meeting">
-                <label for="st-meeting">📋 <span data-i18n="status.meeting">Meeting</span></label>
+                <label for="st-meeting"><span class="ico" data-icon="clipboard" aria-hidden="true"></span> <span data-i18n="status.meeting">Meeting</span></label>
                 <input type="radio" name="status_type" id="st-break" value="break">
-                <label for="st-break">☕ <span data-i18n="status.break">Break</span></label>
+                <label for="st-break"><span class="ico" data-icon="coffee" aria-hidden="true"></span> <span data-i18n="status.break">Break</span></label>
                 <input type="radio" name="status_type" id="st-offsite" value="offsite">
-                <label for="st-offsite">🚗 <span data-i18n="status.offsite">Off site</span></label>
+                <label for="st-offsite"><span class="ico" data-icon="car" aria-hidden="true"></span> <span data-i18n="status.offsite">Off site</span></label>
                 <input type="radio" name="status_type" id="st-done" value="done">
-                <label for="st-done">🌙 <span data-i18n="status.done">Finished</span></label>
+                <label for="st-done"><span class="ico" data-icon="moon" aria-hidden="true"></span> <span data-i18n="status.done">Finished</span></label>
               </div>
             </div>
 
@@ -501,14 +501,14 @@
 
   <!-- ============ Mobile bottom navigation ============ -->
   <nav class="bottomnav" aria-label="Admin">
-    <a href="#/dashboard"><span class="ico" aria-hidden="true">📊</span><span data-i18n="admin.home">Home</span></a>
-    <a href="#/status"><span class="ico" aria-hidden="true">📍</span><span data-i18n="admin.status">Status</span></a>
+    <a href="#/dashboard"><span class="ico" aria-hidden="true" data-icon="dashboard"></span><span data-i18n="admin.home">Home</span></a>
+    <a href="#/status"><span class="ico" aria-hidden="true" data-icon="pin"></span><span data-i18n="admin.status">Status</span></a>
     <a href="#/requests" style="position:relative">
-      <span class="ico" aria-hidden="true">📥</span><span data-i18n="admin.queue">Queue</span>
+      <span class="ico" aria-hidden="true" data-icon="inbox"></span><span data-i18n="admin.queue">Queue</span>
       <span class="nav-dot" id="nav-queue-count" hidden>0</span>
     </a>
-    <a href="#/reports"><span class="ico" aria-hidden="true">📈</span><span data-i18n="admin.reports">Reports</span></a>
-    <a href="#/settings"><span class="ico" aria-hidden="true">⚙️</span><span data-i18n="admin.moreNav">More</span></a>
+    <a href="#/reports"><span class="ico" aria-hidden="true" data-icon="chart"></span><span data-i18n="admin.reports">Reports</span></a>
+    <a href="#/settings"><span class="ico" aria-hidden="true" data-icon="gear"></span><span data-i18n="admin.moreNav">More</span></a>
   </nav>
 </div>
 
@@ -518,7 +518,7 @@
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
       <h2 id="action-title" data-i18n="admin.requestsGroup">Request</h2>
-      <button class="sheet-close" type="button" data-close-sheet aria-label="Close" data-i18n-aria="action.close">✕</button>
+      <button class="sheet-close" type="button" data-close-sheet aria-label="Close" data-i18n-aria="action.close"><span class="ico" data-icon="close" aria-hidden="true"></span></button>
     </div>
     <div id="action-body"></div>
   </div>
@@ -530,7 +530,7 @@
     <div class="sheet-grip" aria-hidden="true"></div>
     <div class="sheet-head">
       <h2 id="behalf-title" data-i18n="behalf.title">Record a request on behalf of someone</h2>
-      <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close">✕</button>
+      <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close"><span class="ico" data-icon="close" aria-hidden="true"></span></button>
     </div>
 
     <form id="behalf-form" class="stack" novalidate>
@@ -546,13 +546,13 @@
         <legend class="label" data-i18n="channel.label">How did it arrive?</legend>
         <div class="segmented" id="bh-channel">
           <input type="radio" name="channel" id="ch-phone" value="phone" checked>
-          <label for="ch-phone">📞 <span data-i18n="channel.phone">Phone</span></label>
+          <label for="ch-phone"><span class="ico" data-icon="phone" aria-hidden="true"></span> <span data-i18n="channel.phone">Phone</span></label>
           <input type="radio" name="channel" id="ch-whatsapp" value="whatsapp">
-          <label for="ch-whatsapp">💬 <span data-i18n="channel.whatsapp">WhatsApp</span></label>
+          <label for="ch-whatsapp"><span class="ico" data-icon="chat" aria-hidden="true"></span> <span data-i18n="channel.whatsapp">WhatsApp</span></label>
           <input type="radio" name="channel" id="ch-inperson" value="in_person">
-          <label for="ch-inperson">🚶 <span data-i18n="channel.in_person">In person</span></label>
+          <label for="ch-inperson"><span class="ico" data-icon="walk" aria-hidden="true"></span> <span data-i18n="channel.in_person">In person</span></label>
           <input type="radio" name="channel" id="ch-other" value="other">
-          <label for="ch-other">📝 <span data-i18n="channel.other">Other</span></label>
+          <label for="ch-other"><span class="ico" data-icon="note" aria-hidden="true"></span> <span data-i18n="channel.other">Other</span></label>
         </div>
       </fieldset>
 
@@ -586,13 +586,13 @@
         <legend class="label" data-i18n="form.priority">How urgent?</legend>
         <div class="segmented" id="bh-priority">
           <input type="radio" name="bh_priority" id="bp-normal" value="normal" checked>
-          <label for="bp-normal">🟡 <span data-i18n="priority.normal">Normal</span></label>
+          <label for="bp-normal"><span class="ico" data-icon="dot" data-icon-tone="warn-fill" aria-hidden="true"></span> <span data-i18n="priority.normal">Normal</span></label>
           <input type="radio" name="bh_priority" id="bp-urgent" value="urgent">
-          <label for="bp-urgent">🟠 <span data-i18n="priority.urgent">Urgent</span></label>
+          <label for="bp-urgent"><span class="ico" data-icon="dot" data-icon-tone="urgent-fill" aria-hidden="true"></span> <span data-i18n="priority.urgent">Urgent</span></label>
           <input type="radio" name="bh_priority" id="bp-very" value="very_urgent">
-          <label for="bp-very">🔴 <span data-i18n="priority.very_urgent">Very urgent</span></label>
+          <label for="bp-very"><span class="ico" data-icon="dot" data-icon-tone="danger-fill" aria-hidden="true"></span> <span data-i18n="priority.very_urgent">Very urgent</span></label>
           <input type="radio" name="bh_priority" id="bp-life" value="life_death">
-          <label for="bp-life" class="is-critical">🚨 <span data-i18n="priority.life_death">Life &amp; death</span></label>
+          <label for="bp-life" class="is-critical"><span class="ico" data-icon="siren" aria-hidden="true"></span> <span data-i18n="priority.life_death">Life &amp; death</span></label>
         </div>
       </fieldset>
 
@@ -627,7 +627,7 @@
       <h2 id="notif-title" data-i18n="common.notifications">Notifications</h2>
       <div class="row">
         <button class="btn btn-sm btn-ghost" type="button" id="notif-read-all" data-i18n="common.markAllRead">Mark all read</button>
-        <button class="sheet-close" type="button" data-close-sheet aria-label="Close" data-i18n-aria="action.close">✕</button>
+        <button class="sheet-close" type="button" data-close-sheet aria-label="Close" data-i18n-aria="action.close"><span class="ico" data-icon="close" aria-hidden="true"></span></button>
       </div>
     </div>
     <div id="notif-body" class="stack-sm"></div>

@@ -8,6 +8,8 @@
  */
 import { configured } from './supabase.js';
 import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META, CHANNELS } from './config.js';
+import { icon, paintIcons } from './icons.js';
+import { availabilityMessage } from './messages.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, getLang } from './i18n.js';
 import {
   $, $$, esc, el, fmtTime, fmtDateTime, fmtDateLong, fmtDateShort, relativeTime,
@@ -77,6 +79,7 @@ let previewTimer = null;
 /* ================================================================== */
 
 applyDocument();
+paintIcons();
 initTheme();
 initThemeToggle();
 initLangToggle();
@@ -300,15 +303,22 @@ function paintCurrent() {
   const host = $('#now-host');
   const mirror = $('#status-now-host');
 
+  // The same line colleagues are reading on the board, so Haitham can see
+  // what his status is actually saying about him.
+  const quip = view.known && !view.expired
+    ? availabilityMessage(state.current?.status_type, view.updatedAt)
+    : '';
+
   const html = `
     <div class="now-card" data-tone="${esc(view.meta.tone)}">
       <p class="now-status">${esc(view.known ? statusLabel(view, servingName) : t('admin.noStatusYet'))}</p>
-      ${view.location ? `<p class="now-line">📍 ${esc(view.location)}</p>` : ''}
-      ${view.task ? `<p class="now-line">🛠️ ${esc(view.task)}</p>` : ''}
+      ${quip ? `<p class="quip quip-quiet">${esc(quip)}</p>` : ''}
+      ${view.location ? `<p class="now-line">${icon('pin')} ${esc(view.location)}</p>` : ''}
+      ${view.task ? `<p class="now-line">${icon('wrench')} ${esc(view.task)}</p>` : ''}
       ${view.startedAt ? `<p class="now-time">${esc(view.rangeText)}</p>` : ''}
       ${view.expired ? `
         <p class="expired-note" style="margin-top:12px">
-          <span aria-hidden="true">⏰</span>
+          ${icon('alarm')}
           <span>${esc(t('admin.expiredNudge', { ago: durationText(view.minutesOver) }))}</span>
         </p>` : ''}
       ${view.startedAt ? `<p class="small faint" style="margin-top:8px">
@@ -378,7 +388,7 @@ async function paintDashboardExtras() {
   const host = $('#d-queue');
   const next = queue.filter(r => r.status !== 'in_progress').slice(0, 3);
   if (!next.length) {
-    renderEmpty(host, '🎉', t('board.nobodyWaiting'));
+    renderEmpty(host, icon('party'), t('board.nobodyWaiting'));
   } else {
     host.innerHTML = next.map(queueCardHTML).join('');
     wireQueueCards(host);
@@ -711,7 +721,7 @@ function paintQueue() {
   rows = sortQueue(rows);
 
   if (!rows.length) {
-    renderEmpty(host, filter === 'open' ? '🎉' : '📭',
+    renderEmpty(host, filter === 'open' ? icon('party') : icon('mailbox'),
       filter === 'open' ? t('admin.queueEmpty') : t('admin.nothingToShow'),
       filter === 'open' ? t('admin.queueEmptyHint') : t('admin.tryAnotherFilter'));
     return;
@@ -762,12 +772,12 @@ function queueCardHTML(r) {
         </span>
       </div>
       <p class="who" style="margin-top:8px">${esc(r.requester_name_snapshot)}</p>
-      <p class="where">📍 ${esc(requestLocation(r))} · <span class="mono">${esc(r.request_number)}</span></p>
+      <p class="where">${icon('pin')} ${esc(requestLocation(r))} · <span class="mono">${esc(r.request_number)}</span></p>
       <p class="where">${channelBadge(r)}</p>
-      <p class="what">🔧 ${esc(requestCategory(r))}</p>
+      <p class="what">${icon('wrench')} ${esc(requestCategory(r))}</p>
       ${r.description ? `<p class="desc">${esc(r.description)}</p>` : ''}
       ${r.status === 'paused' ? `<p class="desc" style="color:var(--urgent)">
-        ⏸️ ${esc(t('admin.pausedFor', { d: durationText(minutesBetween(r.paused_at, new Date()) ?? 0) }))}${
+        ${icon('pause')} ${esc(t('admin.pausedFor', { d: durationText(minutesBetween(r.paused_at, new Date()) ?? 0) }))}${
           r.pause_reason ? ` — ${esc(r.pause_reason)}` : ''}</p>` : ''}
       <p class="small faint" style="margin-top:6px">
         ${esc(t('admin.sentAt', { time: fmtTime(r.created_at) }))} · ${esc(relativeTime(r.created_at))}
@@ -776,7 +786,7 @@ function queueCardHTML(r) {
     </article>`;
 }
 
-/** Shows how a request reached Haitham, e.g. "💬 WhatsApp". */
+/** Shows how a request reached Haitham, e.g. a speech bubble + "WhatsApp". */
 function channelBadge(request) {
   const key = requestChannel(request);
   const meta = CHANNELS[key] ?? CHANNELS.other;
@@ -913,7 +923,7 @@ async function openRequestActions(request) {
         <span class="badge badge-${esc(priority.tone)}">${priority.icon} ${esc(priority.label)}</span>
       </div>
       <p style="font-size:18px;font-weight:750">${esc(request.requester_name_snapshot)}</p>
-      <p class="muted">📍 ${esc(requestLocation(request))} · 🔧 ${esc(requestCategory(request))}</p>
+      <p class="muted">${icon('pin')} ${esc(requestLocation(request))} · ${icon('wrench')} ${esc(requestCategory(request))}</p>
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">Sent ${esc(fmtDateTime(request.created_at))}</p>
     </div>
@@ -1087,15 +1097,15 @@ async function paintConfigList({ host, load, table, update, noun }) {
   try {
     const rows = await load();
     if (!rows.length) {
-      renderEmpty(host, '📭', `No ${noun}s yet`, `Add your first ${noun} above.`);
+      renderEmpty(host, icon('mailbox'), `No ${noun}s yet`, `Add your first ${noun} above.`);
       return;
     }
 
     host.innerHTML = rows.map((row, index) => `
       <div class="cfg-row ${row.active ? '' : 'is-off'}" data-id="${esc(row.id)}">
         <span class="cfg-move">
-          <button type="button" data-move="up" ${index === 0 ? 'disabled' : ''} aria-label="Move ${esc(row.name)} up">▲</button>
-          <button type="button" data-move="down" ${index === rows.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(row.name)} down">▼</button>
+          <button type="button" data-move="up" ${index === 0 ? 'disabled' : ''} aria-label="Move ${esc(row.name)} up">${icon('caretUp')}</button>
+          <button type="button" data-move="down" ${index === rows.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(row.name)} down">${icon('caretDown')}</button>
         </span>
         <span class="grow">
           <span class="cfg-name">${esc(localName(row))}</span>
@@ -1176,7 +1186,7 @@ async function paintUsers() {
       : users;
 
     if (!rows.length) {
-      renderEmpty(host, '👥', t('admin.noChanges'));
+      renderEmpty(host, icon('users'), t('admin.noChanges'));
       return;
     }
 
@@ -1408,13 +1418,13 @@ function paintReport(report) {
         <section class="card">
           <h2 class="card-title">${esc(t('admin.highlights'))}</h2>
           <ul class="stack-sm" style="list-style:none;padding:0;margin:0">
-            ${report.highlights.mostCommonTask ? `<li>🔧 ${esc(t('admin.mostCommonTask'))}:
+            ${report.highlights.mostCommonTask ? `<li>${icon('wrench')} ${esc(t('admin.mostCommonTask'))}:
               <strong>${esc(report.highlights.mostCommonTask.label)}</strong>
               (${report.highlights.mostCommonTask.value}×)</li>` : ''}
-            ${report.highlights.mostActiveLocation ? `<li>📍 ${esc(t('admin.mostTimeAt'))}:
+            ${report.highlights.mostActiveLocation ? `<li>${icon('pin')} ${esc(t('admin.mostTimeAt'))}:
               <strong>${esc(report.highlights.mostActiveLocation.label)}</strong>
               (${esc(durationText(report.highlights.mostActiveLocation.value))})</li>` : ''}
-            ${report.highlights.busiestDay && report.highlights.busiestDay.value > 0 ? `<li>📈 ${esc(t('admin.busiestDay'))}:
+            ${report.highlights.busiestDay && report.highlights.busiestDay.value > 0 ? `<li>${icon('chart')} ${esc(t('admin.busiestDay'))}:
               <strong>${esc(fmtDateLong(startOfDay(report.highlights.busiestDay.key)))}</strong>
               (${report.highlights.busiestDay.value} requests)</li>` : ''}
           </ul>
@@ -1460,7 +1470,7 @@ function paintHistory() {
   });
 
   if (!rows.length) {
-    renderEmpty(host, '🕘', t('admin.nothingRecorded'), t('admin.widerRange'));
+    renderEmpty(host, icon('clock'), t('admin.nothingRecorded'), t('admin.widerRange'));
     return;
   }
 
@@ -1503,7 +1513,7 @@ function historyRowHTML(row) {
       </div>
       <div>
         <div class="hist-what">${meta.icon} ${esc(historyTask(row) ?? meta.label)}</div>
-        <div class="hist-where">📍 ${esc(historyLocation(row))}</div>
+        <div class="hist-where">${icon('pin')} ${esc(historyLocation(row))}</div>
         <div class="hist-dur">
           ${open ? esc(t('admin.stillOpenRow')) : esc(durationText(actual ?? 0))}${esc(diffText)}
           ${planned ? ` · ${esc(t('admin.planned', { d: durationText(planned) }))}` : ''}
@@ -1659,7 +1669,7 @@ async function paintSettings() {
     const log = await getAuditLog(25);
     const host = $('#audit-host');
     if (!log.length) {
-      renderEmpty(host, '🗂', t('admin.noChanges'));
+      renderEmpty(host, icon('files'), t('admin.noChanges'));
     } else {
       host.innerHTML = log.map(entry => `
         <p class="small" style="padding:8px 0;border-bottom:1px solid var(--border)">
@@ -1836,7 +1846,7 @@ async function openNotifications({ keepOpen = false } = {}) {
   try {
     const rows = await getNotifications(state.profile.id, { limit: 40 });
     if (!rows.length) {
-      renderEmpty(body, '🔕', 'No notifications yet');
+      renderEmpty(body, icon('bellOff'), 'No notifications yet');
       return;
     }
     body.innerHTML = rows.map(n => `
