@@ -184,7 +184,15 @@ export async function createPrintRequest(input) {
   if (title && title.length > MAX_TITLE) throw new Error(t('print.errTitle'));
 
   const payload = files.map(file => {
-    if (!file.uploadId) throw new Error(t('print.errNoFile'));
+    // A document may never have been a file: handed over on paper, sent
+    // on WhatsApp, or simply too large for the site. Then the colleague
+    // says what it is instead, and the title names it everywhere else.
+    const delivery = DELIVERY_KEYS.includes(file.delivery) ? file.delivery : 'upload';
+
+    if (delivery === 'upload' && !file.uploadId) throw new Error(t('print.errNoFile'));
+    if (delivery !== 'upload' && !trimOrNull(file.title) && !title) {
+      throw new Error(t('print.errNeedTitle'));
+    }
 
     const copies = Number(file.copies);
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
@@ -202,7 +210,9 @@ export async function createPrintRequest(input) {
     if (note && note.length > MAX_NOTE) throw new Error(t('print.errNote', { max: MAX_NOTE }));
 
     return {
-      upload_id:        file.uploadId,
+      upload_id:        delivery === 'upload' ? file.uploadId : null,
+      delivery,
+      title:            trimOrNull(file.title),
       copies,
       paper_size:       file.paperSize || 'A4',
       print_sides:      file.printSides === 'double' ? 'double' : 'single',
@@ -275,7 +285,7 @@ export async function adminCreatePrintRequest(input) {
     if (delivery === 'upload' && !file.uploadId) throw new Error(t('print.errNoFile'));
     // Something has to name a document nobody can open.
     if (delivery !== 'upload' && !trimOrNull(file.title) && !title) {
-      throw new Error(t('bprint.errNeedTitle'));
+      throw new Error(t('print.errNeedTitle'));
     }
 
     const copies = Number(file.copies);

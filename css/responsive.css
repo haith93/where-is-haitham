@@ -28,6 +28,10 @@
   }
   .appbar-inner { gap: var(--s-1); padding-inline: var(--s-2); }
   .appbar-clock { flex: none; }
+
+  /* "Add another file" beside "No file - I will send it another way" is
+     two long labels in two half-widths. One each. */
+  .field > .btn-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Very small phones ---------------------------------------- */

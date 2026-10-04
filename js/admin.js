@@ -2048,7 +2048,7 @@ function paintBpCards() {
         <span class="grow">
           <span class="filecard-name">${esc(attached
             ? (entry.file?.name ?? '—')
-            : (entry.settings.title || t('bprint.noFileHere')))}</span>
+            : (entry.settings.title || t('print.noFileHere')))}</span>
           <span class="filecard-meta">${esc(attached
             ? (entry.error ? entry.error
                : entry.upload ? `${fileSizeText(entry.file.size)} · ${t('print.uploaded')}`
@@ -2067,18 +2067,18 @@ function paintBpCards() {
 
       ${extra ? `<p class="error" style="margin-top:8px">${esc(t('print.removeThisOne'))}</p>` : `
       ${attached ? '' : `
-      <div class="filecard-grid">
+      <div class="filecard-grid is-stacked">
         <label class="field">
-          <span class="label">${esc(t('bprint.howArrived'))}</span>
+          <span class="label">${esc(t('print.howArrived'))}</span>
           <select class="select" data-bp-set="delivery" data-key="${esc(entry.key)}">
             ${DELIVERY_KEYS.filter(k => k !== 'upload').map(k =>
               `<option value="${esc(k)}" ${k === entry.delivery ? 'selected' : ''}>${esc(deliveryLabel(k))}</option>`).join('')}
           </select>
         </label>
         <label class="field">
-          <span class="label">${esc(t('bprint.describe'))}</span>
+          <span class="label">${esc(t('print.describe'))}</span>
           <input class="input" type="text" maxlength="120" data-bp-set="title" data-key="${esc(entry.key)}"
-                 placeholder="${esc(t('bprint.describePh'))}" value="${esc(entry.settings.title)}">
+                 placeholder="${esc(t('print.describePh'))}" value="${esc(entry.settings.title)}">
         </label>
       </div>`}
 

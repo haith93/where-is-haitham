@@ -811,6 +811,11 @@ input[type='checkbox']:checked::after {
   background: var(--accent-soft);
   border: var(--bd-thin) solid var(--ink);
 }
+/* "How did it arrive?" and "What is it?" get a line each. The first is a
+   long question and the second wants room to type into - side by side on
+   a phone they are two cramped half-widths. */
+.filecard-grid.is-stacked { grid-template-columns: minmax(0, 1fr); }
+
 .filecard-note { margin-top: var(--s-3); }
 .filecard-note .help { font-family: var(--mono); font-size: 11px; }
 

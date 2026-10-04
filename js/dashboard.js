@@ -21,6 +21,7 @@ import { getBuildings, getTasks, localName } from './data.js';
 import {
   uploadDocument, createPrintRequest, getPaperSizes, downloadPrintDocument,
   checkFile, fileSizeText, settingsLine, publicPrintLine,
+  deliveryLabel, DELIVERY_KEYS,
   MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
 } from './print.js';
 import { getGrades, sectionsOf, levelsOf, gradesOf, destinationText } from './school.js';
@@ -516,6 +517,28 @@ function wirePrintForm() {
 
   $('#pq-priority')?.addEventListener('change', onPriorityChange);
 
+  // The second way in: a document that is not a file at all.
+  $('#pq-offline-btn')?.addEventListener('click', () => {
+    if (printState.files.length >= fileLimitFor(chosenPriority())) {
+      showPrintError(t('print.errOneFileOnly'));
+      return;
+    }
+    printState.files.push({
+      key: `f${++fileKeySeq}`,
+      file: null, upload: null, progress: 100, error: null,
+      delivery: 'hand',
+      settings: {
+        title: '', copies: 1,
+        paperSize: printState.papers[0]?.code ?? 'A4',
+        printSides: 'single',
+        section: '', level: '', gradeId: '',
+        colorMode: 'bw', colorPermission: null, note: ''
+      }
+    });
+    paintFileCards();
+    paintLimitLine();
+  });
+
   // Delegated: the per-file controls are drawn and redrawn, so binding
   // them individually would mean rebinding on every change.
   files.addEventListener('input', onFileSettingChange);
@@ -628,7 +651,9 @@ async function onPickFiles(event) {
       upload: null,
       progress: 0,
       error: null,
+      delivery: 'upload',
       settings: {
+        title: '',
         copies: 1,
         paperSize: printState.papers[0]?.code ?? 'A4',
         printSides: 'single',
@@ -679,16 +704,20 @@ function paintFileCards() {
 
   host.innerHTML = printState.files.map((entry, index) => {
     const extra = index >= limit;       // over the limit for this urgency
+    const attached = entry.delivery === 'upload';
     return `
     <div class="filecard${extra ? ' is-over' : ''}" data-file="${esc(entry.key)}">
       <div class="filecard-head">
-        <span class="ico" data-icon="files" aria-hidden="true"></span>
+        <span class="ico" data-icon="${attached ? 'files' : 'walk'}" aria-hidden="true"></span>
         <span class="grow">
-          <span class="filecard-name">${esc(entry.file.name)}</span>
-          <span class="filecard-meta" data-state="${esc(entry.key)}">${
-            entry.error ? esc(entry.error)
-            : entry.upload ? esc(`${fileSizeText(entry.file.size)} · ${t('print.uploaded')}`)
-            : esc(t('print.uploading', { n: entry.progress }))}</span>
+          <span class="filecard-name">${esc(attached
+            ? entry.file.name
+            : (entry.settings.title || t('print.noFileHere')))}</span>
+          <span class="filecard-meta" data-state="${esc(entry.key)}">${esc(attached
+            ? (entry.error ? entry.error
+               : entry.upload ? `${fileSizeText(entry.file.size)} · ${t('print.uploaded')}`
+               : t('print.uploading', { n: entry.progress }))
+            : deliveryLabel(entry.delivery))}</span>
         </span>
         <button class="btn btn-sm btn-ghost" type="button"
                 data-remove-file="${esc(entry.key)}"
@@ -697,10 +726,28 @@ function paintFileCards() {
         </button>
       </div>
 
-      ${entry.upload ? '' : `<div class="upload-bar"><span data-bar="${esc(entry.key)}"
-          style="width:${entry.progress}%"></span></div>`}
+      ${attached && !entry.upload ? `<div class="upload-bar"><span data-bar="${esc(entry.key)}"
+          style="width:${entry.progress}%"></span></div>` : ''}
 
       ${extra ? `<p class="error" style="margin-top:8px">${esc(t('print.removeThisOne'))}</p>` : `
+      ${attached ? '' : `
+      <div class="filecard-grid is-stacked">
+        <label class="field">
+          <span class="label">${esc(t('print.howArrived'))}</span>
+          <select class="select" data-set="delivery" data-key="${esc(entry.key)}">
+            ${DELIVERY_KEYS.filter(k => k !== 'upload').map(k =>
+              `<option value="${esc(k)}" ${k === entry.delivery ? 'selected' : ''}>${esc(deliveryLabel(k))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span class="label">${esc(t('print.describe'))}<abbr class="req" title="Required">*</abbr></span>
+          <input class="input" type="text" maxlength="120"
+                 data-set="title" data-key="${esc(entry.key)}"
+                 placeholder="${esc(t('print.describePh'))}"
+                 value="${esc(entry.settings.title)}">
+        </label>
+      </div>`}
+
       <div class="filecard-grid">
         <label class="field">
           <span class="label" data-i18n="print.copies">Copies</span>
@@ -801,6 +848,8 @@ function onFileSettingChange(event) {
   if (!entry) return;
 
   const what = field.dataset.set;
+  if (what === 'delivery') { entry.delivery = field.value; paintFileCards(); return; }
+
   entry.settings[what] = field.value;
 
   if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintFileCards(); }
@@ -810,6 +859,11 @@ function onFileSettingChange(event) {
     // stale yes, so coming back asks again.
     if (field.value !== 'color') entry.settings.colorPermission = null;
     paintFileCards();
+  } else if (what === 'title') {
+    // Redrawing would move the caret; only the heading needs updating.
+    const head = field.closest('.filecard')?.querySelector('.filecard-name');
+    if (head) head.textContent = field.value || t('print.noFileHere');
+    paintSubmitState();
   } else if (what === 'note') {
     // Redrawing on every keystroke would move the caret, so only the
     // counter beside this field is touched.
@@ -840,7 +894,10 @@ function paintSubmitState() {
 
   submit.disabled = printState.files.length === 0
     || printState.files.length > limit
-    || printState.files.some(f => !f.upload)
+    // An upload that has not landed yet, or a document nobody can open
+    // and nobody has named.
+    || printState.files.some(f => f.delivery === 'upload' && !f.upload)
+    || printState.files.some(f => f.delivery !== 'upload' && !f.settings.title.trim())
     || printState.files.some(colourBlocked);
 }
 
@@ -876,7 +933,14 @@ async function onSubmitPrint(event) {
     showPrintError(t('print.errOneFileOnly'));
     return;
   }
-  if (printState.files.some(f => !f.upload)) { showPrintError(t('print.errStillUploading')); return; }
+  if (printState.files.some(f => f.delivery === 'upload' && !f.upload)) {
+    showPrintError(t('print.errStillUploading'));
+    return;
+  }
+  if (printState.files.some(f => f.delivery !== 'upload' && !f.settings.title.trim())) {
+    showPrintError(t('print.errNeedTitle'));
+    return;
+  }
 
   if (printState.files.some(colourBlocked)) { showPrintError(t('print.errPermission')); return; }
 
@@ -885,7 +949,9 @@ async function onSubmitPrint(event) {
     title:         $('#pq-title').value,
     priority,
     files: printState.files.map(entry => ({
-      uploadId:        entry.upload.upload_id,
+      uploadId:        entry.upload?.upload_id ?? null,
+      delivery:        entry.delivery,
+      title:           entry.settings.title,
       copies:          Number(entry.settings.copies),
       paperSize:       entry.settings.paperSize,
       printSides:      entry.settings.printSides,

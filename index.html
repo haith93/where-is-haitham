@@ -246,10 +246,21 @@
       <div class="field">
         <span class="label"><span data-i18n="print.fileLabel">Document</span><abbr class="req" title="Required">*</abbr></span>
         <input type="file" id="pq-file" class="sr-only" multiple>
-        <button class="btn btn-block" type="button" id="pq-file-btn">
-          <span class="ico" data-icon="inbox" aria-hidden="true"></span>
-          <span id="pq-file-btn-text" data-i18n="print.choose">Choose a file</span>
-        </button>
+        <div class="btn-grid">
+          <button class="btn" type="button" id="pq-file-btn">
+            <span class="ico" data-icon="inbox" aria-hidden="true"></span>
+            <span id="pq-file-btn-text" data-i18n="print.choose">Choose a file</span>
+          </button>
+          <!-- For a document that was never a file: on paper, already on
+               WhatsApp, or simply too large to upload here. -->
+          <button class="btn btn-soft" type="button" id="pq-offline-btn">
+            <span class="ico" data-icon="walk" aria-hidden="true"></span>
+            <span data-i18n="print.noFile">No file — I'll send it another way</span>
+          </button>
+        </div>
+        <p class="help" data-i18n="print.noFileHelp">
+          Too large to upload, on paper, or already sent on WhatsApp.
+        </p>
         <p class="help" id="pq-file-help"></p>
       </div>
 
