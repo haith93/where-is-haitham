@@ -11,7 +11,7 @@
                      responses carry the user's access token.
    ===================================================================== */
 
-const VERSION = 'wih-v3.6.0';
+const VERSION = 'wih-v3.7.0';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
@@ -78,14 +78,67 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Same-origin files, the Supabase client, and the web fonts. Caching the
-  // fonts keeps the app's type intact when the network is gone, instead of
-  // dropping to a system face.
+  // Our own code: network first.
+  //
+  // This used to be stale-while-revalidate, and that combination was a
+  // trap. Navigations are network-first, so after a deploy the browser
+  // got the NEW index.html - and then stale-while-revalidate handed it
+  // the OLD dashboard.js from the cache, because that is exactly what
+  // "stale" means. New markup driven by old script, which fails the
+  // moment the two disagree about an element: "Cannot read properties
+  // of null (reading 'addEventListener')".
+  //
+  // The script and the page it runs must come from the same deploy. A
+  // round trip for a handful of small files is a price worth paying for
+  // that, and the cache is still there when the network is not.
+  if (url.origin === self.location.origin
+      && /\.(?:js|css)$/.test(url.pathname)) {
+    event.respondWith(networkFirstAsset(request));
+    return;
+  }
+
+  // Everything else that may be cached: our own icons and manifest, the
+  // Supabase client, the web fonts. These are not coupled to the markup -
+  // an icon from yesterday renders perfectly beside today's script - and
+  // caching the fonts keeps the app's type intact when the network is
+  // gone instead of dropping to a system face.
   const CACHEABLE_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
   if (url.origin === self.location.origin || CACHEABLE_HOSTS.includes(url.hostname)) {
     event.respondWith(staleWhileRevalidate(request));
   }
 });
+
+/**
+ * Fresh if the network answers, cached if it does not.
+ *
+ * Unlike networkFirst() above there is no index.html fallback: a missing
+ * script has no sensible substitute, and serving HTML in its place would
+ * turn a network error into a syntax error.
+ */
+async function networkFirstAsset(request) {
+  const cache = await caches.open(ASSET_CACHE);
+  let response = null;
+
+  try {
+    response = await fetch(request);
+  } catch {
+    response = null;                       // offline, DNS, dropped connection
+  }
+
+  if (response && response.ok) {
+    cache.put(request, response.clone());
+    return response;
+  }
+
+  // A 500 from the host, or a captive portal returning its own page, is
+  // not a reason to throw away a copy that worked yesterday. Fall back to
+  // the cache for anything that is not a healthy response - but only if
+  // there IS one, so a genuine 404 still reports itself as a 404.
+  const cached = await cache.match(request);
+  if (cached) return cached;
+
+  return response ?? new Response('', { status: 504 });
+}
 
 async function networkFirst(request) {
   const cache = await caches.open(SHELL_CACHE);
