@@ -9,8 +9,12 @@
 import { configured } from './supabase.js';
 import { STATUS_META, PRIORITY_META, REQUEST_STATUS_META, CHANNELS } from './config.js';
 import { icon, paintIcons } from './icons.js';
-import { settingsLine, downloadPrintDocument } from './print.js';
-import { destinationText } from './school.js';
+import {
+  settingsLine, downloadPrintDocument, adminCreatePrintRequest,
+  uploadDocument, checkFile, fileSizeText, hasFile, deliveryLabel,
+  DELIVERY_KEYS, getPaperSizes, MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
+} from './print.js';
+import { getGrades, sectionsOf, levelsOf, gradesOf, destinationText } from './school.js';
 import { availabilityMessage } from './messages.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, getLang } from './i18n.js';
 import {
@@ -781,7 +785,7 @@ function queueCardHTML(r) {
       <p class="where">${icon('pin')} ${esc(requestLocation(r))} · <span class="mono">${esc(r.request_number)}</span></p>
       <p class="where">${channelBadge(r)}</p>
       <p class="what">${isPrintRequest(r)
-        ? `${icon('files')} ${esc(printJob(r)?.title || printJob(r)?.original_filename || t('print.aPrintJob'))}${
+        ? `${icon('files')} ${esc(printJob(r)?.original_filename || printJob(r)?.title || t('print.aPrintJob'))}${
             printJobs(r).length > 1 ? ` ${t('print.plusMore', { n: printJobs(r).length - 1 })}` : ''}`
         : `${icon('wrench')} ${esc(requestCategory(r))}`}</p>
       ${isPrintRequest(r) ? printAdminBlock(r) : ''}
@@ -823,16 +827,19 @@ function printAdminBlock(request) {
     return `
     <div class="printbox">
       <p class="printbox-file">
-        ${jobs.length > 1 ? `<span class="filecard-num">${index + 1}</span>` : icon('files')}
-        <span class="mono">${esc(job.original_filename)}</span>
+        ${jobs.length > 1 ? `<span class="filecard-num">${index + 1}</span>` : icon(hasFile(job) ? 'files' : 'walk')}
+        <span class="mono">${esc(hasFile(job)
+          ? job.original_filename
+          : (job.title || t('print.aPrintJob')))}</span>
       </p>
       <p class="printbox-line">${esc(settingsLine(job))}</p>
       ${where ? `<p class="printbox-line">${esc(t('print.destination'))}: ${esc(where)}</p>` : ''}
       ${job.note ? `<p class="printbox-line printbox-note">${esc(job.note)}</p>` : ''}
+      ${hasFile(job) ? `
       <button class="btn btn-sm btn-soft" type="button"
               data-print-open="${esc(request.id)}" data-job="${esc(job.id ?? '')}">
         ${icon('inbox')} <span>${esc(t('print.openDoc'))}</span>
-      </button>
+      </button>` : ''}
     </div>`;
   }).join('');
 }
@@ -1847,6 +1854,7 @@ function wireBehalf() {
   });
 
   $('#behalf-form').addEventListener('submit', onSubmitBehalf);
+  wireBehalfPrint();
 }
 
 async function openBehalfSheet() {
@@ -1862,7 +1870,382 @@ async function openBehalfSheet() {
     toastError(err.message);
     return;
   }
+  prepareBehalfPrint().catch(err => console.warn('[behalf print]', err));
   openSheet('#behalf-sheet');
+}
+
+/* ================================================================== */
+/* Recording a PRINT request on someone's behalf                      */
+/*                                                                    */
+/* The same form the public side has, with one difference that is the */
+/* whole point of it: the document may never have been a file. While  */
+/* the school is still getting used to the site, most print jobs      */
+/* arrive as paper in the corridor, a WhatsApp message, or something  */
+/* too large to upload - and they still have to reach the queue and   */
+/* the monthly report, or the report describes only the half of his   */
+/* work that arrived the convenient way.                              */
+/* ================================================================== */
+
+const bprint = { files: [], papers: [], grades: [], seq: 0, busy: false };
+
+const bpLimitFor = priority => (priority === 'normal' ? 10 : 1);
+const bpPriority = () => $('#bp-priority input:checked')?.value ?? 'normal';
+
+function showBehalfTab(which) {
+  const printing = which === 'print';
+  const help = $('#behalf-form'), form = $('#behalf-print-form');
+  if (!help || !form) return;
+  help.hidden = printing;
+  form.hidden = !printing;
+  $$('[data-bhtab]').forEach(btn =>
+    btn.setAttribute('aria-selected', String(btn.dataset.bhtab === which)));
+  const panel = $('#behalf-sheet .sheet-panel');
+  if (panel) panel.scrollTop = 0;
+}
+
+function wireBehalfPrint() {
+  const form = $('#behalf-print-form');
+  const host = $('#bp-files');
+  const file = $('#bp-file');
+  if (!form || !host || !file) return;
+
+  $$('[data-bhtab]').forEach(btn =>
+    btn.addEventListener('click', () => showBehalfTab(btn.dataset.bhtab)));
+
+  file.setAttribute('accept', ACCEPT_ATTRIBUTE);
+  file.addEventListener('change', onBpPickFiles);
+  $('#bp-file-btn')?.addEventListener('click', () => file.click());
+
+  // The other way in: a document that is not a file at all.
+  $('#bp-offline-btn')?.addEventListener('click', () => {
+    if (bprint.files.length >= bpLimitFor(bpPriority())) {
+      showBpError(t('print.errOneFileOnly'));
+      return;
+    }
+    bprint.files.push(bpEntry({ delivery: 'hand' }));
+    paintBpCards();
+    paintBpLimit();
+  });
+
+  $('#bp-priority')?.addEventListener('change', () => { paintBpLimit(); paintBpCards(); });
+
+  host.addEventListener('input', onBpSetting);
+  host.addEventListener('change', onBpSetting);
+  host.addEventListener('click', event => {
+    const remove = event.target.closest('[data-bp-remove]');
+    if (remove) {
+      event.preventDefault();
+      bprint.files = bprint.files.filter(f => f.key !== remove.dataset.bpRemove);
+      paintBpCards();
+      paintBpLimit();
+      return;
+    }
+    const perm = event.target.closest('[data-bp-perm]');
+    if (perm) {
+      event.preventDefault();
+      const entry = bprint.files.find(f => f.key === perm.dataset.key);
+      if (!entry) return;
+      entry.settings.colorPermission = perm.dataset.bpPerm === 'yes';
+      paintBpCards();
+    }
+  });
+
+  form.addEventListener('submit', onSubmitBehalfPrint);
+}
+
+function bpEntry(over = {}) {
+  return {
+    key: `b${++bprint.seq}`,
+    file: null,
+    upload: null,
+    progress: 0,
+    error: null,
+    delivery: 'upload',
+    settings: {
+      title: '', copies: 1,
+      paperSize: bprint.papers[0]?.code ?? 'A4',
+      printSides: 'single',
+      section: '', level: '', gradeId: '',
+      colorMode: 'bw', colorPermission: null, note: ''
+    },
+    ...over
+  };
+}
+
+async function prepareBehalfPrint() {
+  const help = $('#bp-file-help');
+  if (help) help.textContent = t('print.fileHelp', { max: fileSizeText(MAX_FILE_BYTES) });
+
+  bprint.papers = await getPaperSizes();
+  bprint.grades = await getGrades();
+
+  const channels = $('#bp-channel');
+  if (channels) {
+    channels.innerHTML = CHANNEL_KEYS.map((key, i) => `
+      <input type="radio" name="bp_channel" id="bp-ch-${esc(key)}" value="${esc(key)}"
+             ${key === 'in_person' ? 'checked' : ''}>
+      <label for="bp-ch-${esc(key)}">${CHANNELS[key].icon} <span>${esc(CHANNELS[key].label)}</span></label>`).join('');
+  }
+
+  paintBpLimit();
+  paintBpCards();
+  showBehalfTab('help');
+}
+
+function paintBpLimit() {
+  const line = $('#bp-limit');
+  if (!line) return;
+  const limit = bpLimitFor(bpPriority());
+  const over = bprint.files.length - limit;
+  line.textContent = over > 0
+    ? t('print.tooManyForUrgency', { n: over })
+    : (limit === 1 ? t('print.oneFileOnly') : t('print.manyFilesOk', { max: limit }));
+  line.classList.toggle('limit-broken', over > 0);
+  $('#bp-file')?.[limit === 1 ? 'removeAttribute' : 'setAttribute']('multiple', '');
+}
+
+async function onBpPickFiles(event) {
+  const picked = [...(event.target.files ?? [])];
+  event.target.value = '';
+  if (!picked.length) return;
+  $('#bp-error').hidden = true;
+
+  const limit = bpLimitFor(bpPriority());
+  for (const file of picked) {
+    if (limit === 1) bprint.files = [];
+    if (bprint.files.length >= 10) break;
+
+    const problem = checkFile(file);
+    if (problem) { showBpError(`${file.name}: ${problem}`); continue; }
+
+    const entry = bpEntry({ file, delivery: 'upload' });
+    bprint.files.push(entry);
+    paintBpCards();
+    paintBpLimit();
+
+    uploadDocument(file, percent => {
+      entry.progress = percent;
+      const bar = $(`[data-bp-bar="${entry.key}"]`);
+      if (bar) bar.style.width = percent + '%';
+    }).then(upload => { entry.upload = upload; })
+      .catch(err => { entry.error = err.message; })
+      .finally(paintBpCards);
+  }
+}
+
+function paintBpCards() {
+  const host = $('#bp-files');
+  if (!host) return;
+  const limit = bpLimitFor(bpPriority());
+
+  host.innerHTML = bprint.files.map((entry, index) => {
+    const extra = index >= limit;
+    const attached = entry.delivery === 'upload';
+    return `
+    <div class="filecard${extra ? ' is-over' : ''}" data-file="${esc(entry.key)}">
+      <div class="filecard-head">
+        <span class="ico" data-icon="${attached ? 'files' : 'walk'}" aria-hidden="true"></span>
+        <span class="grow">
+          <span class="filecard-name">${esc(attached
+            ? (entry.file?.name ?? '—')
+            : (entry.settings.title || t('bprint.noFileHere')))}</span>
+          <span class="filecard-meta">${esc(attached
+            ? (entry.error ? entry.error
+               : entry.upload ? `${fileSizeText(entry.file.size)} · ${t('print.uploaded')}`
+               : t('print.uploading', { n: entry.progress }))
+            : deliveryLabel(entry.delivery))}</span>
+        </span>
+        <button class="btn btn-sm btn-ghost" type="button" data-bp-remove="${esc(entry.key)}"
+                aria-label="${esc(t('action.remove'))}">
+          <span class="ico" data-icon="close" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      ${attached && !entry.upload && !entry.error
+        ? `<div class="upload-bar"><span data-bp-bar="${esc(entry.key)}" style="width:${entry.progress}%"></span></div>`
+        : ''}
+
+      ${extra ? `<p class="error" style="margin-top:8px">${esc(t('print.removeThisOne'))}</p>` : `
+      ${attached ? '' : `
+      <div class="filecard-grid">
+        <label class="field">
+          <span class="label">${esc(t('bprint.howArrived'))}</span>
+          <select class="select" data-bp-set="delivery" data-key="${esc(entry.key)}">
+            ${DELIVERY_KEYS.filter(k => k !== 'upload').map(k =>
+              `<option value="${esc(k)}" ${k === entry.delivery ? 'selected' : ''}>${esc(deliveryLabel(k))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span class="label">${esc(t('bprint.describe'))}</span>
+          <input class="input" type="text" maxlength="120" data-bp-set="title" data-key="${esc(entry.key)}"
+                 placeholder="${esc(t('bprint.describePh'))}" value="${esc(entry.settings.title)}">
+        </label>
+      </div>`}
+
+      <div class="filecard-grid">
+        <label class="field">
+          <span class="label">${esc(t('print.copies'))}</span>
+          <input class="input" type="number" min="1" max="500" step="1"
+                 data-bp-set="copies" data-key="${esc(entry.key)}" value="${esc(entry.settings.copies)}">
+        </label>
+        <label class="field">
+          <span class="label">${esc(t('print.paper'))}</span>
+          <select class="select" data-bp-set="paperSize" data-key="${esc(entry.key)}">
+            ${bprint.papers.map(row => `<option value="${esc(row.code)}"
+              ${row.code === entry.settings.paperSize ? 'selected' : ''}>${esc(row.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span class="label">${esc(t('print.sides'))}</span>
+          <select class="select" data-bp-set="printSides" data-key="${esc(entry.key)}">
+            <option value="single" ${entry.settings.printSides === 'single' ? 'selected' : ''}>${esc(t('print.single'))}</option>
+            <option value="double" ${entry.settings.printSides === 'double' ? 'selected' : ''}>${esc(t('print.double'))}</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="label">${esc(t('print.colourLabel'))}</span>
+          <select class="select" data-bp-set="colorMode" data-key="${esc(entry.key)}">
+            <option value="bw" ${entry.settings.colorMode === 'bw' ? 'selected' : ''}>${esc(t('print.bw'))}</option>
+            <option value="color" ${entry.settings.colorMode === 'color' ? 'selected' : ''}>${esc(t('print.colour'))}</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="label">${esc(t('print.section'))}</span>
+          <select class="select" data-bp-set="section" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.anySection'))}</option>
+            ${sectionsOf(bprint.grades).map(o => `<option value="${esc(o.value)}"
+              ${o.value === entry.settings.section ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+          </select>
+        </label>
+        ${entry.settings.section ? `
+        <label class="field">
+          <span class="label">${esc(t('print.level'))}</span>
+          <select class="select" data-bp-set="level" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.chooseLevel'))}</option>
+            ${levelsOf(bprint.grades, entry.settings.section).map(o => `<option value="${esc(o.value)}"
+              ${o.value === entry.settings.level ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+          </select>
+        </label>` : ''}
+        ${entry.settings.section && entry.settings.level ? `
+        <label class="field">
+          <span class="label">${esc(t('print.grade'))}</span>
+          <select class="select" data-bp-set="gradeId" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.chooseGrade'))}</option>
+            ${gradesOf(bprint.grades, entry.settings.section, entry.settings.level).map(o => `<option value="${esc(o.value)}"
+              ${o.value === entry.settings.gradeId ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+          </select>
+        </label>` : ''}
+      </div>
+
+      ${entry.settings.colorMode === 'color' ? `
+      <div class="filecard-ask">
+        <span class="label">${esc(t('print.permissionQ'))}</span>
+        <div class="row-wrap" style="margin-top:6px">
+          <button class="btn btn-sm ${entry.settings.colorPermission === true ? 'btn-primary' : 'btn-soft'}"
+                  type="button" data-bp-perm="yes" data-key="${esc(entry.key)}">${esc(t('print.yes'))}</button>
+          <button class="btn btn-sm ${entry.settings.colorPermission === false ? 'btn-danger' : 'btn-soft'}"
+                  type="button" data-bp-perm="no" data-key="${esc(entry.key)}">${esc(t('print.no'))}</button>
+        </div>
+      </div>` : ''}
+
+      <label class="field filecard-note">
+        <span class="label">${esc(t('print.note'))}</span>
+        <input class="input" type="text" maxlength="100" data-bp-set="note" data-key="${esc(entry.key)}"
+               placeholder="${esc(t('print.notePh'))}" value="${esc(entry.settings.note)}">
+      </label>`}
+    </div>`;
+  }).join('');
+
+  paintIcons(host);
+  paintBpSubmit();
+}
+
+function onBpSetting(event) {
+  const field = event.target.closest('[data-bp-set]');
+  if (!field) return;
+  const entry = bprint.files.find(f => f.key === field.dataset.key);
+  if (!entry) return;
+
+  const what = field.dataset.bpSet;
+  if (what === 'delivery') { entry.delivery = field.value; paintBpCards(); return; }
+
+  entry.settings[what] = field.value;
+
+  if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintBpCards(); }
+  else if (what === 'level') { entry.settings.gradeId = ''; paintBpCards(); }
+  else if (what === 'colorMode') {
+    if (field.value !== 'color') entry.settings.colorPermission = null;
+    paintBpCards();
+  } else {
+    paintBpSubmit();           // typing must not move the caret
+  }
+}
+
+const bpColourBlocked = e =>
+  e.settings.colorMode === 'color' && e.settings.colorPermission !== true;
+
+function paintBpSubmit() {
+  const submit = $('#bp-submit');
+  if (!submit) return;
+  const limit = bpLimitFor(bpPriority());
+  submit.disabled = bprint.files.length === 0
+    || bprint.files.length > limit
+    || bprint.files.some(f => f.delivery === 'upload' && !f.upload)
+    || bprint.files.some(bpColourBlocked);
+}
+
+function showBpError(message) {
+  const node = $('#bp-error');
+  if (!node) return;
+  node.textContent = message;
+  node.hidden = false;
+}
+
+async function onSubmitBehalfPrint(event) {
+  event.preventDefault();
+  if (bprint.busy) return;
+  $('#bp-error').hidden = true;
+
+  const startNow = $('#bp-start-now').checked;
+  const input = {
+    requesterName: $('#bp-name').value,
+    channel: $('#bp-channel input:checked')?.value ?? 'in_person',
+    title: $('#bp-title').value,
+    priority: bpPriority(),
+    notes: $('#bp-notes').value,
+    startNow,
+    durationMinutes: startNow ? state.duration : null,
+    files: bprint.files.map(entry => ({
+      uploadId: entry.upload?.upload_id ?? null,
+      delivery: entry.delivery,
+      title: entry.settings.title,
+      copies: Number(entry.settings.copies),
+      paperSize: entry.settings.paperSize,
+      printSides: entry.settings.printSides,
+      gradeId: entry.settings.gradeId || null,
+      colorMode: entry.settings.colorMode,
+      colorPermission: entry.settings.colorPermission,
+      note: entry.settings.note
+    }))
+  };
+
+  bprint.busy = true;
+  try {
+    await withBusy($('#bp-submit'), t('action.saving'), async () => {
+      const created = await adminCreatePrintRequest(input);
+      toastOk(t('bprint.saved', { number: created.request_number }));
+      $('#behalf-print-form').reset();
+      bprint.files = [];
+      paintBpCards();
+      paintBpLimit();
+      closeSheet('#behalf-sheet');
+      await Promise.all([refreshQueue(), refreshCurrent()]);
+    });
+  } catch (err) {
+    showBpError(err.message);
+  } finally {
+    bprint.busy = false;
+  }
 }
 
 async function onSubmitBehalf(event) {

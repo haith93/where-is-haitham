@@ -323,7 +323,10 @@ function printColumns(request, only = null) {
   }
   return [
     'print',
-    job.original_filename,
+    // The filename when there is one. A job handed over on paper has
+    // none, so the report says what it was and how it arrived instead of
+    // leaving the column blank - that row is work he actually did.
+    job.original_filename ?? `${job.title ?? '(untitled)'} [${job.delivery ?? 'offline'}]`,
     job.title ?? '',
     job.paper_size,
     job.color_mode === 'color' ? 'Colour' : 'B&W',

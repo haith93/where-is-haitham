@@ -20,7 +20,7 @@ const REQUEST_COLUMNS = `
   location_name_ar_snapshot, category_name_ar_snapshot,
   request_type, flagged_priority, flag_note, flagged_at,
   print_jobs (
-    id, position, title, original_filename, mime_type, file_size,
+    id, position, title, delivery, original_filename, mime_type, file_size,
     paper_size, color_mode, color_permission, print_sides, copies,
     section_snapshot, level_snapshot, grade_snapshot, note
   )

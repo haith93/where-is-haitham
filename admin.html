@@ -533,7 +533,21 @@
       <button class="sheet-close" type="button" data-close-sheet data-i18n-aria="action.close"><span class="ico" data-icon="close" aria-hidden="true"></span></button>
     </div>
 
-    <form id="behalf-form" class="stack" novalidate>
+    <!-- Two kinds of request, the same pair the public form offers. -->
+    <div class="reqtabs" role="tablist" aria-label="Request type">
+      <button class="reqtab" type="button" role="tab" id="bh-tab-help"
+              data-bhtab="help" aria-selected="true">
+        <span class="ico" data-icon="wrench" aria-hidden="true"></span>
+        <span data-i18n="print.tabHelp">Ask for help</span>
+      </button>
+      <button class="reqtab" type="button" role="tab" id="bh-tab-print"
+              data-bhtab="print" aria-selected="false">
+        <span class="ico" data-icon="files" aria-hidden="true"></span>
+        <span data-i18n="print.tabPrint">Print something</span>
+      </button>
+    </div>
+
+    <form id="behalf-form" class="stack" novalidate role="tabpanel" aria-labelledby="bh-tab-help">
       <p class="help" data-i18n="behalf.intro">For calls, WhatsApp messages and corridor requests.</p>
 
       <div class="field">
@@ -616,6 +630,90 @@
       <button class="btn btn-primary btn-lg btn-block" type="submit" id="bh-submit"
               data-i18n="behalf.submit">Record request</button>
     </form>
+
+    <!-- ==================== PRINT, recorded by Haitham ==================== -->
+    <form id="behalf-print-form" class="stack" novalidate hidden
+          role="tabpanel" aria-labelledby="bh-tab-print">
+      <p class="help" data-i18n="bprint.intro">
+        For print jobs that did not come through the site.
+      </p>
+      <p class="help req-key" data-i18n="form.requiredKey">* required</p>
+
+      <fieldset class="field urgency-first" style="border:0;padding:0;margin:0">
+        <legend class="label"><span data-i18n="form.priority">How urgent?</span><abbr class="req" title="Required">*</abbr></legend>
+        <div class="segmented" id="bp-priority">
+          <input type="radio" name="bp_priority" id="bp-pr-normal" value="normal" checked>
+          <label for="bp-pr-normal"><span class="ico" data-icon="dot" data-icon-tone="warn-fill" aria-hidden="true"></span> <span data-i18n="priority.normal">Normal</span></label>
+          <input type="radio" name="bp_priority" id="bp-pr-urgent" value="urgent">
+          <label for="bp-pr-urgent"><span class="ico" data-icon="dot" data-icon-tone="urgent-fill" aria-hidden="true"></span> <span data-i18n="priority.urgent">Urgent</span></label>
+          <input type="radio" name="bp_priority" id="bp-pr-very" value="very_urgent">
+          <label for="bp-pr-very"><span class="ico" data-icon="dot" data-icon-tone="danger-fill" aria-hidden="true"></span> <span data-i18n="priority.very_urgent">Very urgent</span></label>
+          <input type="radio" name="bp_priority" id="bp-pr-life" value="life_death">
+          <label for="bp-pr-life" class="is-critical"><span class="ico" data-icon="siren" aria-hidden="true"></span> <span data-i18n="priority.life_death">Life &amp; death</span></label>
+        </div>
+        <p class="help" id="bp-limit"></p>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="bp-name"><span data-i18n="behalf.who">Who asked?</span><abbr class="req" title="Required">*</abbr></label>
+        <input class="input" id="bp-name" type="text" required maxlength="120"
+               data-i18n-ph="behalf.whoPlaceholder">
+      </div>
+
+      <fieldset class="field" style="border:0;padding:0;margin:0">
+        <legend class="label" data-i18n="channel.label">How did it arrive?</legend>
+        <div class="segmented" id="bp-channel"></div>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="bp-title"><span data-i18n="bprint.titleLabel">Title</span><abbr class="req" title="Required">*</abbr></label>
+        <input class="input" id="bp-title" type="text" maxlength="120" data-i18n-ph="print.titlePh">
+        <p class="help" data-i18n="bprint.titleHelp">
+          Needed when nothing is attached — it is how the job is named everywhere else.
+        </p>
+      </div>
+
+      <!-- Add a document: either attach one, or record one that arrived
+           some other way. -->
+      <div class="field">
+        <span class="label" data-i18n="bprint.documents">Documents</span>
+        <input type="file" id="bp-file" class="sr-only" multiple>
+        <div class="btn-grid">
+          <button class="btn" type="button" id="bp-file-btn">
+            <span class="ico" data-icon="inbox" aria-hidden="true"></span>
+            <span data-i18n="bprint.attach">Attach a file</span>
+          </button>
+          <button class="btn btn-soft" type="button" id="bp-offline-btn">
+            <span class="ico" data-icon="walk" aria-hidden="true"></span>
+            <span data-i18n="bprint.noFile">No file — it arrived another way</span>
+          </button>
+        </div>
+        <p class="help" id="bp-file-help"></p>
+      </div>
+
+      <div id="bp-files" class="stack-sm"></div>
+
+      <div class="field">
+        <label class="label" for="bp-notes" data-i18n="behalf.notes">Notes (optional)</label>
+        <input class="input" id="bp-notes" type="text" maxlength="1000"
+               data-i18n-ph="behalf.notesPlaceholder">
+      </div>
+
+      <label class="row" style="gap:12px;cursor:pointer">
+        <input type="checkbox" id="bp-start-now">
+        <span>
+          <strong data-i18n="behalf.startNow">I am handling this right now</strong>
+          <span class="help" style="display:block" data-i18n="behalf.startNowHint">
+            Records it and starts the work in one step.
+          </span>
+        </span>
+      </label>
+
+      <p class="error" id="bp-error" role="alert" hidden></p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit" id="bp-submit"
+              data-i18n="bprint.save">Record print request</button>
+    </form>
+
   </div>
 </dialog>
 

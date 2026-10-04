@@ -228,6 +228,101 @@ export async function createPrintRequest(input) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Recording a print job that did not come through the site           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How a document reached Haitham.
+ *
+ * 'upload' is the website. The rest are the ways a print job actually
+ * arrives while a school is still getting used to a new system: a sheet
+ * of paper in the corridor, a WhatsApp message, an e-mail, a file in the
+ * shared folder - or anything too large to upload here.
+ *
+ * A document arrives one way, so this is a choice rather than a set of
+ * tick boxes: ticking both "by hand" and "e-mail" would describe two
+ * documents, and nothing downstream could act on the pair.
+ */
+export const DELIVERY_KEYS = Object.freeze(
+  ['upload', 'hand', 'whatsapp', 'email', 'shared_folder', 'other']);
+
+export const deliveryLabel = key => t(`delivery.${key}`);
+
+/** True when this document has a file to open. */
+export const hasFile = job => (job?.delivery ?? 'upload') === 'upload';
+
+/**
+ * Record a print request on somebody's behalf.
+ *
+ * The administrator's counterpart to createPrintRequest. Same per-document
+ * settings; the difference is that a document may have arrived by hand,
+ * in which case there is no upload and the title is what names it.
+ */
+export async function adminCreatePrintRequest(input) {
+  const name = String(input.requesterName ?? '').trim().replace(/\s+/g, ' ');
+  if (name.length < 2) throw new Error(t('print.errName'));
+
+  const files = Array.isArray(input.files) ? input.files : [];
+  if (!files.length) throw new Error(t('bprint.errNoDocs'));
+  if (files.length > MAX_FILES) throw new Error(t('print.errTooManyFiles', { max: MAX_FILES }));
+
+  const priority = input.priority || 'normal';
+  const title = trimOrNull(input.title);
+
+  const payload = files.map(file => {
+    const delivery = DELIVERY_KEYS.includes(file.delivery) ? file.delivery : 'upload';
+
+    if (delivery === 'upload' && !file.uploadId) throw new Error(t('print.errNoFile'));
+    // Something has to name a document nobody can open.
+    if (delivery !== 'upload' && !trimOrNull(file.title) && !title) {
+      throw new Error(t('bprint.errNeedTitle'));
+    }
+
+    const copies = Number(file.copies);
+    if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
+      throw new Error(t('print.errCopies', { max: MAX_COPIES }));
+    }
+
+    const colorMode = file.colorMode === 'color' ? 'color' : 'bw';
+    if (colorMode === 'color' && file.colorPermission !== true) {
+      throw new Error(t('print.errPermission'));
+    }
+
+    const note = trimOrNull(file.note);
+    if (note && note.length > MAX_NOTE) throw new Error(t('print.errNote', { max: MAX_NOTE }));
+
+    return {
+      upload_id:        delivery === 'upload' ? file.uploadId : null,
+      delivery,
+      title:            trimOrNull(file.title),
+      copies,
+      paper_size:       file.paperSize || 'A4',
+      print_sides:      file.printSides === 'double' ? 'double' : 'single',
+      grade_id:         file.gradeId || null,
+      color_mode:       colorMode,
+      color_permission: colorMode === 'color' ? true : null,
+      note
+    };
+  });
+
+  const { data, error } = await sb.rpc('admin_create_print_request', {
+    p_requester_name:   name,
+    p_files:            payload,
+    p_channel:          input.channel || 'in_person',
+    p_title:            title,
+    p_priority:         priority,
+    p_notes:            trimOrNull(input.notes),
+    p_building_id:      null,
+    p_custom_location:  null,
+    p_start_now:        Boolean(input.startNow),
+    p_duration_minutes: input.durationMinutes ?? null
+  });
+
+  if (error) throw new Error(errorMessage(error, t('print.errSubmit')));
+  return data;
+}
+
+/* ------------------------------------------------------------------ */
 /* Read                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -327,7 +422,9 @@ export async function downloadPrintDocument(requestId, publicToken = null, jobId
 /** "A4 · Colour · Double-sided · 30 copies" */
 export function settingsLine(job) {
   if (!job) return '';
+  const where = hasFile(job) ? [] : [deliveryLabel(job.delivery)];
   return [
+    ...where,
     job.paper_size,
     t(job.color_mode === 'color' ? 'print.colour' : 'print.bw'),
     t(job.print_sides === 'double' ? 'print.double' : 'print.single'),
