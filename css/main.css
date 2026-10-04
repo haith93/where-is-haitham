@@ -738,6 +738,70 @@ input[type='checkbox']:checked::after {
 }
 .flagnotice { border-inline-start: 8px solid var(--info-fill); }
 
+/* ---------- One card per document --------------------------------------
+   Each attached file is its own block with its own copies, paper, sides
+   and class, because twenty of one thing for Grade 8 and five of another
+   for Grade 10 is one errand, not two requests.
+   -------------------------------------------------------------------- */
+.filecard {
+  border: var(--bd-thin) solid var(--border);
+  border-inline-start: 8px solid var(--info-fill);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: var(--s-3);
+}
+/* Attached, but over the limit the chosen urgency allows. Kept on screen
+   and marked rather than silently dropped: which file to lose is the
+   colleague's decision, not the form's. */
+.filecard.is-over {
+  border-inline-start-color: var(--danger-fill);
+  background: var(--danger-soft);
+}
+.filecard-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+}
+.filecard-name {
+  display: block;
+  font-weight: 700;
+  font-size: var(--t-small);
+  overflow-wrap: anywhere;
+}
+.filecard-meta {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.filecard-num {
+  flex: none;
+  width: 22px; height: 22px;
+  display: inline-grid; place-items: center;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: var(--bd-thin) solid var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+.filecard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: var(--bd-hair) solid var(--border);
+}
+.filecard-grid .label { font-size: 10.5px; }
+.filecard-grid .input,
+.filecard-grid .select { min-height: 42px; border-width: var(--bd-thin); }
+
+/* The urgency block leads the form, so it reads as the first decision
+   rather than the last. */
+.urgency-first { padding-bottom: var(--s-3); border-bottom: var(--bd-hair) solid var(--border); }
+.limit-broken { color: var(--danger); font-weight: 700; }
+
 /* ---------- Toasts --------------------------------------------------- */
 .toasts {
   position: fixed;

@@ -231,7 +231,7 @@ function paintServing(serving, next) {
       <p class="serving-person">${esc(serving.requester)}</p>
       <p class="muted">${icon('pin')} ${esc(requestLocation(serving))}</p>
       <p style="margin-top:6px;font-weight:650">${serving.request_type === 'print'
-        ? `${icon('files')} ${esc(publicPrintLine(serving.requester, serving.print_title))}`
+        ? `${icon('files')} ${esc(publicPrintLine(serving.requester, serving.print_title, serving.print_files))}`
         : `${icon('wrench')} ${esc(requestCategory(serving))}`}</p>
       ${serving.started_at ? `<p class="small faint" style="margin-top:8px">
         ${esc(t('board.started'))} ${esc(fmtTime(serving.started_at))} · ${esc(relativeTime(serving.started_at))}</p>` : ''}
@@ -269,7 +269,7 @@ function paintQueue(queue) {
         <span class="queue-main">
           <span class="queue-name">${esc(item.requester)}</span>
           <span class="queue-meta">${item.request_type === 'print'
-            ? `${icon('files')} ${esc(publicPrintLine(item.requester, item.print_title))}`
+            ? `${icon('files')} ${esc(publicPrintLine(item.requester, item.print_title, item.print_files))}`
             : `${icon('pin')} ${esc(requestLocation(item))} · ${esc(requestCategory(item))}`}</span>
         </span>
         <span class="badge badge-${esc(priority.tone)}">
@@ -428,17 +428,33 @@ function resetRequestForm() {
 /* ================================================================== */
 /* Print requests                                                     */
 /*                                                                    */
-/* A second form beside the help one, not a change to it. The two      */
-/* share the sheet, the location dropdown and the urgency scale, and   */
-/* nothing here touches the help path.                                 */
+/* The form asks how urgent it is FIRST, because that decides what    */
+/* the rest of it allows: only a Normal request may carry several     */
+/* documents. Anything above Normal carries exactly one - if          */
+/* everything is an emergency then nothing is, and a five-file        */
+/* emergency is a batch with a label on it.                           */
+/*                                                                    */
+/* Each document then gets its own card: twenty of this for Grade 8,  */
+/* five of that for Grade 10, in one request rather than two.         */
+/* Colour stays on the request, because it is a question about        */
+/* permission rather than about a document, and asking it four times  */
+/* for four files would be an interrogation.                          */
 /* ================================================================== */
 
+const MAX_PRINT_FILES = 10;
+
 const printState = {
-  file: null,       // the File the colleague chose
-  upload: null,     // the receipt once it has been stored
+  /** One entry per chosen document: { key, file, upload, settings, error } */
+  files: [],
   grades: [],
+  papers: [],
   busy: false
 };
+
+/** How many documents this urgency allows. */
+const fileLimitFor = priority => (priority === 'normal' ? MAX_PRINT_FILES : 1);
+
+const chosenPriority = () => $('#pq-priority input:checked')?.value ?? 'normal';
 
 /** Show one of the two forms. */
 function showRequestTab(which) {
@@ -460,39 +476,44 @@ function wirePrintForm() {
 
   const file = $('#pq-file');
   file.setAttribute('accept', ACCEPT_ATTRIBUTE);
-
   $('#pq-file-btn').addEventListener('click', () => file.click());
-  file.addEventListener('change', onPickFile);
+  file.addEventListener('change', onPickFiles);
 
-  // Colour is the only field that reveals another. Asking the permission
-  // question for a black and white job would be noise.
+  $('#pq-priority').addEventListener('change', onPriorityChange);
+
   $('#pq-colour').addEventListener('change', paintColourFields);
   $('#pq-permission').addEventListener('change', paintColourFields);
-
-  $('#pq-section').addEventListener('change', paintLevels);
-  $('#pq-level').addEventListener('change', paintGrades);
 
   $('#pq-note').addEventListener('input', event => {
     $('#pq-note-count').textContent = event.target.value.length;
   });
 
-  $('#pq-priority').addEventListener('change', paintPrintQuip);
+  // Delegated: the per-file controls are drawn and redrawn, so binding
+  // them individually would mean rebinding on every change.
+  $('#pq-files').addEventListener('input', onFileSettingChange);
+  $('#pq-files').addEventListener('change', onFileSettingChange);
+  $('#pq-files').addEventListener('click', event => {
+    const remove = event.target.closest('[data-remove-file]');
+    if (!remove) return;
+    event.preventDefault();
+    printState.files = printState.files.filter(f => f.key !== remove.dataset.removeFile);
+    paintFileCards();
+    paintLimitLine();
+  });
 
   $('#print-form').addEventListener('submit', onSubmitPrint);
 }
 
-/** Fill the dropdowns the print form needs. Cheap after the first time. */
+/** Fill the lists the per-file cards need. Cheap after the first time. */
 async function preparePrintForm() {
   const help = $('#pq-file-help');
   if (help) help.textContent = t('print.fileHelp', { max: fileSizeText(MAX_FILE_BYTES) });
 
-  const sizes = await getPaperSizes();
-  $('#pq-paper').innerHTML = sizes
-    .map(row => `<option value="${esc(row.code)}">${esc(getLangLabel(row))}</option>`)
-    .join('');
-
+  printState.papers = await getPaperSizes();
   printState.grades = await getGrades();
-  paintSections();
+
+  paintLimitLine();
+  paintFileCards();
   paintColourFields();
   paintPrintQuip();
   $('#pq-note-count').textContent = String($('#pq-note').value.length);
@@ -500,109 +521,247 @@ async function preparePrintForm() {
   showRequestTab(prefs.get('requestTab', 'help') === 'print' ? 'print' : 'help');
 }
 
-const getLangLabel = row => (getLang() === 'ar' && row.label_ar) ? row.label_ar : row.label;
+const paperLabel = row => (getLang() === 'ar' && row.label_ar) ? row.label_ar : row.label;
 
-function paintSections() {
-  const sections = sectionsOf(printState.grades);
-  $('#pq-section').innerHTML =
-    `<option value="">${esc(t('print.anySection'))}</option>` +
-    sections.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
-  paintLevels();
+/* ------------------------------------------------------------------ */
+/* Urgency, and the limit that follows from it                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Raising the urgency while several documents are already attached is the
+ * awkward case. Nothing is silently thrown away: the extras are kept on
+ * screen, marked, and the submit button stays shut until the colleague
+ * removes them. Deciding which of their files to drop is not a decision
+ * this form should make for them.
+ */
+function onPriorityChange() {
+  paintPrintQuip();
+  paintLimitLine();
+  paintFileCards();
+  paintColourFields();
 }
 
-function paintLevels() {
-  const section = $('#pq-section').value;
-  const levels = section ? levelsOf(printState.grades, section) : [];
-  $('#pq-level-field').hidden = levels.length === 0;
-  $('#pq-level').innerHTML =
-    `<option value="">${esc(t('print.chooseLevel'))}</option>` +
-    levels.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
-  paintGrades();
+function paintLimitLine() {
+  const limit = fileLimitFor(chosenPriority());
+  const line = $('#pq-limit');
+  if (!line) return;
+
+  const over = printState.files.length - limit;
+  if (over > 0) {
+    line.textContent = t('print.tooManyForUrgency', { n: over });
+    line.classList.add('limit-broken');
+  } else {
+    line.textContent = limit === 1 ? t('print.oneFileOnly') : t('print.manyFilesOk', { max: limit });
+    line.classList.remove('limit-broken');
+  }
+
+  // A file input that still says "multiple" invites the browser's picker
+  // to offer it, so the attribute follows the rule as well.
+  const input = $('#pq-file');
+  if (limit === 1) input.removeAttribute('multiple');
+  else input.setAttribute('multiple', '');
 }
 
-function paintGrades() {
-  const section = $('#pq-section').value;
-  const level = $('#pq-level').value;
-  const grades = (section && level) ? gradesOf(printState.grades, section, level) : [];
-  $('#pq-grade-field').hidden = grades.length === 0;
-  $('#pq-grade').innerHTML =
-    `<option value="">${esc(t('print.chooseGrade'))}</option>` +
-    grades.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`).join('');
+/* ------------------------------------------------------------------ */
+/* Choosing documents                                                  */
+/* ------------------------------------------------------------------ */
+
+let fileKeySeq = 0;
+
+async function onPickFiles(event) {
+  const picked = [...(event.target.files ?? [])];
+  event.target.value = '';           // so the same file can be re-picked
+  if (!picked.length) return;
+
+  $('#pq-error').hidden = true;
+  const limit = fileLimitFor(chosenPriority());
+
+  for (const file of picked) {
+    if (limit === 1) printState.files = [];        // replace, do not append
+    if (printState.files.length >= MAX_PRINT_FILES) {
+      showPrintError(t('print.tooManyFiles', { max: MAX_PRINT_FILES }));
+      break;
+    }
+
+    const problem = checkFile(file);
+    if (problem) { showPrintError(`${file.name}: ${problem}`); continue; }
+
+    const entry = {
+      key: `f${++fileKeySeq}`,
+      file,
+      upload: null,
+      progress: 0,
+      error: null,
+      settings: { copies: 1, paperSize: printState.papers[0]?.code ?? 'A4',
+                  printSides: 'single', section: '', level: '', gradeId: '' }
+    };
+    printState.files.push(entry);
+    paintFileCards();
+    paintLimitLine();
+    uploadEntry(entry);                            // starts at once, in parallel
+  }
+}
+
+/**
+ * Upload as soon as a document is chosen rather than on submit: by the
+ * time the settings are filled in, the slow part is already done.
+ */
+async function uploadEntry(entry) {
+  try {
+    entry.upload = await uploadDocument(entry.file, percent => {
+      entry.progress = percent;
+      const bar = $(`[data-bar="${entry.key}"]`);
+      if (bar) bar.style.width = percent + '%';
+      const label = $(`[data-state="${entry.key}"]`);
+      if (label) label.textContent = t('print.uploading', { n: percent });
+    });
+    entry.progress = 100;
+  } catch (err) {
+    entry.error = err.message;
+  }
+  paintFileCards();
+}
+
+/* ------------------------------------------------------------------ */
+/* One card per document                                               */
+/* ------------------------------------------------------------------ */
+
+function paintFileCards() {
+  const host = $('#pq-files');
+  if (!host) return;
+
+  const limit = fileLimitFor(chosenPriority());
+
+  host.innerHTML = printState.files.map((entry, index) => {
+    const extra = index >= limit;       // over the limit for this urgency
+    return `
+    <div class="filecard${extra ? ' is-over' : ''}" data-file="${esc(entry.key)}">
+      <div class="filecard-head">
+        <span class="ico" data-icon="files" aria-hidden="true"></span>
+        <span class="grow">
+          <span class="filecard-name">${esc(entry.file.name)}</span>
+          <span class="filecard-meta" data-state="${esc(entry.key)}">${
+            entry.error ? esc(entry.error)
+            : entry.upload ? esc(`${fileSizeText(entry.file.size)} · ${t('print.uploaded')}`)
+            : esc(t('print.uploading', { n: entry.progress }))}</span>
+        </span>
+        <button class="btn btn-sm btn-ghost" type="button"
+                data-remove-file="${esc(entry.key)}"
+                aria-label="${esc(t('action.remove'))}">
+          <span class="ico" data-icon="close" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      ${entry.upload ? '' : `<div class="upload-bar"><span data-bar="${esc(entry.key)}"
+          style="width:${entry.progress}%"></span></div>`}
+
+      ${extra ? `<p class="error" style="margin-top:8px">${esc(t('print.removeThisOne'))}</p>` : `
+      <div class="filecard-grid">
+        <label class="field">
+          <span class="label" data-i18n="print.copies">Copies</span>
+          <input class="input" type="number" min="1" max="500" step="1"
+                 data-set="copies" data-key="${esc(entry.key)}"
+                 value="${esc(entry.settings.copies)}">
+        </label>
+        <label class="field">
+          <span class="label" data-i18n="print.paper">Paper size</span>
+          <select class="select" data-set="paperSize" data-key="${esc(entry.key)}">
+            ${printState.papers.map(row => `<option value="${esc(row.code)}"
+              ${row.code === entry.settings.paperSize ? 'selected' : ''}>${esc(paperLabel(row))}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field">
+          <span class="label" data-i18n="print.sides">Sides</span>
+          <select class="select" data-set="printSides" data-key="${esc(entry.key)}">
+            <option value="single" ${entry.settings.printSides === 'single' ? 'selected' : ''}>${esc(t('print.single'))}</option>
+            <option value="double" ${entry.settings.printSides === 'double' ? 'selected' : ''}>${esc(t('print.double'))}</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="label" data-i18n="print.section">School section</span>
+          <select class="select" data-set="section" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.anySection'))}</option>
+            ${sectionsOf(printState.grades).map(o => `<option value="${esc(o.value)}"
+              ${o.value === entry.settings.section ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+          </select>
+        </label>
+        ${entry.settings.section ? `
+        <label class="field">
+          <span class="label" data-i18n="print.level">Cycle</span>
+          <select class="select" data-set="level" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.chooseLevel'))}</option>
+            ${levelsOf(printState.grades, entry.settings.section).map(o => `<option value="${esc(o.value)}"
+              ${o.value === entry.settings.level ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+          </select>
+        </label>` : ''}
+        ${entry.settings.section && entry.settings.level ? `
+        <label class="field">
+          <span class="label" data-i18n="print.grade">Grade</span>
+          <select class="select" data-set="gradeId" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.chooseGrade'))}</option>
+            ${gradesOf(printState.grades, entry.settings.section, entry.settings.level).map(o => `<option value="${esc(o.value)}"
+              ${o.value === entry.settings.gradeId ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+          </select>
+        </label>` : ''}
+      </div>`}
+    </div>`;
+  }).join('');
+
+  paintIcons(host);
+  $('#pq-file-btn-text').textContent =
+    printState.files.length ? t('print.addAnother') : t('print.choose');
+  $('#pq-file-btn').hidden = fileLimitFor(chosenPriority()) === 1 && printState.files.length >= 1
+    ? false : false;                   // always available: picking replaces
+  paintSubmitState();
+}
+
+/** A per-file control changed. Narrowing a section clears what it contains. */
+function onFileSettingChange(event) {
+  const field = event.target.closest('[data-set]');
+  if (!field) return;
+  const entry = printState.files.find(f => f.key === field.dataset.key);
+  if (!entry) return;
+
+  const what = field.dataset.set;
+  entry.settings[what] = what === 'copies' ? field.value : field.value;
+
+  if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintFileCards(); }
+  else if (what === 'level') { entry.settings.gradeId = ''; paintFileCards(); }
+  else paintSubmitState();
 }
 
 function paintColourFields() {
   const colour = $('#pq-colour input:checked')?.value === 'color';
   $('#pq-permission-field').hidden = !colour;
-
-  // Answering "No" is not ignored: it is shown as the reason the button
-  // will not work, which is friendlier than a failed submit.
   const refused = colour && $('#pq-permission input:checked')?.value === 'no';
   $('#pq-permission-warn').hidden = !refused;
-  $('#pq-submit').disabled = refused;
-}
-
-function paintPrintQuip() {
-  const chosen = $('#pq-priority input:checked')?.value ?? 'normal';
-  const node = $('#pq-quip');
-  if (!node) return;
-  node.textContent = priorityMessage(chosen);
-  node.dataset.priority = chosen;
+  paintSubmitState();
 }
 
 /**
- * The file is uploaded as soon as it is chosen, not on submit: by the
- * time the colleague has filled in the rest, the slow part is done.
+ * The submit button is shut whenever the form would be refused anyway:
+ * no documents, one still uploading, colour without permission, or more
+ * documents than this urgency allows.
  */
-async function onPickFile(event) {
-  const file = event.target.files?.[0] ?? null;
-  printState.file = file;
-  printState.upload = null;
-  $('#pq-error').hidden = true;
+function paintSubmitState() {
+  const limit = fileLimitFor(chosenPriority());
+  const colour = $('#pq-colour input:checked')?.value === 'color';
+  const refused = colour && $('#pq-permission input:checked')?.value === 'no';
 
-  const chip = $('#pq-file-chip');
-  if (!file) { chip.hidden = true; return; }
+  const blocked = printState.files.length === 0
+    || printState.files.length > limit
+    || printState.files.some(f => !f.upload)
+    || refused;
 
-  const problem = checkFile(file);
-  if (problem) {
-    chip.hidden = true;
-    showPrintError(problem);
-    event.target.value = '';
-    printState.file = null;
-    return;
-  }
+  $('#pq-submit').disabled = blocked;
+}
 
-  chip.hidden = false;
-  chip.innerHTML = `<span class="filechip">
-      <span class="ico" data-icon="files" aria-hidden="true"></span>
-      <span class="grow">${esc(file.name)}</span>
-      <span class="mono">${esc(fileSizeText(file.size))}</span>
-    </span>`;
-  paintIcons(chip);
-  $('#pq-file-btn-text').textContent = t('print.change');
-
-  const bar = $('#pq-progress');
-  const fill = $('#pq-progress-fill');
-  bar.hidden = false;
-  fill.style.width = '0%';
-  $('#pq-submit').disabled = true;
-
-  try {
-    printState.upload = await uploadDocument(file, percent => {
-      fill.style.width = percent + '%';
-      chip.querySelector('.mono').textContent = t('print.uploading', { n: percent });
-    });
-    fill.style.width = '100%';
-    chip.querySelector('.mono').textContent = t('print.uploaded');
-  } catch (err) {
-    bar.hidden = true;
-    chip.hidden = true;
-    printState.file = null;
-    event.target.value = '';
-    $('#pq-file-btn-text').textContent = t('print.choose');
-    showPrintError(err.message);
-  } finally {
-    paintColourFields();     // restores the disabled state correctly
-  }
+function paintPrintQuip() {
+  const node = $('#pq-quip');
+  if (!node) return;
+  const chosen = chosenPriority();
+  node.textContent = priorityMessage(chosen);
+  node.dataset.priority = chosen;
 }
 
 function showPrintError(message) {
@@ -612,32 +771,39 @@ function showPrintError(message) {
   node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
+/* ------------------------------------------------------------------ */
+/* Submit                                                              */
+/* ------------------------------------------------------------------ */
+
 async function onSubmitPrint(event) {
   event.preventDefault();
   if (printState.busy) return;
   $('#pq-error').hidden = true;
 
-  if (!printState.upload) {
-    showPrintError(t('print.errNoFile'));
+  const priority = chosenPriority();
+  const limit = fileLimitFor(priority);
+
+  if (!printState.files.length) { showPrintError(t('print.errNoFile')); return; }
+  if (printState.files.length > limit) {
+    showPrintError(t('print.errOneFileOnly'));
     return;
   }
+  if (printState.files.some(f => !f.upload)) { showPrintError(t('print.errStillUploading')); return; }
 
   const input = {
     requesterName:   $('#pq-name').value,
-    uploadId:        printState.upload.upload_id,
-    // No location: a print job is collected from wherever Haitham prints,
-    // so the form does not ask and the RPC fills it in.
-    buildingId:      null,
-    customLocation:  null,
     title:           $('#pq-title').value,
-    paperSize:       $('#pq-paper').value,
     colorMode:       $('#pq-colour input:checked')?.value ?? 'bw',
     colorPermission: $('#pq-permission input:checked')?.value === 'yes',
-    printSides:      $('#pq-sides input:checked')?.value ?? 'single',
-    copies:          Number($('#pq-copies').value),
-    gradeId:         $('#pq-grade').value || null,
     note:            $('#pq-note').value,
-    priority:        $('#pq-priority input:checked')?.value ?? 'normal'
+    priority,
+    files: printState.files.map(entry => ({
+      uploadId:   entry.upload.upload_id,
+      copies:     Number(entry.settings.copies),
+      paperSize:  entry.settings.paperSize,
+      printSides: entry.settings.printSides,
+      gradeId:    entry.settings.gradeId || null
+    }))
   };
 
   printState.busy = true;
@@ -673,13 +839,10 @@ function resetPrintForm() {
   const name = $('#pq-name').value;
   $('#print-form').reset();
   $('#pq-name').value = name;
-  printState.file = null;
-  printState.upload = null;
-  $('#pq-file-chip').hidden = true;
-  $('#pq-progress').hidden = true;
-  $('#pq-file-btn-text').textContent = t('print.choose');
+  printState.files = [];
   $('#pq-note-count').textContent = '0';
-  paintSections();
+  paintFileCards();
+  paintLimitLine();
   paintColourFields();
   paintPrintQuip();
 }
@@ -752,10 +915,10 @@ function openMyRequest(token) {
         <span class="badge badge-${esc(priority.tone)}">${priority.icon} ${esc(priority.label)}</span>
       </div>
       <p class="req-title" style="font-size:18px">${esc(
-        request.print?.title || requestCategory(request))}</p>
+        request.print_files?.[0]?.title || requestCategory(request))}</p>
       <p class="muted">${icon('pin')} ${esc(requestLocation(request))}</p>
       ${flagBlock(request)}
-      ${request.print ? printOwnerBlock(request) : ''}
+      ${printOwnerBlocks(request)}
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>
       ${request.accepted_at ? `<p class="small faint">${esc(REQUEST_STATUS_META.accepted.label)} · ${esc(fmtDateTime(request.accepted_at))}</p>` : ''}
@@ -765,7 +928,7 @@ function openMyRequest(token) {
 
   openSheet('#detail-sheet');
 
-  if (request.print) appendDownloadButton(body, request);
+  if (request.print_files?.length) appendDownloadButton(body, request);
 
   // Editing is for pending only; after that he has planned around it.
   if (request.status === 'pending') {
@@ -843,16 +1006,21 @@ function flagBlock(request) {
     </div>`;
 }
 
-function printOwnerBlock(request) {
-  const job = request.print;
-  const where = destinationText(job);
-  return `
+function printOwnerBlocks(request) {
+  const files = request.print_files ?? [];
+  if (!files.length) return '';
+  return files.map(job => {
+    const where = destinationText(job);
+    return `
     <div class="printbox">
       <p class="printbox-file">${icon('files')} <span class="mono">${esc(job.original_filename)}</span></p>
       <p class="printbox-line">${esc(settingsLine(job))}</p>
       ${where ? `<p class="printbox-line">${esc(t('print.destination'))}: ${esc(where)}</p>` : ''}
       ${job.note ? `<p class="printbox-line">${esc(job.note)}</p>` : ''}
+      <button class="btn btn-sm btn-soft" type="button"
+              data-own-open="${esc(job.id)}">${icon('inbox')} <span>${esc(t('print.openDoc'))}</span></button>
     </div>`;
+  }).join('');
 }
 
 /**
@@ -861,20 +1029,20 @@ function printOwnerBlock(request) {
  * that dies in a minute. Opening in a new tab keeps the board loaded.
  */
 function appendDownloadButton(body, request) {
-  const btn = el('button', {
-    class: 'btn btn-soft btn-block',
-    type: 'button',
-    html: `${icon('inbox')} <span>${esc(t('print.openDoc'))}</span>`,
-    style: 'margin-top:14px'
+  // Delegated inside this sheet, because a request may carry several
+  // documents and each has its own button.
+  body.addEventListener('click', async event => {
+    const btn = event.target.closest('[data-own-open]');
+    if (!btn) return;
+    event.preventDefault();
+    await withBusy(btn, t('print.opening'), async () => {
+      try {
+        await downloadPrintDocument(request.id, request.token, btn.dataset.ownOpen);
+      } catch (err) {
+        toastError(err.message);
+      }
+    });
   });
-  btn.addEventListener('click', () => withBusy(btn, t('print.opening'), async () => {
-    try {
-      await downloadPrintDocument(request.id ?? request.request_id, request.token);
-    } catch (err) {
-      toastError(err.message);
-    }
-  }));
-  body.append(btn);
 }
 
 function openEditRequest(request) {

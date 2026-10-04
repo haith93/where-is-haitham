@@ -19,7 +19,7 @@ import {
   fmtDateLong, fmtDateTime, fmtTime, weekdayName, toCSV, downloadFile
 } from './utils.js';
 import { getStatusHistory, historyLocation, historyTask, actualMinutes } from './status.js';
-import { getRequestsBetween, completionMinutes, requestLocation, requestCategory, requestChannel , printJob, isPrintRequest } from './requests.js';
+import { getRequestsBetween, completionMinutes, requestLocation, requestCategory, requestChannel , printJob, printJobs, isPrintRequest } from './requests.js';
 import { PRIORITY_META, REQUEST_STATUS_META, STATUS_META, CHANNELS } from './config.js';
 
 /** Status types that do not count as working time. */
@@ -114,9 +114,11 @@ export async function buildReport(fromKey, toKey, filters = {}) {
     help:  requests.filter(r => !isPrintRequest(r)).length,
     // Paper actually spent, which is the number that gets asked about at
     // budget time. Copies, not requests.
-    copies: requests.reduce((sum, r) => sum + (printJob(r)?.copies ?? 0), 0),
-    colourCopies: requests.reduce(
-      (sum, r) => sum + (printJob(r)?.color_mode === 'color' ? (printJob(r)?.copies ?? 0) : 0), 0)
+    copies: requests.reduce((sum, r) =>
+      sum + printJobs(r).reduce((n, j) => n + (j.copies ?? 0), 0), 0),
+    documents: requests.reduce((sum, r) => sum + printJobs(r).length, 0),
+    colourCopies: requests.reduce((sum, r) =>
+      sum + printJobs(r).reduce((n, j) => n + (j.color_mode === 'color' ? (j.copies ?? 0) : 0), 0), 0)
   };
 
   const completionTimes = requests.map(completionMinutes).filter(v => v != null);
@@ -265,6 +267,7 @@ export function exportSummaryCSV(report) {
     [],
     ['Help requests', report.counts.help],
     ['Print requests', report.counts.print],
+    ['Documents', report.counts.documents],
     ['Pages copies requested', report.counts.copies],
     ['Of which colour', report.counts.colourCopies],
     ['Average per day', report.perDay],
@@ -310,9 +313,9 @@ export function exportSummaryCSV(report) {
  * actually printed, and it is the thing worth having in a report months
  * later. The title follows it as a second column rather than replacing it.
  */
-function printColumns(request) {
+function printColumns(request, only = null) {
   if (!isPrintRequest(request)) return ['help', '', '', '', '', '', '', '', '', '', ''];
-  const job = printJob(request);
+  const job = only ?? printJob(request);
   if (!job) {
     // A print request whose job row is not visible: this export was run
     // by something without admin rights. Say so rather than fabricate.
@@ -343,7 +346,11 @@ export function exportRequestsCSV(report) {
      'Minutes to accept', 'Minutes to complete',
      'Type', 'File name', 'Title', 'Paper', 'Colour', 'Sides', 'Copies',
      'Section', 'Cycle', 'Grade', 'Print note'],
-    ...report.requests.map(r => [
+    // One row per DOCUMENT, not per request: a request carrying three
+    // files is three things that were printed, and a report that collapsed
+    // them into one line would under-count the paper.
+    ...report.requests.flatMap(r => (isPrintRequest(r) && printJobs(r).length > 1
+      ? printJobs(r) : [null]).map(job => [
       r.request_number,
       fmtDateTime(r.created_at),
       r.requester_name_snapshot,
@@ -359,8 +366,8 @@ export function exportRequestsCSV(report) {
       r.completed_at ? fmtDateTime(r.completed_at) : '',
       r.accepted_at ? Math.round((new Date(r.accepted_at) - new Date(r.created_at)) / 60000) : '',
       completionMinutes(r) ?? '',
-      ...printColumns(r)
-    ])
+      ...printColumns(r, job)
+    ]))
   ];
   downloadFile(`haitham-requests-${report.range.fromKey}_to_${report.range.toKey}.csv`, toCSV(rows));
 }

@@ -29,6 +29,8 @@ export const ACCEPTED_EXTENSIONS = Object.freeze([
 export const ACCEPT_ATTRIBUTE = ACCEPTED_EXTENSIONS.map(e => '.' + e).join(',');
 
 export const MAX_COPIES = 500;
+/** Documents in one request. Only a Normal request may use more than one. */
+export const MAX_FILES = 10;
 export const MAX_NOTE = 100;
 export const MAX_TITLE = 120;
 
@@ -154,24 +156,31 @@ const trimOrNull = v => {
  * Mirrors createPublicRequest: no account, server-side validation, and a
  * token back so this device can follow its own request.
  */
+/**
+ * Create the print request from a list of upload receipts.
+ *
+ * One request, several documents, each with its own copies, paper, sides
+ * and grade. Colour belongs to the request rather than to a document: it
+ * is a question about permission, asked once.
+ *
+ * Everything checked here is checked again in SQL. This version exists so
+ * the person filling the form is told what is wrong, not so the rule is
+ * enforced - a browser can be edited.
+ */
 export async function createPrintRequest(input) {
   const name = String(input.requesterName ?? '').trim().replace(/\s+/g, ' ');
   if (name.length < 2) throw new Error(t('print.errName'));
   if (name.length > 120) throw new Error(t('print.errNameLong'));
-  if (!input.uploadId) throw new Error(t('print.errNoFile'));
 
-  // The print form does not ask where the colleague is - see the RPC,
-  // which supplies the collection point instead.
-  const customLocation = trimOrNull(input.customLocation);
+  const files = Array.isArray(input.files) ? input.files : [];
+  if (!files.length) throw new Error(t('print.errNoFile'));
+  if (files.length > MAX_FILES) throw new Error(t('print.errTooManyFiles', { max: MAX_FILES }));
 
-  const copies = Number(input.copies);
-  if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
-    throw new Error(t('print.errCopies', { max: MAX_COPIES }));
-  }
+  const priority = input.priority || 'normal';
+  // Only a Normal request may carry several documents.
+  if (priority !== 'normal' && files.length > 1) throw new Error(t('print.errOneFileOnly'));
 
   const colorMode = input.colorMode === 'color' ? 'color' : 'bw';
-  // Refused here as well as in SQL, so the person is told why rather than
-  // watching a submit fail.
   if (colorMode === 'color' && input.colorPermission !== true) {
     throw new Error(t('print.errPermission'));
   }
@@ -182,20 +191,31 @@ export async function createPrintRequest(input) {
   const title = trimOrNull(input.title);
   if (title && title.length > MAX_TITLE) throw new Error(t('print.errTitle'));
 
+  const payload = files.map(file => {
+    if (!file.uploadId) throw new Error(t('print.errNoFile'));
+    const copies = Number(file.copies);
+    if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
+      throw new Error(t('print.errCopies', { max: MAX_COPIES }));
+    }
+    return {
+      upload_id:   file.uploadId,
+      copies,
+      paper_size:  file.paperSize || 'A4',
+      print_sides: file.printSides === 'double' ? 'double' : 'single',
+      grade_id:    file.gradeId || null
+    };
+  });
+
   const { data, error } = await sb.rpc('create_print_request', {
     p_requester_name:   name,
-    p_upload_id:        input.uploadId,
-    p_building_id:      customLocation ? null : (input.buildingId || null),
-    p_custom_location:  customLocation,
+    p_files:            payload,
     p_title:            title,
-    p_paper_size:       input.paperSize || 'A4',
     p_color_mode:       colorMode,
     p_color_permission: colorMode === 'color' ? true : null,
-    p_print_sides:      input.printSides === 'double' ? 'double' : 'single',
-    p_copies:           copies,
-    p_grade_id:         input.gradeId || null,
     p_note:             note,
-    p_priority:         input.priority || 'normal',
+    p_priority:         priority,
+    p_building_id:      null,
+    p_custom_location:  null,
     p_device_id:        deviceId()
   });
 
@@ -222,11 +242,11 @@ export async function getPaperSizes() {
   return data ?? [];
 }
 
-/** Everything about a print job. Administrators only; the RPC enforces it. */
-export async function getPrintJob(requestId) {
-  const { data, error } = await sb.rpc('admin_print_job', { p_request_id: requestId });
+/** Every document on a request. Administrators only; the RPC enforces it. */
+export async function getPrintJobs(requestId) {
+  const { data, error } = await sb.rpc('admin_print_jobs', { p_request_id: requestId });
   if (error) throw new Error(errorMessage(error, t('print.errLoad')));
-  return data ?? null;
+  return Array.isArray(data) ? data : [];
 }
 
 /**
@@ -237,7 +257,7 @@ export async function getPrintJob(requestId) {
  * request's own token — and the function decides. A link comes back only
  * if it should, and it dies after a minute.
  */
-export async function openPrintDocument(requestId, publicToken = null) {
+export async function openPrintDocument(requestId, publicToken = null, jobId = null) {
   const { data: session } = await sb.auth.getSession();
   const bearer = session?.session?.access_token || sb?.supabaseKey || '';
 
@@ -248,7 +268,7 @@ export async function openPrintDocument(requestId, publicToken = null) {
       Authorization: `Bearer ${bearer}`,
       apikey: sb?.supabaseKey ?? ''
     },
-    body: JSON.stringify({ request_id: requestId, public_token: publicToken })
+    body: JSON.stringify({ request_id: requestId, public_token: publicToken, job_id: jobId })
   });
 
   const payload = await response.json().catch(() => ({}));
@@ -271,8 +291,8 @@ export async function openPrintDocument(requestId, publicToken = null) {
  * signed URL is opened directly instead. A slightly wrong filename beats
  * no document.
  */
-export async function downloadPrintDocument(requestId, publicToken = null) {
-  const { url, filename } = await openPrintDocument(requestId, publicToken);
+export async function downloadPrintDocument(requestId, publicToken = null, jobId = null) {
+  const { url, filename } = await openPrintDocument(requestId, publicToken, jobId);
 
   try {
     const response = await fetch(url);
@@ -315,9 +335,11 @@ export function settingsLine(job) {
  * What a colleague who did not send the request is allowed to read.
  * A sentence, and never a filename.
  */
-export function publicPrintLine(requesterName, title) {
+export function publicPrintLine(requesterName, title, files = 1) {
   const who = String(requesterName ?? '').trim();
   const what = String(title ?? '').trim();
+  const n = Number(files) || 1;
+  if (n > 1) return t('print.publicMany', { name: who, n });
   return what
     ? t('print.publicTitled', { name: who, title: what })
     : t('print.publicPlain', { name: who });

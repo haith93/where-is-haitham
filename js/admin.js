@@ -37,7 +37,7 @@ import {
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
   completeRequest, rejectRequest, flagPriority, saveQueueOrder, sortQueue,
-  requestLocation, requestCategory, requestChannel, printJob, isPrintRequest, adminCreateRequest,
+  requestLocation, requestCategory, requestChannel, printJob, printJobs, isPrintRequest, adminCreateRequest,
   pauseRequest, resumeRequest, deleteRequest, purgeRequests,
   getRequestTimeline, OPEN_STATUSES
 } from './requests.js';
@@ -781,7 +781,8 @@ function queueCardHTML(r) {
       <p class="where">${icon('pin')} ${esc(requestLocation(r))} · <span class="mono">${esc(r.request_number)}</span></p>
       <p class="where">${channelBadge(r)}</p>
       <p class="what">${isPrintRequest(r)
-        ? `${icon('files')} ${esc(printJob(r)?.title || printJob(r)?.original_filename || t('print.aPrintJob'))}`
+        ? `${icon('files')} ${esc(printJob(r)?.title || printJob(r)?.original_filename || t('print.aPrintJob'))}${
+            printJobs(r).length > 1 ? ` ${t('print.plusMore', { n: printJobs(r).length - 1 })}` : ''}`
         : `${icon('wrench')} ${esc(requestCategory(r))}`}</p>
       ${isPrintRequest(r) ? printAdminBlock(r) : ''}
       ${r.flagged_priority && r.flagged_priority !== r.priority ? `
@@ -810,23 +811,30 @@ function queueCardHTML(r) {
  * or nothing, and print_jobs is unreadable without the admin role.
  */
 function printAdminBlock(request) {
-  const job = printJob(request);
-  if (!job) return '';
-  const where = destinationText({
-    section: job.section_snapshot,
-    level:   job.level_snapshot,
-    grade:   job.grade_snapshot
-  });
-  return `
+  const jobs = printJobs(request);
+  if (!jobs.length) return '';
+
+  return jobs.map((job, index) => {
+    const where = destinationText({
+      section: job.section_snapshot,
+      level:   job.level_snapshot,
+      grade:   job.grade_snapshot
+    });
+    return `
     <div class="printbox">
-      <p class="printbox-file">${icon('files')} <span class="mono">${esc(job.original_filename)}</span></p>
+      <p class="printbox-file">
+        ${jobs.length > 1 ? `<span class="filecard-num">${index + 1}</span>` : icon('files')}
+        <span class="mono">${esc(job.original_filename)}</span>
+      </p>
       <p class="printbox-line">${esc(settingsLine(job))}</p>
       ${where ? `<p class="printbox-line">${esc(t('print.destination'))}: ${esc(where)}</p>` : ''}
       ${job.note ? `<p class="printbox-line printbox-note">${esc(job.note)}</p>` : ''}
-      <button class="btn btn-sm btn-soft" type="button" data-print-open="${esc(request.id)}">
+      <button class="btn btn-sm btn-soft" type="button"
+              data-print-open="${esc(request.id)}" data-job="${esc(job.id ?? '')}">
         ${icon('inbox')} <span>${esc(t('print.openDoc'))}</span>
       </button>
     </div>`;
+  }).join('');
 }
 
 /**
@@ -840,7 +848,7 @@ function wirePrintOpen() {
     event.preventDefault();
     await withBusy(btn, t('print.opening'), async () => {
       try {
-        await downloadPrintDocument(btn.dataset.printOpen);
+        await downloadPrintDocument(btn.dataset.printOpen, null, btn.dataset.job || null);
       } catch (err) {
         toastError(err.message);
       }

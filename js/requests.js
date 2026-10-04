@@ -20,7 +20,7 @@ const REQUEST_COLUMNS = `
   location_name_ar_snapshot, category_name_ar_snapshot,
   request_type, flagged_priority, flag_note, flagged_at,
   print_jobs (
-    title, original_filename, mime_type, file_size,
+    id, position, title, original_filename, mime_type, file_size,
     paper_size, color_mode, color_permission, print_sides, copies,
     section_snapshot, level_snapshot, grade_snapshot, note
   )
@@ -410,10 +410,14 @@ export const requestChannel  = r => r.channel || 'app';
  * this gets null rather than a filename, which is the behaviour we want
  * even if a query is written carelessly somewhere.
  */
-export const printJob = r => {
-  const job = Array.isArray(r?.print_jobs) ? r.print_jobs[0] : r?.print_jobs;
-  return job ?? null;
+export const printJobs = r => {
+  const rows = Array.isArray(r?.print_jobs) ? r.print_jobs
+             : r?.print_jobs ? [r.print_jobs] : [];
+  return [...rows].sort((a, b) => (a.position ?? 1) - (b.position ?? 1));
 };
+
+/** The first document, for the places that show one line about a request. */
+export const printJob = r => printJobs(r)[0] ?? null;
 
 export const isPrintRequest = r => (r?.request_type ?? 'help') === 'print';
 

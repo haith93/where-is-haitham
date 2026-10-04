@@ -86,6 +86,10 @@ Deno.serve(async req => {
     const body = await req.json().catch(() => ({}));
     const requestId = typeof body.request_id === 'string' ? body.request_id : '';
     const publicToken = typeof body.public_token === 'string' ? body.public_token : '';
+    // A request may now carry several documents, so the caller says which.
+    // Omitting it means the first, which is what a single-document request
+    // has always meant.
+    const jobId = typeof body.job_id === 'string' ? body.job_id : '';
 
     if (!UUID.test(requestId)) return json({ error: 'Not found.' }, 404);
 
@@ -107,11 +111,22 @@ Deno.serve(async req => {
     if (!allowed) return json({ error: 'Not found.' }, 404);
 
     // ---- Only now look up where the file lives -----------------------
-    const { data: job } = await admin
+    //
+    // The job is always looked up BY REQUEST as well as by id. A job id on
+    // its own would be a second thing to guess at; tying it to the request
+    // the caller has just been authorised for means a valid id belonging
+    // to somebody else's request is still a 404.
+    let query = admin
       .from('print_jobs')
       .select('storage_path, original_filename')
-      .eq('request_id', requestId)
-      .maybeSingle();
+      .eq('request_id', requestId);
+
+    query = UUID.test(jobId)
+      ? query.eq('id', jobId)
+      : query.order('position', { ascending: true }).limit(1);
+
+    const { data: rows } = await query;
+    const job = rows?.[0];
 
     if (!job) return json({ error: 'Not found.' }, 404);
 
