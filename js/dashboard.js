@@ -515,13 +515,6 @@ function wirePrintForm() {
   $('#pq-file-btn')?.addEventListener('click', () => file.click());
 
   $('#pq-priority')?.addEventListener('change', onPriorityChange);
-  $('#pq-colour')?.addEventListener('change', paintColourFields);
-  $('#pq-permission')?.addEventListener('change', paintColourFields);
-
-  $('#pq-note')?.addEventListener('input', event => {
-    const count = $('#pq-note-count');
-    if (count) count.textContent = event.target.value.length;
-  });
 
   // Delegated: the per-file controls are drawn and redrawn, so binding
   // them individually would mean rebinding on every change.
@@ -529,11 +522,22 @@ function wirePrintForm() {
   files.addEventListener('change', onFileSettingChange);
   files.addEventListener('click', event => {
     const remove = event.target.closest('[data-remove-file]');
-    if (!remove) return;
-    event.preventDefault();
-    printState.files = printState.files.filter(f => f.key !== remove.dataset.removeFile);
-    paintFileCards();
-    paintLimitLine();
+    if (remove) {
+      event.preventDefault();
+      printState.files = printState.files.filter(f => f.key !== remove.dataset.removeFile);
+      paintFileCards();
+      paintLimitLine();
+      return;
+    }
+
+    const perm = event.target.closest('[data-perm]');
+    if (perm) {
+      event.preventDefault();
+      const entry = printState.files.find(f => f.key === perm.dataset.key);
+      if (!entry) return;
+      entry.settings.colorPermission = perm.dataset.perm === 'yes';
+      paintFileCards();
+    }
   });
 
   form.addEventListener('submit', onSubmitPrint);
@@ -549,9 +553,7 @@ async function preparePrintForm() {
 
   paintLimitLine();
   paintFileCards();
-  paintColourFields();
   paintPrintQuip();
-  $('#pq-note-count').textContent = String($('#pq-note').value.length);
 
   showRequestTab(prefs.get('requestTab', 'help') === 'print' ? 'print' : 'help');
 }
@@ -573,7 +575,6 @@ function onPriorityChange() {
   paintPrintQuip();
   paintLimitLine();
   paintFileCards();
-  paintColourFields();
 }
 
 function paintLimitLine() {
@@ -627,8 +628,17 @@ async function onPickFiles(event) {
       upload: null,
       progress: 0,
       error: null,
-      settings: { copies: 1, paperSize: printState.papers[0]?.code ?? 'A4',
-                  printSides: 'single', section: '', level: '', gradeId: '' }
+      settings: {
+        copies: 1,
+        paperSize: printState.papers[0]?.code ?? 'A4',
+        printSides: 'single',
+        section: '', level: '', gradeId: '',
+        colorMode: 'bw',
+        // null, not false: the question has not been asked yet, which is
+        // a different thing from having been answered no.
+        colorPermission: null,
+        note: ''
+      }
     };
     printState.files.push(entry);
     paintFileCards();
@@ -738,7 +748,39 @@ function paintFileCards() {
               ${o.value === entry.settings.gradeId ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
           </select>
         </label>` : ''}
-      </div>`}
+
+        <label class="field">
+          <span class="label" data-i18n="print.colourLabel">Colour</span>
+          <select class="select" data-set="colorMode" data-key="${esc(entry.key)}">
+            <option value="bw" ${entry.settings.colorMode === 'bw' ? 'selected' : ''}>${esc(t('print.bw'))}</option>
+            <option value="color" ${entry.settings.colorMode === 'color' ? 'selected' : ''}>${esc(t('print.colour'))}</option>
+          </select>
+        </label>
+      </div>
+
+      ${entry.settings.colorMode === 'color' ? `
+      <div class="filecard-ask">
+        <span class="label">${esc(t('print.permissionQ'))}</span>
+        <div class="row-wrap" style="margin-top:6px">
+          <button class="btn btn-sm ${entry.settings.colorPermission === true ? 'btn-primary' : 'btn-soft'}"
+                  type="button" data-perm="yes" data-key="${esc(entry.key)}">${esc(t('print.yes'))}</button>
+          <button class="btn btn-sm ${entry.settings.colorPermission === false ? 'btn-danger' : 'btn-soft'}"
+                  type="button" data-perm="no" data-key="${esc(entry.key)}">${esc(t('print.no'))}</button>
+        </div>
+        ${entry.settings.colorPermission === false
+          ? `<p class="error" style="margin-top:8px">${esc(t('print.permissionNo'))}</p>` : ''}
+        ${entry.settings.colorPermission === null
+          ? `<p class="help" style="margin-top:6px">${esc(t('print.permissionAsk'))}</p>` : ''}
+      </div>` : ''}
+
+      <label class="field filecard-note">
+        <span class="label" data-i18n="print.note">Note (optional)</span>
+        <input class="input" type="text" maxlength="100"
+               data-set="note" data-key="${esc(entry.key)}"
+               placeholder="${esc(t('print.notePh'))}"
+               value="${esc(entry.settings.note)}">
+        <span class="help">${esc(String(entry.settings.note.length))}/100</span>
+      </label>`}
     </div>`;
   }).join('');
 
@@ -759,23 +801,32 @@ function onFileSettingChange(event) {
   if (!entry) return;
 
   const what = field.dataset.set;
-  entry.settings[what] = what === 'copies' ? field.value : field.value;
+  entry.settings[what] = field.value;
 
   if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintFileCards(); }
   else if (what === 'level') { entry.settings.gradeId = ''; paintFileCards(); }
-  else paintSubmitState();
+  else if (what === 'colorMode') {
+    // Changing away from colour forgets the answer rather than keeping a
+    // stale yes, so coming back asks again.
+    if (field.value !== 'color') entry.settings.colorPermission = null;
+    paintFileCards();
+  } else if (what === 'note') {
+    // Redrawing on every keystroke would move the caret, so only the
+    // counter beside this field is touched.
+    const counter = field.parentElement?.querySelector('.help');
+    if (counter) counter.textContent = `${field.value.length}/100`;
+    paintSubmitState();
+  } else {
+    paintSubmitState();
+  }
 }
 
-function paintColourFields() {
-  const colour = $('#pq-colour input:checked')?.value === 'color';
-  const field = $('#pq-permission-field');
-  const warn = $('#pq-permission-warn');
-  if (!field || !warn) return;
-
-  field.hidden = !colour;
-  warn.hidden = !(colour && $('#pq-permission input:checked')?.value === 'no');
-  paintSubmitState();
-}
+/**
+ * A colour document needs its permission answered yes. Unanswered and
+ * answered-no both block, and the card says which.
+ */
+const colourBlocked = entry =>
+  entry.settings.colorMode === 'color' && entry.settings.colorPermission !== true;
 
 /**
  * The submit button is shut whenever the form would be refused anyway:
@@ -784,16 +835,13 @@ function paintColourFields() {
  */
 function paintSubmitState() {
   const limit = fileLimitFor(chosenPriority());
-  const colour = $('#pq-colour input:checked')?.value === 'color';
-  const refused = colour && $('#pq-permission input:checked')?.value === 'no';
-
   const submit = $('#pq-submit');
   if (!submit) return;
 
   submit.disabled = printState.files.length === 0
     || printState.files.length > limit
     || printState.files.some(f => !f.upload)
-    || refused;
+    || printState.files.some(colourBlocked);
 }
 
 function paintPrintQuip() {
@@ -830,19 +878,21 @@ async function onSubmitPrint(event) {
   }
   if (printState.files.some(f => !f.upload)) { showPrintError(t('print.errStillUploading')); return; }
 
+  if (printState.files.some(colourBlocked)) { showPrintError(t('print.errPermission')); return; }
+
   const input = {
-    requesterName:   $('#pq-name').value,
-    title:           $('#pq-title').value,
-    colorMode:       $('#pq-colour input:checked')?.value ?? 'bw',
-    colorPermission: $('#pq-permission input:checked')?.value === 'yes',
-    note:            $('#pq-note').value,
+    requesterName: $('#pq-name').value,
+    title:         $('#pq-title').value,
     priority,
     files: printState.files.map(entry => ({
-      uploadId:   entry.upload.upload_id,
-      copies:     Number(entry.settings.copies),
-      paperSize:  entry.settings.paperSize,
-      printSides: entry.settings.printSides,
-      gradeId:    entry.settings.gradeId || null
+      uploadId:        entry.upload.upload_id,
+      copies:          Number(entry.settings.copies),
+      paperSize:       entry.settings.paperSize,
+      printSides:      entry.settings.printSides,
+      gradeId:         entry.settings.gradeId || null,
+      colorMode:       entry.settings.colorMode,
+      colorPermission: entry.settings.colorPermission,
+      note:            entry.settings.note
     }))
   };
 
@@ -880,10 +930,8 @@ function resetPrintForm() {
   $('#print-form').reset();
   $('#pq-name').value = name;
   printState.files = [];
-  $('#pq-note-count').textContent = '0';
   paintFileCards();
   paintLimitLine();
-  paintColourFields();
   paintPrintQuip();
 }
 

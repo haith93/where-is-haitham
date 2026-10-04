@@ -256,36 +256,6 @@
       <!-- ---- 3. One card per document, each with its own settings ---- -->
       <div id="pq-files" class="stack-sm"></div>
 
-      <!-- ---- 4. Settings that belong to the request, not a document ---- -->
-      <h3 class="form-heading" data-i18n="print.optionsHeading">How to print it</h3>
-
-      <fieldset class="field" style="border:0;padding:0;margin:0">
-        <legend class="label" data-i18n="print.colourLabel">Colour</legend>
-        <div class="segmented" id="pq-colour">
-          <input type="radio" name="pq_colour" id="pq-bw" value="bw" checked>
-          <label for="pq-bw"><span data-i18n="print.bw">Black &amp; white</span></label>
-          <input type="radio" name="pq_colour" id="pq-color" value="color">
-          <label for="pq-color"><span data-i18n="print.colour">Colour</span></label>
-        </div>
-      </fieldset>
-
-      <fieldset class="field" id="pq-permission-field" hidden style="border:0;padding:0;margin:0">
-        <legend class="label" data-i18n="print.permissionQ">Do you have permission?</legend>
-        <div class="segmented" id="pq-permission">
-          <input type="radio" name="pq_perm" id="pq-perm-yes" value="yes">
-          <label for="pq-perm-yes"><span data-i18n="print.yes">Yes</span></label>
-          <input type="radio" name="pq_perm" id="pq-perm-no" value="no">
-          <label for="pq-perm-no"><span data-i18n="print.no">No</span></label>
-        </div>
-        <p class="error" id="pq-permission-warn" hidden data-i18n="print.permissionNo"></p>
-      </fieldset>
-
-      <div class="field">
-        <label class="label" for="pq-note" data-i18n="print.note">Note (optional)</label>
-        <input class="input" id="pq-note" type="text" maxlength="100" data-i18n-ph="print.notePh">
-        <p class="help"><span id="pq-note-count">0</span>/100</p>
-      </div>
-
       <p class="error" id="pq-error" role="alert" hidden></p>
       <button class="btn btn-primary btn-lg btn-block" type="submit" id="pq-submit" data-i18n="print.submit">Send print request</button>
     </form>

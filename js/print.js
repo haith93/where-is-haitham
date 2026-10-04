@@ -180,43 +180,47 @@ export async function createPrintRequest(input) {
   // Only a Normal request may carry several documents.
   if (priority !== 'normal' && files.length > 1) throw new Error(t('print.errOneFileOnly'));
 
-  const colorMode = input.colorMode === 'color' ? 'color' : 'bw';
-  if (colorMode === 'color' && input.colorPermission !== true) {
-    throw new Error(t('print.errPermission'));
-  }
-
-  const note = trimOrNull(input.note);
-  if (note && note.length > MAX_NOTE) throw new Error(t('print.errNote', { max: MAX_NOTE }));
-
   const title = trimOrNull(input.title);
   if (title && title.length > MAX_TITLE) throw new Error(t('print.errTitle'));
 
   const payload = files.map(file => {
     if (!file.uploadId) throw new Error(t('print.errNoFile'));
+
     const copies = Number(file.copies);
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
       throw new Error(t('print.errCopies', { max: MAX_COPIES }));
     }
+
+    // Colour and its permission belong to the document now: a colour
+    // poster and two black-and-white worksheets are one errand.
+    const colorMode = file.colorMode === 'color' ? 'color' : 'bw';
+    if (colorMode === 'color' && file.colorPermission !== true) {
+      throw new Error(t('print.errPermission'));
+    }
+
+    const note = trimOrNull(file.note);
+    if (note && note.length > MAX_NOTE) throw new Error(t('print.errNote', { max: MAX_NOTE }));
+
     return {
-      upload_id:   file.uploadId,
+      upload_id:        file.uploadId,
       copies,
-      paper_size:  file.paperSize || 'A4',
-      print_sides: file.printSides === 'double' ? 'double' : 'single',
-      grade_id:    file.gradeId || null
+      paper_size:       file.paperSize || 'A4',
+      print_sides:      file.printSides === 'double' ? 'double' : 'single',
+      grade_id:         file.gradeId || null,
+      color_mode:       colorMode,
+      color_permission: colorMode === 'color' ? true : null,
+      note
     };
   });
 
   const { data, error } = await sb.rpc('create_print_request', {
-    p_requester_name:   name,
-    p_files:            payload,
-    p_title:            title,
-    p_color_mode:       colorMode,
-    p_color_permission: colorMode === 'color' ? true : null,
-    p_note:             note,
-    p_priority:         priority,
-    p_building_id:      null,
-    p_custom_location:  null,
-    p_device_id:        deviceId()
+    p_requester_name:  name,
+    p_files:           payload,
+    p_title:           title,
+    p_priority:        priority,
+    p_building_id:     null,
+    p_custom_location: null,
+    p_device_id:       deviceId()
   });
 
   if (error) throw new Error(errorMessage(error, t('print.errSubmit')));

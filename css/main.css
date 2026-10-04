@@ -802,6 +802,18 @@ input[type='checkbox']:checked::after {
 .urgency-first { padding-bottom: var(--s-3); border-bottom: var(--bd-hair) solid var(--border); }
 .limit-broken { color: var(--danger); font-weight: 700; }
 
+/* The colour permission question, asked on the document it applies to
+   rather than once for the whole request: a colour poster and two
+   black-and-white worksheets are one errand. */
+.filecard-ask {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  background: var(--accent-soft);
+  border: var(--bd-thin) solid var(--ink);
+}
+.filecard-note { margin-top: var(--s-3); }
+.filecard-note .help { font-family: var(--mono); font-size: 11px; }
+
 /* ---------- Toasts --------------------------------------------------- */
 .toasts {
   position: fixed;

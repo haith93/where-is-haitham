@@ -176,6 +176,7 @@ const STRINGS = {
                           ar: 'هل لديك إذن بطباعة هذا المستند بالألوان؟' },
   'print.yes':          { en: 'Yes',             ar: 'نعم' },
   'print.no':           { en: 'No',              ar: 'لا' },
+  'print.permissionAsk': { en: 'Answer before sending.', ar: 'أجب قبل الإرسال.' },
   'print.permissionNo': { en: 'Colour needs permission first. Choose black & white, or go and ask.',
                           ar: 'الطباعة الملوّنة تحتاج إذناً. اختر أبيض وأسود أو اطلب الإذن.' },
   'print.sides':        { en: 'Sides',           ar: 'الوجوه' },
