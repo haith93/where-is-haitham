@@ -294,28 +294,32 @@ function paintCounters(counts) {
 
 const CUSTOM = '__custom__';
 
+/**
+ * Wire the help form. Optional throughout, for the same reason
+ * wirePrintForm is: one missing element must never cost the board.
+ */
 function wireRequestForm() {
-  $('#request-btn').addEventListener('click', openRequestSheet);
-  $('#mine-new').addEventListener('click', openRequestSheet);
+  $('#request-btn')?.addEventListener('click', openRequestSheet);
+  $('#mine-new')?.addEventListener('click', openRequestSheet);
 
-  $('#rq-location').addEventListener('change', event => {
+  $('#rq-location')?.addEventListener('change', event => {
     const custom = event.target.value === CUSTOM;
-    $('#rq-location-custom-field').hidden = !custom;
-    if (custom) $('#rq-location-custom').focus();
+    if ($('#rq-location-custom-field')) $('#rq-location-custom-field').hidden = !custom;
+    if (custom) $('#rq-location-custom')?.focus();
   });
-  $('#rq-category').addEventListener('change', event => {
+  $('#rq-category')?.addEventListener('change', event => {
     const custom = event.target.value === CUSTOM;
-    $('#rq-category-custom-field').hidden = !custom;
-    if (custom) $('#rq-category-custom').focus();
+    if ($('#rq-category-custom-field')) $('#rq-category-custom-field').hidden = !custom;
+    if (custom) $('#rq-category-custom')?.focus();
   });
-  $('#rq-description').addEventListener('input', event => {
-    $('#rq-desc-count').textContent = event.target.value.length;
+  $('#rq-description')?.addEventListener('input', event => {
+    const c = $('#rq-desc-count'); if (c) c.textContent = event.target.value.length;
   });
 
   // Delegated, so a fifth urgency would need no new listener.
-  $('#rq-priority').addEventListener('change', paintPriorityQuip);
+  $('#rq-priority')?.addEventListener('change', paintPriorityQuip);
 
-  $('#request-form').addEventListener('submit', onSubmitRequest);
+  $('#request-form')?.addEventListener('submit', onSubmitRequest);
 }
 
 /** The playful line under the urgency picker. Wording lives in messages.js. */
@@ -459,8 +463,10 @@ const chosenPriority = () => $('#pq-priority input:checked')?.value ?? 'normal';
 /** Show one of the two forms. */
 function showRequestTab(which) {
   const printing = which === 'print';
-  $('#request-form').hidden = printing;
-  $('#print-form').hidden = !printing;
+  const help = $('#request-form'), form = $('#print-form');
+  if (!help || !form) return;
+  help.hidden = printing;
+  form.hidden = !printing;
   $$('[data-reqtab]').forEach(btn => {
     btn.setAttribute('aria-selected', String(btn.dataset.reqtab === which));
   });
@@ -469,30 +475,59 @@ function showRequestTab(which) {
   if (sheet) sheet.scrollTop = 0;
 }
 
+/**
+ * Wire the print tab.
+ *
+ * Every lookup is optional, and the whole thing gives up quietly if the
+ * markup it needs is not there.
+ *
+ * That is not defensive padding. A browser can end up holding this script
+ * beside an index.html from a different deploy - a stale service worker,
+ * an HTTP cache that answered 304, a half-finished update - and when it
+ * does, one `null.addEventListener` here used to throw out of boot() and
+ * take the whole board with it. The person then sees nothing at all, when
+ * what they came for was to find out where Haitham is.
+ *
+ * So a mismatch costs the print tab and nothing else: the board still
+ * paints, the help form still works, and the tab that cannot be wired is
+ * hidden rather than left looking broken.
+ */
 function wirePrintForm() {
+  const form = $('#print-form');
+  const files = $('#pq-files');
+  const file = $('#pq-file');
+
+  // The three the tab cannot exist without.
+  if (!form || !files || !file) {
+    console.warn('[print] markup is from a different build; hiding the tab');
+    $('.reqtabs')?.setAttribute('hidden', '');
+    form?.setAttribute('hidden', '');
+    $('#request-form')?.removeAttribute('hidden');
+    return;
+  }
+
   $$('[data-reqtab]').forEach(btn => {
     btn.addEventListener('click', () => showRequestTab(btn.dataset.reqtab));
   });
 
-  const file = $('#pq-file');
   file.setAttribute('accept', ACCEPT_ATTRIBUTE);
-  $('#pq-file-btn').addEventListener('click', () => file.click());
   file.addEventListener('change', onPickFiles);
+  $('#pq-file-btn')?.addEventListener('click', () => file.click());
 
-  $('#pq-priority').addEventListener('change', onPriorityChange);
+  $('#pq-priority')?.addEventListener('change', onPriorityChange);
+  $('#pq-colour')?.addEventListener('change', paintColourFields);
+  $('#pq-permission')?.addEventListener('change', paintColourFields);
 
-  $('#pq-colour').addEventListener('change', paintColourFields);
-  $('#pq-permission').addEventListener('change', paintColourFields);
-
-  $('#pq-note').addEventListener('input', event => {
-    $('#pq-note-count').textContent = event.target.value.length;
+  $('#pq-note')?.addEventListener('input', event => {
+    const count = $('#pq-note-count');
+    if (count) count.textContent = event.target.value.length;
   });
 
   // Delegated: the per-file controls are drawn and redrawn, so binding
   // them individually would mean rebinding on every change.
-  $('#pq-files').addEventListener('input', onFileSettingChange);
-  $('#pq-files').addEventListener('change', onFileSettingChange);
-  $('#pq-files').addEventListener('click', event => {
+  files.addEventListener('input', onFileSettingChange);
+  files.addEventListener('change', onFileSettingChange);
+  files.addEventListener('click', event => {
     const remove = event.target.closest('[data-remove-file]');
     if (!remove) return;
     event.preventDefault();
@@ -501,7 +536,7 @@ function wirePrintForm() {
     paintLimitLine();
   });
 
-  $('#print-form').addEventListener('submit', onSubmitPrint);
+  form.addEventListener('submit', onSubmitPrint);
 }
 
 /** Fill the lists the per-file cards need. Cheap after the first time. */
@@ -544,7 +579,8 @@ function onPriorityChange() {
 function paintLimitLine() {
   const limit = fileLimitFor(chosenPriority());
   const line = $('#pq-limit');
-  if (!line) return;
+  const input = $('#pq-file');
+  if (!line || !input) return;
 
   const over = printState.files.length - limit;
   if (over > 0) {
@@ -557,7 +593,6 @@ function paintLimitLine() {
 
   // A file input that still says "multiple" invites the browser's picker
   // to offer it, so the attribute follows the rule as well.
-  const input = $('#pq-file');
   if (limit === 1) input.removeAttribute('multiple');
   else input.setAttribute('multiple', '');
 }
@@ -708,10 +743,11 @@ function paintFileCards() {
   }).join('');
 
   paintIcons(host);
-  $('#pq-file-btn-text').textContent =
-    printState.files.length ? t('print.addAnother') : t('print.choose');
-  $('#pq-file-btn').hidden = fileLimitFor(chosenPriority()) === 1 && printState.files.length >= 1
-    ? false : false;                   // always available: picking replaces
+  // The picker stays available even at a one-document urgency: choosing
+  // again replaces rather than appends, which is the gentler way to
+  // change your mind.
+  const label = $('#pq-file-btn-text');
+  if (label) label.textContent = printState.files.length ? t('print.addAnother') : t('print.choose');
   paintSubmitState();
 }
 
@@ -732,9 +768,12 @@ function onFileSettingChange(event) {
 
 function paintColourFields() {
   const colour = $('#pq-colour input:checked')?.value === 'color';
-  $('#pq-permission-field').hidden = !colour;
-  const refused = colour && $('#pq-permission input:checked')?.value === 'no';
-  $('#pq-permission-warn').hidden = !refused;
+  const field = $('#pq-permission-field');
+  const warn = $('#pq-permission-warn');
+  if (!field || !warn) return;
+
+  field.hidden = !colour;
+  warn.hidden = !(colour && $('#pq-permission input:checked')?.value === 'no');
   paintSubmitState();
 }
 
@@ -748,12 +787,13 @@ function paintSubmitState() {
   const colour = $('#pq-colour input:checked')?.value === 'color';
   const refused = colour && $('#pq-permission input:checked')?.value === 'no';
 
-  const blocked = printState.files.length === 0
+  const submit = $('#pq-submit');
+  if (!submit) return;
+
+  submit.disabled = printState.files.length === 0
     || printState.files.length > limit
     || printState.files.some(f => !f.upload)
     || refused;
-
-  $('#pq-submit').disabled = blocked;
 }
 
 function paintPrintQuip() {
