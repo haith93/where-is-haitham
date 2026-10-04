@@ -125,6 +125,39 @@ with checks as (
          coalesce((select count(*)::text from public.print_uploads
                     where consumed_at is null), '0')
          || ' unconsumed (orphans an administrator can purge)'
+
+  -- ---- Can a print request be found by the report filters? --------
+  -- create_print_request files every print job against the photocopy
+  -- building and the photocopying task, looked up by name. If neither
+  -- row exists it falls back to free text, and a request filed under
+  -- free text cannot be reached by the building or task filter.
+  union all
+  select 14, 'photocopy building and task exist',
+         case when exists (select 1 from public.buildings
+                            where active and (lower(name) like '%photocop%'
+                                           or lower(name) like '%print%'
+                                           or lower(name) like '%copy%'))
+               and exists (select 1 from public.tasks
+                            where active and (lower(name) like '%photocop%'
+                                           or lower(name) like '%print%'))
+              then 'OK' else 'FALLBACK' end,
+         'Print jobs are filed against these two by name'
+
+  union all
+  select 15, 'print requests are filterable',
+         case when not exists (
+                select 1 from public.service_requests
+                 where request_type = 'print'
+                   and (location_building_id is null or category_task_id is null))
+              then 'OK' else 'SOME FREE TEXT' end,
+         coalesce((select count(*)::text from public.service_requests
+                    where request_type = 'print'
+                      and location_building_id is not null
+                      and category_task_id is not null), '0')
+         || ' of '
+         || coalesce((select count(*)::text from public.service_requests
+                       where request_type = 'print'), '0')
+         || ' against a real building and task'
 )
 
 select ord as "#", item as "Check", state as "Result", detail as "What it means"

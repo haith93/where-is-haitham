@@ -197,7 +197,11 @@ async function boot() {
     if (state.section === 'tasks')     paintTasks();
     if (state.section === 'users')     paintUsers();
     if (state.section === 'status')    fillStatusSelects();
-    if (state.section === 'reports' && state.report) paintReport(state.report);
+    if (state.section === 'reports') {
+      // "Any building" and the building names themselves both change.
+      fillReportFilters();
+      if (state.report) paintReport(state.report);
+    }
     if (state.section === 'history')   paintHistory();
   });
 
@@ -280,7 +284,7 @@ function route() {
   if (section === 'buildings') paintBuildings();
   if (section === 'tasks')     paintTasks();
   if (section === 'users')     paintUsers();
-  if (section === 'reports')   runReport();
+  if (section === 'reports') { fillReportFilters(); runReport(); }
   if (section === 'history')   loadHistory();
   if (section === 'settings')  paintSettings();
 
@@ -479,22 +483,39 @@ async function onEnterStatus() {
   startPreviewTimer();
 }
 
+// Both lists, active entries only. data.js caches them and clears the
+// cache on every edit, so asking again on each section entry is free.
+const activeLists = () => Promise.all([
+  getBuildings({ activeOnly: true }),
+  getTasks({ activeOnly: true })
+]);
+
 async function fillStatusSelects() {
   try {
-    const [buildings, tasks] = await Promise.all([
-      getBuildings({ activeOnly: true }),
-      getTasks({ activeOnly: true })
-    ]);
-
-    fillSelect($('#st-location'), buildings, 'No specific location', '+ Other / custom location');
-    fillSelect($('#st-task'), tasks, 'No specific task', '+ Other / custom task');
-
-    // Report filters share the same lists.
-    fillSelect($('#f-building'), buildings, 'Any building', null);
-    fillSelect($('#f-task'), tasks, 'Any task', null);
+    const [buildings, tasks] = await activeLists();
+    fillSelect($('#st-location'), buildings, t('admin.noLocation'), t('admin.customLocation'));
+    fillSelect($('#st-task'), tasks, t('admin.noTask'), t('admin.customTask'));
+    fillReportSelects(buildings, tasks);
   } catch (err) {
     toastError(err.message);
   }
+}
+
+// Reports needs its own entry point. These two filters used to be filled
+// only as a side effect of opening My status, so an administrator who
+// went straight to Reports found both dropdowns empty.
+async function fillReportFilters() {
+  try {
+    const [buildings, tasks] = await activeLists();
+    fillReportSelects(buildings, tasks);
+  } catch (err) {
+    toastError(err.message);
+  }
+}
+
+function fillReportSelects(buildings, tasks) {
+  fillSelect($('#f-building'), buildings, t('admin.anyBuilding'), null);
+  fillSelect($('#f-task'), tasks, t('admin.anyTask'), null);
 }
 
 function fillSelect(select, rows, placeholder, customLabel) {
