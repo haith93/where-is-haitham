@@ -83,6 +83,17 @@ writes through those policies, so 1–4 cannot be reordered.
 something only each migration creates, so the answer does not depend on
 remembering what was run:
 
+For the print feature specifically, `check-print-state.sql` answers
+whether the database is in the state the deployed code expects. It looks
+for the tables, constraints and function signatures themselves, so the
+answer does not depend on remembering what was run or in what order -
+which matters, because these migrations are deliberately safe to re-run
+and a rollback followed by its own migration leaves no trace either way.
+
+```sql
+-- paste sql/check-print-state.sql
+```
+
 ```sql
 -- paste sql/check-migrations.sql
 ```
