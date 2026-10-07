@@ -126,25 +126,35 @@ with checks as (
                     where consumed_at is null), '0')
          || ' unconsumed (orphans an administrator can purge)'
 
-  -- ---- Can a print request be found by the report filters? --------
-  -- create_print_request files every print job against the photocopy
-  -- building and the photocopying task, looked up by name. If neither
-  -- row exists it falls back to free text, and a request filed under
-  -- free text cannot be reached by the building or task filter.
+  -- ---- Where a print request gets filed ---------------------------
   union all
-  select 14, 'photocopy building and task exist',
-         case when exists (select 1 from public.buildings
-                            where active and (lower(name) like '%photocop%'
-                                           or lower(name) like '%print%'
-                                           or lower(name) like '%copy%'))
-               and exists (select 1 from public.tasks
-                            where active and (lower(name) like '%photocop%'
-                                           or lower(name) like '%print%'))
-              then 'OK' else 'FALLBACK' end,
-         'Print jobs are filed against these two by name'
+  select 14, 'one place decides the print task',
+         case when to_regprocedure('public.print_task()') is not null
+               and to_regprocedure('public.print_location()') is not null
+              then 'OK' else 'OLD NAME MATCH' end,
+         'Otherwise each RPC carries its own guess, and "Printer repair" can win'
 
   union all
-  select 15, 'print requests are filterable',
+  select 15, 'a photocopying task exists to file under',
+         case when exists (
+                select 1 from public.tasks
+                 where active
+                   and (lower(name) like '%photocop%'
+                     or lower(name) like '%printing%'
+                     or lower(name) like '%copying%'
+                     or coalesce(name_ar, '') like '%تصوير%')
+                   and lower(name) not like '%repair%')
+              then 'OK' else 'FALLBACK' end,
+         'Without one, print jobs fall back to free text and lose the task filter'
+
+  union all
+  select 16, 'finishing a job frees the status',
+         case when to_regprocedure('public.release_status_after_request(uuid)') is not null
+              then 'OK' else 'MISSING' end,
+         'Without it the board still says he is on a job that is done'
+
+  union all
+  select 17, 'print requests are filterable',
          case when not exists (
                 select 1 from public.service_requests
                  where request_type = 'print'

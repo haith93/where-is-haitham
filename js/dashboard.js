@@ -159,7 +159,8 @@ function paintHero(view, snapshot) {
   // The joke sits next to the plain hint, never instead of it: somebody
   // deciding whether to walk across the complex needs the fact first.
   const quip = view.known && !view.expired
-    ? availabilityMessage(snapshot.status?.status_type, snapshot.status?.updated_at)
+    ? availabilityMessage(snapshot.status?.status_type, snapshot.status?.updated_at,
+                          { waiting: snapshot.counts?.waiting ?? 0 })
     : '';
   const locationLine = view.location
     ? `<div class="fact"><span class="ico">${icon('pin')}</span>

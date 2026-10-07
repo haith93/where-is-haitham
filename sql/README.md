@@ -25,8 +25,9 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 11 | `migration-print-offline-delivery.sql` | Record a print job whose document never arrived as a file |
 | 12 | `migration-public-offline-delivery.sql` | Colleagues can record a document that never arrived as a file |
 | 13 | `migration-push-trigger.sql` | **Optional.** Calls the send-push function. Edit section 3 first |
+| 14 | `migration-open-ended-and-print-task.sql` | Print jobs stop landing under "Printer repair"; finishing a job frees the status; no forced finish time |
 
-Numbers 9 to 12 each have an undo beside them: `rollback-print-multi-file.sql` and `rollback-print-per-file-colour.sql` and `rollback-print-offline-delivery.sql` and `rollback-public-offline-delivery.sql`
+Numbers 9 to 12 and 14 each have an undo beside them: `rollback-print-multi-file.sql` and `rollback-print-per-file-colour.sql` and `rollback-print-offline-delivery.sql` and `rollback-public-offline-delivery.sql` and `rollback-open-ended-and-print-task.sql`
 puts every function it replaced back as it was. Run that, not git, if the
 multi-file feature is abandoned - git takes the code back and cannot take
 the database back.

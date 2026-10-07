@@ -69,6 +69,11 @@ const state = {
   closedRequests: [],
   requestFilter: 'open',
   duration: prefs.get('lastDuration', 15),
+  // The finish time for the next request he picks up. Deliberately
+  // separate from `duration` above, which belongs to the My status form,
+  // and deliberately not remembered: a deadline he set for one job is
+  // not a deadline he meant for the next one. null means open-ended.
+  taskDuration: null,
   section: 'dashboard',
   report: null,
   reportPeriod: 'today',
@@ -193,6 +198,7 @@ async function boot() {
     paintDashboardExtras();
     // Re-render whichever section is on screen. Buildings, tasks and
     // users carry names that differ per language, so they need it too.
+    if (state.section === 'requests')  renderTaskDurations();
     if (state.section === 'buildings') paintBuildings();
     if (state.section === 'tasks')     paintTasks();
     if (state.section === 'users')     paintUsers();
@@ -280,7 +286,7 @@ function route() {
 
   stopPreviewTimer();
   if (section === 'status')    onEnterStatus();
-  if (section === 'requests')  paintQueue();
+  if (section === 'requests') { renderTaskDurations(); paintQueue(); }
   if (section === 'buildings') paintBuildings();
   if (section === 'tasks')     paintTasks();
   if (section === 'users')     paintUsers();
@@ -317,7 +323,8 @@ function paintCurrent() {
   // The same line colleagues are reading on the board, so Haitham can see
   // what his status is actually saying about him.
   const quip = view.known && !view.expired
-    ? availabilityMessage(state.current?.status_type, view.updatedAt)
+    ? availabilityMessage(state.current?.status_type, view.updatedAt,
+                          { waiting: state.openRequests.filter(r => r.status === 'pending').length })
     : '';
 
   const html = `
@@ -539,6 +546,40 @@ function renderDurationButtons() {
 
   $$('#st-durations .btn').forEach(btn =>
     btn.addEventListener('click', () => setDuration(Number(btn.dataset.minutes))));
+}
+
+/* ---- Finish time for the next request ----------------------------- */
+
+function renderTaskDurations() {
+  const host = $('#task-durations');
+  if (!host) return;
+  const durations = Array.isArray(state.settings?.quick_durations) && state.settings.quick_durations.length
+    ? state.settings.quick_durations
+    : [5, 10, 15, 20, 30, 45, 60, 120];
+
+  // Open-ended comes first and is the default, so the habit-forming tap
+  // is the honest one.
+  host.innerHTML = [
+    `<button class="filter-pill" type="button" data-minutes=""
+             aria-pressed="${state.taskDuration === null}">${esc(t('admin.noFixedTime'))}</button>`,
+    ...durations.map(minutes => `
+      <button class="filter-pill" type="button" data-minutes="${minutes}"
+              aria-pressed="${state.taskDuration === minutes}">${esc(durationText(minutes))}</button>`)
+  ].join('');
+
+  $$('#task-durations .filter-pill').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const raw = btn.dataset.minutes;
+      setTaskDuration(raw === '' ? null : Number(raw));
+    }));
+}
+
+function setTaskDuration(minutes) {
+  state.taskDuration = minutes;
+  $$('#task-durations .filter-pill').forEach(btn => {
+    const value = btn.dataset.minutes === '' ? null : Number(btn.dataset.minutes);
+    btn.setAttribute('aria-pressed', String(value === minutes));
+  });
 }
 
 function setDuration(minutes, { keepCustom = false } = {}) {
@@ -924,7 +965,7 @@ async function onQueueAction(action, id, button) {
       try {
         await acceptRequest(id, {
           travelNow: when === 'now',
-          durationMinutes: when === 'now' ? state.duration : null
+          durationMinutes: when === 'now' ? state.taskDuration : null
         });
         toastOk(when === 'now' ? t('admin.acceptedTravel') : t('admin.acceptedNext'));
         await Promise.all([refreshQueue(), refreshCurrent()]);
@@ -936,7 +977,7 @@ async function onQueueAction(action, id, button) {
   if (action === 'start') {
     await withBusy(button, 'Starting…', async () => {
       try {
-        await startRequest(id, state.duration);
+        await startRequest(id, state.taskDuration);
         toastOk(t('admin.startedToast'));
         await Promise.all([refreshQueue(), refreshCurrent()]);
       } catch (err) { toastError(err.message); }
@@ -974,7 +1015,7 @@ async function onQueueAction(action, id, button) {
   if (action === 'resume') {
     await withBusy(button, t('action.working'), async () => {
       try {
-        await resumeRequest(id, state.duration);
+        await resumeRequest(id, state.taskDuration);
         toastOk(t('admin.resumedToast'));
         await Promise.all([refreshQueue(), refreshCurrent()]);
       } catch (err) { toastError(err.message); }
@@ -2235,7 +2276,7 @@ async function onSubmitBehalfPrint(event) {
     priority: bpPriority(),
     notes: $('#bp-notes').value,
     startNow,
-    durationMinutes: startNow ? state.duration : null,
+    durationMinutes: startNow ? state.taskDuration : null,
     files: bprint.files.map(entry => ({
       uploadId: entry.upload?.upload_id ?? null,
       delivery: entry.delivery,
@@ -2289,8 +2330,8 @@ async function onSubmitBehalf(event) {
     priority: $('#bh-priority input:checked')?.value ?? 'normal',
     notes: $('#bh-notes').value,
     startNow,
-    // If he is already on it, reuse the duration he last picked.
-    durationMinutes: startNow ? state.duration : null
+    // Whatever finish time is set on the queue, which is none by default.
+    durationMinutes: startNow ? state.taskDuration : null
   };
 
   await withBusy($('#bh-submit'), t('action.saving'), async () => {

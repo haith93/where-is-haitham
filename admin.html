@@ -215,6 +215,16 @@
             <button class="filter-pill" type="button" data-rq-filter="closed" aria-pressed="false" data-i18n="admin.filterClosed">Recently closed</button>
           </div>
 
+          <!-- The finish time he is about to commit to. Open-ended unless
+               he says otherwise, so accepting a request never silently
+               promises a deadline. -->
+          <div class="field" id="task-duration-field">
+            <span class="label" data-i18n="admin.finishTime">Finish time for the next job you pick up</span>
+            <div class="filters" role="group" id="task-durations"
+                 aria-labelledby="h-requests"></div>
+            <p class="help" data-i18n="admin.finishTimeHelp">Open-ended unless you choose one.</p>
+          </div>
+
           <div id="queue-host" class="stack-sm"></div>
         </section>
 

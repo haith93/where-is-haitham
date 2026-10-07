@@ -64,6 +64,19 @@ export const STATUS_MESSAGES = Object.freeze({
     { en: 'Idle. Dangerously idle.',          ar: 'فاضي… فاضي لدرجة خطيرة.' },
     { en: 'Nothing on. Bring it over.',       ar: 'ما في شي عندي، هاته.' }
   ],
+  /* Free, but with somebody already waiting. "Available" on its own
+     reads as "nobody has asked", which is the opposite of the truth
+     when there is a queue. */
+  nextUp: [
+    { en: "Just finished one — next in line, you’re up.",
+      ar: 'خلّص واحدة ـ اللي بعده، دورك.' },
+    { en: 'Hands free. Reaching for the next one.',
+      ar: 'يديه فاضية. رايح على اللي بعده.' },
+    { en: 'One down. Who is next?',
+      ar: 'واحدة خلصت. مين التالي؟' },
+    { en: 'Between jobs — the queue is moving.',
+      ar: 'بين مهمتين ـ الدور ماشي.' }
+  ],
   office: [
     { en: 'In the office. Coffee mode. ☕',   ar: 'في المكتب ـ وضع القهوة ☕' },
     { en: 'Taking a breath. One minute.',     ar: 'ياخد نفس. دقيقة وبرجع.' },
@@ -129,8 +142,13 @@ export function priorityMessage(priority) {
  *        calls with the same value get the same line, so it is steady for
  *        as long as the status is, and different the next time.
  */
-export function availabilityMessage(statusType, since = 0) {
-  const key = statusType === 'break' ? 'office' : statusType;
+export function availabilityMessage(statusType, since = 0, { waiting = 0 } = {}) {
+  // Free with a queue behind it is a different sentence from free with
+  // an empty one, and the board should not read as "nobody has asked"
+  // while four people are waiting.
+  const key = statusType === 'break' ? 'office'
+            : statusType === 'available' && waiting > 0 ? 'nextUp'
+            : statusType;
   const ms = since ? new Date(since).getTime() : 0;
   // Minutes, not milliseconds: two statuses posted in the same minute
   // should not be forced to differ, and the arithmetic stays small.
