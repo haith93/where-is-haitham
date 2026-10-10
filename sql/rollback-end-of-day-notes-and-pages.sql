@@ -27,7 +27,9 @@
 --  ---------------
 --  "Finished for the day" goes back to being stored open-ended, so a
 --  report run the next day will again count the intervening hours as
---  time at work.
+--  time at work. It also loses the return date: update_my_status goes
+--  back to seven arguments, and any date already stored in
+--  expected_end_at stays in the column but is no longer settable.
 -- =====================================================================
 
 begin;
@@ -35,7 +37,10 @@ begin;
 -- ---------------------------------------------------------------------
 -- 1. update_my_status, open-ended again
 -- ---------------------------------------------------------------------
-create or replace function public.update_my_status(
+drop function if exists public.update_my_status(
+  text, uuid, text, uuid, text, integer, uuid, timestamptz);
+
+create function public.update_my_status(
   p_status_type      text,
   p_building_id      uuid    default null,
   p_custom_location  text    default null,

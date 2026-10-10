@@ -161,14 +161,23 @@ grant execute on function public.print_sheets(integer, text, integer) to anon, a
 -- ---------------------------------------------------------------------
 -- 3. Finishing for the day closes itself
 -- ---------------------------------------------------------------------
-create or replace function public.update_my_status(
+-- The old seven-argument form goes, so PostgREST is never choosing
+-- between two overloads. Callers inside the database pass seven
+-- positional arguments and still resolve, because the eighth defaults.
+drop function if exists public.update_my_status(
+  text, uuid, text, uuid, text, integer, uuid);
+
+create function public.update_my_status(
   p_status_type      text,
   p_building_id      uuid    default null,
   p_custom_location  text    default null,
   p_task_id          uuid    default null,
   p_custom_task      text    default null,
   p_duration_minutes integer default null,
-  p_request_id       uuid    default null
+  p_request_id       uuid    default null,
+  -- When he expects to be back. A finished day is not measured in
+  -- minutes: the answer is a date, and sometimes it is next Tuesday.
+  p_back_at          timestamptz default null
 )
 returns public.current_status
 language plpgsql
@@ -227,12 +236,29 @@ begin
   -- Finishing for the day is a moment, not a period: it records when
   -- the day ended. A length would be meaningless, and leaving the row
   -- open would make every hour since look like time at work.
+  --
+  -- It also has no place and no task. Whatever was selected on the form
+  -- is discarded here rather than trusted, so "finished" never carries
+  -- yesterday's building into tomorrow.
   if p_status_type = 'done' then
     p_duration_minutes := null;
+    p_building_id      := null;
+    p_custom_location  := null;
+    p_task_id          := null;
+    p_custom_task      := null;
   end if;
 
   if p_duration_minutes is not null then
     v_expected := v_now + make_interval(mins => p_duration_minutes);
+  end if;
+
+  -- A stated return moment wins over any length: it is the more
+  -- specific answer to the same question.
+  if p_back_at is not null then
+    if p_back_at < v_now - interval '1 day' or p_back_at > v_now + interval '400 days' then
+      raise exception 'That return date is out of range' using errcode = '22023';
+    end if;
+    v_expected := p_back_at;
   end if;
 
   update public.status_history
@@ -1010,9 +1036,9 @@ $fn$;
 -- 8. Grants
 -- ---------------------------------------------------------------------
 revoke all on function public.update_my_status(
-  text, uuid, text, uuid, text, integer, uuid) from public;
+  text, uuid, text, uuid, text, integer, uuid, timestamptz) from public;
 grant execute on function public.update_my_status(
-  text, uuid, text, uuid, text, integer, uuid) to authenticated;
+  text, uuid, text, uuid, text, integer, uuid, timestamptz) to authenticated;
 
 revoke all on function public.get_request_by_token(uuid) from public;
 grant execute on function public.get_request_by_token(uuid) to anon, authenticated;

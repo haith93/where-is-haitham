@@ -9,7 +9,8 @@
 import { sb, errorMessage } from './supabase.js';
 import { toneDot } from './icons.js';
 import { STATUS_META } from './config.js';
-import { toDate, minutesBetween, fmtTime, durationText, dayKey, endOfDay } from './utils.js';
+import { toDate, minutesBetween, fmtTime, durationText, dayKey, endOfDay,
+         startOfDay, addDays, weekdayName, fmtDateLong } from './utils.js';
 import { getLang, t } from './i18n.js';
 
 /* ------------------------------------------------------------------ */
@@ -65,7 +66,8 @@ export async function updateStatus(input) {
     p_task_id:          payload.taskId,
     p_custom_task:      payload.customTask,
     p_duration_minutes: payload.durationMinutes,
-    p_request_id:       payload.requestId
+    p_request_id:       payload.requestId,
+    p_back_at:          payload.backAt
   });
   if (error) throw new Error(errorMessage(error, 'Unable to update your status. Please check your connection and try again.'));
   return data;
@@ -112,8 +114,18 @@ function normaliseStatusInput(input = {}) {
     throw new Error('Please choose where you are (or type a custom location).');
   }
 
+  // A finished day is answered with a date, not a length. It is stored
+  // as the start of that local day: "back Sunday" means the morning.
+  let backAt = null;
+  if (input.backOn) {
+    const start = startOfDay(String(input.backOn));
+    if (Number.isNaN(start?.getTime?.())) throw new Error('That is not a valid date.');
+    backAt = start.toISOString();
+  }
+
   return {
     statusType, buildingId, customLocation, taskId, customTask, durationMinutes,
+    backAt,
     requestId: input.requestId || null
   };
 }
@@ -135,6 +147,17 @@ const trimOrNull = v => {
  * the expected time has passed — we never guess a new location, and we
  * never pretend expected_end_at was the actual end.
  */
+/* When he is back, said the way a person would say it. No date given
+   means he did not say, which is different from "tomorrow". */
+export function backDayText(expectedEndAt) {
+  if (!expectedEndAt) return t('board.notStated');
+  const key = dayKey(expectedEndAt);
+  if (key === addDays(dayKey(), 1)) return t('board.backTomorrow');
+  if (key === dayKey()) return t('board.backToday');
+  const date = startOfDay(key);
+  return `${weekdayName(date)} ${fmtDateLong(date)}`;
+}
+
 export function describeStatus(status, now = new Date()) {
   if (!status || !status.status_type) {
     return {
@@ -160,13 +183,17 @@ export function describeStatus(status, now = new Date()) {
   const openTooLong = !expectedEndAt
     && ['busy', 'serving', 'traveling', 'meeting'].includes(status.status_type)
     && minutesBetween(startedAt, now) > 180;
-  const stale = (expired && minutesOver > 15) || openTooLong;
+  // A finished day with a return date is not an overrunning job: the
+  // date is a plan, not a promise that has lapsed.
+  const stale = status.status_type === 'done'
+    ? false
+    : (expired && minutesOver > 15) || openTooLong;
 
   const isFree = status.status_type === 'available';
   const availabilityText = isFree
     ? 'Now'
     : status.status_type === 'done'
-      ? t('board.backTomorrow')
+      ? backDayText(expectedEndAt)
       : expectedEndAt
         ? (expired ? `${fmtTime(expectedEndAt)} · passed` : fmtTime(expectedEndAt))
         : 'Not stated';
@@ -185,7 +212,8 @@ export function describeStatus(status, now = new Date()) {
     stale,
     isFree,
     rangeText: !startedAt ? ''
-      : status.status_type === 'done' ? `${t('board.dayOver')} · ${fmtTime(startedAt)}`
+      : status.status_type === 'done'
+        ? `${t('board.dayOver')} · ${fmtTime(startedAt)}`
       : expectedEndAt ? `${fmtTime(startedAt)} → ${fmtTime(expectedEndAt)}`
       : `${fmtTime(startedAt)} → ${t('board.openEnded')}`,
     availabilityText,

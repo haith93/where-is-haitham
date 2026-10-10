@@ -74,6 +74,10 @@ const state = {
   // and deliberately not remembered: a deadline he set for one job is
   // not a deadline he meant for the next one. null means open-ended.
   taskDuration: null,
+  // The day he expects to be back, as a day key, set only when the
+  // status being posted is "finished for the day". null means he has
+  // not said.
+  backOn: null,
   section: 'dashboard',
   report: null,
   reportPeriod: 'today',
@@ -457,10 +461,7 @@ function wireStatusForm() {
       // "Available" and "Finished" do not need a place, a task or a length.
       const relaxed = ['available', 'done', 'break', 'offsite'].includes(input.value);
       $('#duration-label').textContent = relaxed ? t('admin.howLongOpt') : t('admin.howLong');
-      // A finishing time has no length at all, so the question goes away
-      // rather than sitting there inviting an answer that is discarded.
-      if (input.value === 'done') setDuration(null);
-      $('#st-duration-block')?.toggleAttribute('hidden', input.value === 'done');
+      applyDoneShape(input.value === 'done');
       updatePreview();
     }));
 
@@ -483,12 +484,18 @@ function wireStatusForm() {
     updatePreview();
   });
 
+  $('#st-back-date')?.addEventListener('change', event => {
+    state.backOn = event.target.value || null;
+    updatePreview();
+  });
+
   $('#status-form').addEventListener('submit', onSubmitStatus);
 }
 
 async function onEnterStatus() {
   await fillStatusSelects();
   renderDurationButtons();
+  applyDoneShape(chosenStatusType() === 'done');
   renderShortcuts();
   updatePreview();
   startPreviewTimer();
@@ -586,6 +593,95 @@ function setTaskDuration(minutes) {
   });
 }
 
+/* ---- "Finished for the day": when are you back? -------------------
+   A length is the wrong unit here. The answer is a day, and often it is
+   simply tomorrow, so that is one tap and the rest is a calendar. */
+
+/* Finishing for the day asks a different question from every other
+   status, so the form becomes that question: no place, no task, no
+   length - just when he is back. */
+function applyDoneShape(done) {
+  $('#st-where-block')?.toggleAttribute('hidden', done);
+  $('#st-duration-block')?.toggleAttribute('hidden', done);
+  $('#st-back-block')?.toggleAttribute('hidden', !done);
+
+  if (done) {
+    setDuration(null);
+    // A place chosen a moment ago must not ride along silently.
+    $('#st-location').value = '';
+    $('#st-task').value = '';
+    $('#st-location-custom-field').hidden = true;
+    $('#st-task-custom-field').hidden = true;
+    // Tomorrow is the answer on almost every day that ends normally, so
+    // it is the one already chosen. Changing it is one tap.
+    if (state.backOn == null) state.backOn = addDays(dayKey(), 1);
+    renderBackChoices();
+  } else {
+    state.backOn = null;
+    $('#st-back-date-field').hidden = true;
+    $('#st-back-date').value = '';
+  }
+}
+
+function renderBackChoices() {
+  const host = $('#st-back-choices');
+  if (!host) return;
+  const today = dayKey();
+  const choices = [
+    { key: addDays(today, 1), label: t('admin.backTomorrow') },
+    { key: nextWorkingDay(today), label: t('admin.backMonday') },
+    { key: 'pick', label: t('admin.backPick') },
+    { key: null, label: t('admin.backUnsure') }
+  ];
+  // "Next working day" is only a distinct offer when it is not tomorrow.
+  const shown = choices.filter((c, i) => !(i === 1 && c.key === addDays(today, 1)));
+
+  host.innerHTML = shown.map(c => `
+    <button class="filter-pill" type="button" data-back="${esc(c.key ?? '')}"
+            aria-pressed="${backChoiceActive(c.key)}">${esc(c.label)}</button>`).join('');
+
+  $$('#st-back-choices .filter-pill').forEach(btn =>
+    btn.addEventListener('click', () => setBackOn(btn.dataset.back || null)));
+}
+
+/* Friday and Saturday are the weekend here, so Sunday is the next day
+   back at work. */
+function nextWorkingDay(from) {
+  let key = addDays(from, 1);
+  for (let i = 0; i < 7; i += 1) {
+    const day = startOfDay(key).getDay();     // 5 = Friday, 6 = Saturday
+    if (day !== 5 && day !== 6) return key;
+    key = addDays(key, 1);
+  }
+  return key;
+}
+
+function backChoiceActive(key) {
+  if (key === 'pick') return Boolean(state.backOn) && !$('#st-back-date-field')?.hidden;
+  return state.backOn === key && (key === null || $('#st-back-date-field')?.hidden !== false);
+}
+
+function setBackOn(key) {
+  const picking = key === 'pick';
+  $('#st-back-date-field').hidden = !picking;
+  if (picking) {
+    const field = $('#st-back-date');
+    field.min = dayKey();
+    if (!field.value) field.value = addDays(dayKey(), 1);
+    state.backOn = field.value;
+    field.focus();
+  } else {
+    state.backOn = key;
+    $('#st-back-date').value = '';
+  }
+  $$('#st-back-choices .filter-pill').forEach(btn => {
+    const value = btn.dataset.back || null;
+    btn.setAttribute('aria-pressed',
+      String(picking ? value === 'pick' : value === key));
+  });
+  updatePreview();
+}
+
 function setDuration(minutes, { keepCustom = false } = {}) {
   state.duration = minutes;
   if (minutes != null) {
@@ -609,6 +705,15 @@ function setDuration(minutes, { keepCustom = false } = {}) {
  */
 const chosenStatusType = () => $('#st-type input:checked')?.value ?? 'busy';
 
+/* "Tomorrow" when it is tomorrow, otherwise the weekday and the date.
+   Nobody reads 2026-10-14 and pictures a Wednesday. */
+function dayName(key) {
+  if (!key) return '';
+  if (key === addDays(dayKey(), 1)) return t('admin.backTomorrow').toLowerCase();
+  const date = startOfDay(key);
+  return `${weekdayName(date)} ${fmtDateLong(date)}`;
+}
+
 function updatePreview() {
   const now = new Date();
   const rangeNode = $('#st-preview-range');
@@ -618,7 +723,9 @@ function updatePreview() {
   // Finishing for the day is a moment. Showing it as a window that
   // starts now and never ends is what made a report count the evening.
   if (chosenStatusType() === 'done') {
-    rangeNode.textContent = fmtTime(now);
+    rangeNode.textContent = state.backOn
+      ? `${fmtTime(now)} · ${t('admin.backOn', { day: dayName(state.backOn) })}`
+      : fmtTime(now);
     subNode.textContent = t('admin.dayEndsSub');
   } else if (state.duration) {
     const end = new Date(now.getTime() + state.duration * 60000);
@@ -655,7 +762,8 @@ async function onSubmitStatus(event) {
     customTask: taskValue === CUSTOM ? $('#st-task-custom').value : null,
     // The RPC discards it for 'done' as well; this keeps the two honest
     // about each other rather than relying on one to clean up.
-    durationMinutes: chosenStatusType() === 'done' ? null : state.duration
+    durationMinutes: chosenStatusType() === 'done' ? null : state.duration,
+    backOn: chosenStatusType() === 'done' ? state.backOn : null
   };
 
   await withBusy($('#st-submit'), 'Updating…', async () => {

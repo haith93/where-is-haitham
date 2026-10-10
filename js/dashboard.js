@@ -25,7 +25,7 @@ import {
   MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
 } from './print.js';
 import { getGrades, sectionsOf, levelsOf, gradesOf, destinationText } from './school.js';
-import { getPublicStatus, describeStatus, statusLabel } from './status.js';
+import { getPublicStatus, describeStatus, statusLabel, backDayText } from './status.js';
 import {
   createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
   getMyDeviceRequests, cancelMyRequest, updateMyRequest,
@@ -227,8 +227,8 @@ function paintHero(view, snapshot) {
 /** Localised version of the availability line. */
 function availabilityText(view) {
   if (view.isFree) return t('board.now');
-  // The day being over is a stated answer, not a missing one.
-  if (view.statusType === 'done') return t('board.backTomorrow');
+  // A finished day answers with a day, not a clock time.
+  if (view.statusType === 'done') return backDayText(view.expectedEndAt);
   if (!view.expectedEndAt) return t('board.notStated');
   return fmtTime(view.expectedEndAt);
 }

@@ -145,6 +145,7 @@
               </div>
             </div>
 
+            <div id="st-where-block">
             <div class="field">
               <label class="label" for="st-location" data-i18n="admin.location">Location</label>
               <select class="select" id="st-location"></select>
@@ -163,6 +164,19 @@
               <label class="label" for="st-task-custom" data-i18n="admin.customTask">Custom task</label>
               <input class="input" id="st-task-custom" type="text" maxlength="80" placeholder="e.g. Replacing a projector lamp">
               <p class="help">Used for this update only. It is not added to the permanent list.</p>
+            </div>
+            </div>
+
+            <!-- A finished day asks one question instead: when are you
+                 back? Shown only for "Finished", where it replaces the
+                 place, the task and the length. -->
+            <div class="field" id="st-back-block" hidden>
+              <span class="label" id="back-label" data-i18n="admin.backWhen">When are you back?</span>
+              <div class="row-wrap" id="st-back-choices" role="group" aria-labelledby="back-label"></div>
+              <div class="field" id="st-back-date-field" hidden style="margin-top:10px">
+                <label class="label" for="st-back-date" data-i18n="admin.backDate">Pick a day</label>
+                <input class="input" id="st-back-date" type="date">
+              </div>
             </div>
 
             <div class="field" id="st-duration-block">
