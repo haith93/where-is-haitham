@@ -16,6 +16,7 @@ import {
 } from './print.js';
 import { getGrades, sectionsOf, levelsOf, gradesOf, destinationText } from './school.js';
 import { availabilityMessage } from './messages.js';
+import { storedSound, saveSound, clearSound, playAlert, armOnFirstGesture } from './sound.js';
 import { t, apply as applyI18n, applyDocument, initLangToggle, onLangChange, getLang } from './i18n.js';
 import {
   $, $$, esc, el, fmtTime, fmtDateTime, fmtDateLong, fmtDateShort, relativeTime,
@@ -203,6 +204,7 @@ async function boot() {
     // Re-render whichever section is on screen. Buildings, tasks and
     // users carry names that differ per language, so they need it too.
     if (state.section === 'requests')  renderTaskDurations();
+    if (state.section === 'settings')  paintSoundState();
     if (state.section === 'buildings') paintBuildings();
     if (state.section === 'tasks')     paintTasks();
     if (state.section === 'users')     paintUsers();
@@ -227,6 +229,7 @@ async function boot() {
   safe('settings', wireSettings);
   safe('record a request', wireBehalf);
   safe('notifications', wireNotifications);
+  safe('sound', wireSound);
 
   await refreshAll();
 
@@ -296,7 +299,7 @@ function route() {
   if (section === 'users')     paintUsers();
   if (section === 'reports') { fillReportFilters(); runReport(); }
   if (section === 'history')   loadHistory();
-  if (section === 'settings')  paintSettings();
+  if (section === 'settings') { paintSettings(); paintSoundState(); }
 
   scrollTo({ top: 0 });
 }
@@ -2606,9 +2609,67 @@ async function openNotifications({ keepOpen = false } = {}) {
   }
 }
 
+/* ================================================================== */
+/* The sound a request makes                                          */
+/* ================================================================== */
+
+function wireSound() {
+  // Browsers refuse audio until the person has interacted with the page.
+  armOnFirstGesture();
+  paintSoundState();
+
+  $('#sound-pick')?.addEventListener('click', () => $('#sound-file')?.click());
+
+  $('#sound-file')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';            // choosing the same file twice must work
+    if (!file) return;
+    try {
+      await saveSound(file);
+      await paintSoundState();
+      toastOk(t('admin.soundSaved'));
+      await testSound();
+    } catch (err) {
+      toastError(err.message);
+    }
+  });
+
+  $('#sound-clear')?.addEventListener('click', async () => {
+    await clearSound();
+    await paintSoundState();
+    toastOk(t('admin.soundCleared'));
+  });
+
+  $('#sound-test')?.addEventListener('click', testSound);
+}
+
+async function testSound() {
+  const played = await playAlert();
+  if (played === 'blocked') toastError(t('admin.soundBlocked'));
+  // A chosen file that silently became the chime is worth saying out
+  // loud, or he walks away believing the wrong sound will play.
+  else if (played === 'chime' && await storedSound()) toastError(t('admin.soundFellBack'));
+}
+
+async function paintSoundState() {
+  const node = $('#sound-state');
+  if (!node) return;
+  const record = await storedSound();
+  node.textContent = record
+    ? t('admin.soundChosen', { name: record.name, size: fileSizeText(record.size) })
+    : t('admin.soundDefault');
+  $('#sound-clear')?.toggleAttribute('hidden', !record);
+}
+
 function onNotification(row) {
   refreshUnread();
   refreshQueue();
+
+  // Audible either way. A banner over a window he is already looking at
+  // is noise, which is why a visible console only toasts - but then
+  // nothing announces a request to somebody standing two feet away.
+  playAlert().catch(err => console.warn('[sound]', err));
+
   if (document.visibilityState === 'visible') {
     toast(`${row.title} — ${row.message}`, 'info', 7000);
   } else {

@@ -472,6 +472,23 @@
           </div>
 
           <div class="card stack">
+            <h2 class="card-title" data-i18n="admin.soundTitle">Sound when a request arrives</h2>
+            <p class="small muted" data-i18n="admin.soundIntro">
+              Plays while this app is open, on this device. Choose any sound file from the device.
+            </p>
+            <p class="small" id="sound-state">—</p>
+            <input type="file" id="sound-file" class="sr-only" accept="audio/*">
+            <div class="row-wrap">
+              <button class="btn btn-soft" type="button" id="sound-pick" data-i18n="admin.soundPick">Choose a sound…</button>
+              <button class="btn btn-ghost" type="button" id="sound-test" data-i18n="admin.soundTest">Play it</button>
+              <button class="btn btn-ghost" type="button" id="sound-clear" hidden data-i18n="admin.soundClear">Use the default</button>
+            </div>
+            <p class="help" data-i18n="admin.soundHint">
+              The file stays on this device and is never uploaded. With no file chosen, a short built-in chime is used.
+            </p>
+          </div>
+
+          <div class="card stack">
             <h2 class="card-title" data-i18n="admin.pushTitle">Notifications on this device</h2>
             <p class="small muted" id="push-state" data-i18n="common.checking">Checking…</p>
             <div class="row-wrap">
