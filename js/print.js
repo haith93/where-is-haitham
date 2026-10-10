@@ -202,7 +202,9 @@ export async function createPrintRequest(input) {
       throw new Error(t('print.errPages', { max: MAX_PAGES }));
     }
 
-    const copies = Number(file.copies);
+    // Left blank means one. It is the only field where silence has an
+    // obvious reading, which is why it is the only optional one.
+    const copies = file.copies === '' || file.copies == null ? 1 : Number(file.copies);
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
       throw new Error(t('print.errCopies', { max: MAX_COPIES }));
     }
@@ -304,7 +306,9 @@ export async function adminCreatePrintRequest(input) {
       throw new Error(t('print.errPages', { max: MAX_PAGES }));
     }
 
-    const copies = Number(file.copies);
+    // Left blank means one. It is the only field where silence has an
+    // obvious reading, which is why it is the only optional one.
+    const copies = file.copies === '' || file.copies == null ? 1 : Number(file.copies);
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
       throw new Error(t('print.errCopies', { max: MAX_COPIES }));
     }
@@ -354,6 +358,10 @@ export async function adminCreatePrintRequest(input) {
 /* ------------------------------------------------------------------ */
 
 /** Paper sizes, from the database so a new one needs no release. */
+const FALLBACK_PAPER = Object.freeze([
+  Object.freeze({ code: 'A4', label: 'A4', label_ar: 'A4' })
+]);
+
 export async function getPaperSizes() {
   const { data, error } = await sb
     .from('paper_sizes')
@@ -363,9 +371,12 @@ export async function getPaperSizes() {
 
   if (error) {
     console.warn('[print] paper sizes', error.message);
-    return [{ code: 'A4', label: 'A4', label_ar: 'A4' }];
+    return FALLBACK_PAPER;
   }
-  return data ?? [];
+  // An empty table is as unusable as a failed query now that choosing a
+  // paper size is required: with no options there is nothing to choose,
+  // and the request can never be sent. One sane size beats a dead form.
+  return data?.length ? data : FALLBACK_PAPER;
 }
 
 /** Every document on a request. Administrators only; the RPC enforces it. */

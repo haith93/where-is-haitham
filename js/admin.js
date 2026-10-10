@@ -37,7 +37,7 @@ import {
 import {
   getCurrentStatus, updateStatus, finishCurrentTask, setAvailableNow,
   describeStatus, statusLabel, getStatusHistory, historyLocation, historyTask,
-  actualMinutes, purgeActivity
+  actualMinutes, purgeActivity, backKind
 } from './status.js';
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
@@ -331,7 +331,8 @@ function paintCurrent() {
   // what his status is actually saying about him.
   const quip = view.known && !view.expired
     ? availabilityMessage(state.current?.status_type, view.updatedAt,
-                          { waiting: state.openRequests.filter(r => r.status === 'pending').length })
+                          { waiting: state.openRequests.filter(r => r.status === 'pending').length,
+                            back: backKind(view.expectedEndAt) })
     : '';
 
   const html = `

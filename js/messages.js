@@ -101,9 +101,20 @@ export const STATUS_MESSAGES = Object.freeze({
   offsite: [
     { en: 'Out of the complex today.',        ar: 'خارج المجمّع اليوم.' }
   ],
+  /* Three ways a day can end, and they are not interchangeable. Saying
+     "see you tomorrow" when he said he is back on Sunday is worse than
+     saying nothing: somebody plans their morning around it. */
   done: [
     { en: 'Day finished. See you tomorrow.',  ar: 'انتهى الدوام. نشوفكم بكرة.' },
     { en: "Shop's closed. Tomorrow, promise.", ar: 'سكّرنا اليوم ـ بكرة، وعد.' }
+  ],
+  doneLater: [
+    { en: 'Day finished. Back on the day below.', ar: 'انتهى الدوام. يعود في اليوم المذكور.' },
+    { en: "Closed for now — the date below is the one.", ar: 'مغلق حالياً ـ التاريخ المذكور هو الموعد.' }
+  ],
+  doneUnknown: [
+    { en: 'Day finished. No return date yet.', ar: 'انتهى الدوام. لا يوجد موعد عودة بعد.' },
+    { en: "Closed. He hasn't said when he's back.", ar: 'انتهى الدوام ـ لم يحدّد موعد عودته.' }
   ]
 });
 
@@ -142,12 +153,20 @@ export function priorityMessage(priority) {
  *        calls with the same value get the same line, so it is steady for
  *        as long as the status is, and different the next time.
  */
-export function availabilityMessage(statusType, since = 0, { waiting = 0 } = {}) {
+/**
+ * @param {object} opts
+ * @param {number} opts.waiting  people in the queue right now
+ * @param {'tomorrow'|'later'|'unknown'} [opts.back]
+ *        which day he said he is back, for a finished day only
+ */
+export function availabilityMessage(statusType, since = 0, { waiting = 0, back = null } = {}) {
   // Free with a queue behind it is a different sentence from free with
   // an empty one, and the board should not read as "nobody has asked"
   // while four people are waiting.
   const key = statusType === 'break' ? 'office'
             : statusType === 'available' && waiting > 0 ? 'nextUp'
+            : statusType === 'done' && back === 'later' ? 'doneLater'
+            : statusType === 'done' && back === 'unknown' ? 'doneUnknown'
             : statusType;
   const ms = since ? new Date(since).getTime() : 0;
   // Minutes, not milliseconds: two statuses posted in the same minute

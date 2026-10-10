@@ -25,7 +25,7 @@ import {
   MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
 } from './print.js';
 import { getGrades, sectionsOf, levelsOf, gradesOf, destinationText } from './school.js';
-import { getPublicStatus, describeStatus, statusLabel, backDayText } from './status.js';
+import { getPublicStatus, describeStatus, statusLabel, backDayText, backKind } from './status.js';
 import {
   createPublicRequest, rememberRequest, forgetRequest, rememberedRequests,
   getMyDeviceRequests, cancelMyRequest, updateMyRequest,
@@ -160,7 +160,8 @@ function paintHero(view, snapshot) {
   // deciding whether to walk across the complex needs the fact first.
   const quip = view.known && !view.expired
     ? availabilityMessage(snapshot.status?.status_type, snapshot.status?.updated_at,
-                          { waiting: snapshot.counts?.waiting ?? 0 })
+                          { waiting: snapshot.counts?.waiting ?? 0,
+                            back: backKind(view.expectedEndAt) })
     : '';
   const locationLine = view.location
     ? `<div class="fact"><span class="ico">${icon('pin')}</span>
@@ -538,11 +539,14 @@ function wirePrintForm() {
       file: null, upload: null, progress: 100, error: null,
       delivery: 'hand',
       settings: {
-        title: '', pages: '', copies: 1,
-        paperSize: printState.papers[0]?.code ?? 'A4',
-        printSides: 'single',
+        title: '', pages: '', copies: '',
+        // Nothing is pre-chosen: a default that happens to be wrong
+        // is indistinguishable from an answer, and Haitham cannot
+        // tell afterwards which it was.
+        paperSize: '',
+        printSides: '',
         section: '', level: '', gradeId: '',
-        colorMode: 'bw', colorPermission: null, note: ''
+        colorMode: '', colorPermission: null, note: ''
       }
     });
     paintFileCards();
@@ -665,11 +669,11 @@ async function onPickFiles(event) {
       settings: {
         title: '',
         pages: '',
-        copies: 1,
-        paperSize: printState.papers[0]?.code ?? 'A4',
-        printSides: 'single',
+        copies: '',
+        paperSize: '',
+        printSides: '',
         section: '', level: '', gradeId: '',
-        colorMode: 'bw',
+        colorMode: '',
         // null, not false: the question has not been asked yet, which is
         // a different thing from having been answered no.
         colorPermission: null,
@@ -742,6 +746,12 @@ function paintFileCards() {
 
       ${extra ? `<p class="error" style="margin-top:8px">${esc(t('print.removeThisOne'))}</p>` : `
       <p class="help" data-cost="${esc(entry.key)}">${esc(costLine(entry))}</p>
+      ${settingsIncomplete(entry)
+        ? `<p class="help" data-missing="${esc(entry.key)}">${esc(t('print.stillNeeded', {
+            fields: REQUIRED_SETTINGS
+              .filter(k => !String(entry.settings[k] ?? '').trim())
+              .map(k => t(`print.need.${k}`)).join(', ')
+          }))}</p>` : ''}
       ${attached ? '' : `
       <div class="filecard-grid is-stacked">
         <label class="field">
@@ -762,34 +772,37 @@ function paintFileCards() {
 
       <div class="filecard-grid">
         <label class="field">
-          <span class="label" data-i18n="print.pages">Pages</span>
+          <span class="label">${esc(t('print.pages'))}<abbr class="req" title="Required">*</abbr></span>
           <input class="input" type="number" min="1" max="2000" step="1"
-                 inputmode="numeric"
+                 inputmode="numeric" required
                  data-set="pages" data-key="${esc(entry.key)}"
                  value="${esc(entry.settings.pages)}">
         </label>
         <label class="field">
-          <span class="label" data-i18n="print.copies">Copies</span>
+          <span class="label">${esc(t('print.copies'))} <span class="faint">${esc(t('print.optional'))}</span></span>
           <input class="input" type="number" min="1" max="500" step="1"
+                 placeholder="1"
                  data-set="copies" data-key="${esc(entry.key)}"
                  value="${esc(entry.settings.copies)}">
         </label>
         <label class="field">
-          <span class="label" data-i18n="print.paper">Paper size</span>
-          <select class="select" data-set="paperSize" data-key="${esc(entry.key)}">
+          <span class="label">${esc(t('print.paper'))}<abbr class="req" title="Required">*</abbr></span>
+          <select class="select" required data-set="paperSize" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.choose'))}</option>
             ${printState.papers.map(row => `<option value="${esc(row.code)}"
               ${row.code === entry.settings.paperSize ? 'selected' : ''}>${esc(paperLabel(row))}</option>`).join('')}
           </select>
         </label>
         <label class="field">
-          <span class="label" data-i18n="print.sides">Sides</span>
-          <select class="select" data-set="printSides" data-key="${esc(entry.key)}">
+          <span class="label">${esc(t('print.sides'))}<abbr class="req" title="Required">*</abbr></span>
+          <select class="select" required data-set="printSides" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.choose'))}</option>
             <option value="single" ${entry.settings.printSides === 'single' ? 'selected' : ''}>${esc(t('print.single'))}</option>
             <option value="double" ${entry.settings.printSides === 'double' ? 'selected' : ''}>${esc(t('print.double'))}</option>
           </select>
         </label>
         <label class="field">
-          <span class="label" data-i18n="print.section">School section</span>
+          <span class="label">${esc(t('print.section'))} <span class="faint">${esc(t('print.optional'))}</span></span>
           <select class="select" data-set="section" data-key="${esc(entry.key)}">
             <option value="">${esc(t('print.anySection'))}</option>
             ${sectionsOf(printState.grades).map(o => `<option value="${esc(o.value)}"
@@ -816,8 +829,9 @@ function paintFileCards() {
         </label>` : ''}
 
         <label class="field">
-          <span class="label" data-i18n="print.colourLabel">Colour</span>
-          <select class="select" data-set="colorMode" data-key="${esc(entry.key)}">
+          <span class="label">${esc(t('print.colourLabel'))}<abbr class="req" title="Required">*</abbr></span>
+          <select class="select" required data-set="colorMode" data-key="${esc(entry.key)}">
+            <option value="">${esc(t('print.choose'))}</option>
             <option value="bw" ${entry.settings.colorMode === 'bw' ? 'selected' : ''}>${esc(t('print.bw'))}</option>
             <option value="color" ${entry.settings.colorMode === 'color' ? 'selected' : ''}>${esc(t('print.colour'))}</option>
           </select>
@@ -889,7 +903,8 @@ function onFileSettingChange(event) {
 
   entry.settings[what] = field.value;
 
-  if (what === 'printSides') { paintFileCards(); }   // the sheet count changes
+  // These three all change what the card says underneath, so redraw.
+  if (['printSides', 'paperSize'].includes(what)) { paintFileCards(); }
   else if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintFileCards(); }
   else if (what === 'level') { entry.settings.gradeId = ''; paintFileCards(); }
   else if (what === 'colorMode') {
@@ -903,10 +918,14 @@ function onFileSettingChange(event) {
     if (head) head.textContent = field.value || t('print.noFileHere');
     paintSubmitState();
   } else if (what === 'pages' || what === 'copies') {
-    // A redraw on every keystroke would move the caret, so only the
-    // sentence underneath changes.
-    const node = field.closest('.filecard')?.querySelector('[data-cost]');
-    if (node) node.textContent = costLine(entry);
+    // A redraw on every keystroke would move the caret, so only the two
+    // sentences underneath change.
+    const card = field.closest('.filecard');
+    const cost = card?.querySelector('[data-cost]');
+    if (cost) cost.textContent = costLine(entry);
+    const missing = card?.querySelector('[data-missing]');
+    if (missing && !settingsIncomplete(entry)) missing.remove();
+    else if (!missing && settingsIncomplete(entry)) paintFileCards();
     paintSubmitState();
   } else if (what === 'note') {
     // Redrawing on every keystroke would move the caret, so only the
@@ -926,6 +945,15 @@ function onFileSettingChange(event) {
 const colourBlocked = entry =>
   entry.settings.colorMode === 'color' && entry.settings.colorPermission !== true;
 
+/* How it is printed is not guessable from the file, so these four are
+   asked for rather than assumed. Copies and the class are not: one copy
+   is the obvious reading of silence, and plenty of jobs belong to no
+   class at all. */
+const REQUIRED_SETTINGS = ['pages', 'paperSize', 'printSides', 'colorMode'];
+
+const settingsIncomplete = entry =>
+  REQUIRED_SETTINGS.some(key => !String(entry.settings[key] ?? '').trim());
+
 /**
  * The submit button is shut whenever the form would be refused anyway:
  * no documents, one still uploading, colour without permission, or more
@@ -942,6 +970,7 @@ function paintSubmitState() {
     // and nobody has named.
     || printState.files.some(f => f.delivery === 'upload' && !f.upload)
     || printState.files.some(f => f.delivery !== 'upload' && !f.settings.title.trim())
+    || printState.files.some(settingsIncomplete)
     || printState.files.some(colourBlocked);
 }
 

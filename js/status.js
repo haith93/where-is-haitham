@@ -158,6 +158,16 @@ export function backDayText(expectedEndAt) {
   return `${weekdayName(date)} ${fmtDateLong(date)}`;
 }
 
+/**
+ * Which of the three "finished" messages fits: tomorrow, a later day,
+ * or he did not say.
+ */
+export function backKind(expectedEndAt) {
+  if (!expectedEndAt) return 'unknown';
+  const key = dayKey(expectedEndAt);
+  return key === addDays(dayKey(), 1) ? 'tomorrow' : 'later';
+}
+
 export function describeStatus(status, now = new Date()) {
   if (!status || !status.status_type) {
     return {
