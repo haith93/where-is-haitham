@@ -16,7 +16,7 @@
 with checks as (
 
   -- ---- The tables -------------------------------------------------
-  select 1 as ord, 'print_jobs table' as item,
+  select 1::numeric as ord, 'print_jobs table' as item,
          case when to_regclass('public.print_jobs') is not null
               then 'OK' else 'MISSING' end as state,
          'Holds one row per document' as detail
@@ -83,7 +83,12 @@ with checks as (
                    and pg_get_function_identity_arguments(p.oid)
                        = 'text, jsonb, text, text, uuid, text, text')
               then 'OK' else 'WRONG SIGNATURE' end,
-         'Colour and the note come per document'
+         -- Saying only "wrong" leaves you guessing. Print what is there.
+         coalesce((select string_agg(
+                     '(' || pg_get_function_identity_arguments(p.oid) || ')', ' AND ')
+                     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                    where n.nspname = 'public' and p.proname = 'create_print_request'),
+                  'no such function')
 
   union all
   select 9, 'admin_create_print_request (record form)',
@@ -152,6 +157,28 @@ with checks as (
          case when to_regprocedure('public.release_status_after_request(uuid)') is not null
               then 'OK' else 'MISSING' end,
          'Without it the board still says he is on a job that is done'
+
+  union all
+  select 16.5, 'pages column (migration 15)',
+         case when exists (
+                select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'print_jobs'
+                   and column_name = 'pages')
+              then 'OK' else 'MISSING' end,
+         'Sheets of paper cannot be counted without it'
+
+  union all
+  select 16.6, 'update_my_status takes a return date',
+         case when to_regprocedure(
+                'public.update_my_status(text, uuid, text, uuid, text, integer, uuid, timestamptz)'
+              ) is not null then 'OK' else 'MISSING' end,
+         'A finished day says which day he is back'
+
+  union all
+  select 16.7, 'annotate_request (notes)',
+         case when to_regprocedure('public.annotate_request(uuid, text, text)') is not null
+              then 'OK' else 'MISSING' end,
+         'A message to the colleague and a private note'
 
   union all
   select 17, 'print requests are filterable',
