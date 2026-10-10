@@ -89,7 +89,7 @@ const STRINGS = {
   'status.break.hint':     { en: 'Back shortly',                 ar: 'يعود بعد قليل' },
   'status.meeting.hint':   { en: 'In a meeting',                 ar: 'في اجتماع' },
   'status.offsite.hint':   { en: 'Away from the campus',         ar: 'خارج الحرم المدرسي' },
-  'status.done.hint':      { en: 'Back tomorrow',                ar: 'يعود غداً' },
+  'status.done.hint':      { en: 'Requests still arrive',       ar: 'الطلبات تصل رغم ذلك' },
 
   /* ================= priority ================= */
   'priority.normal':      { en: 'Normal',      ar: 'عادي' },

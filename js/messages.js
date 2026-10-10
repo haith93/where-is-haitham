@@ -109,8 +109,8 @@ export const STATUS_MESSAGES = Object.freeze({
     { en: "Shop's closed. Tomorrow, promise.", ar: 'سكّرنا اليوم ـ بكرة، وعد.' }
   ],
   doneLater: [
-    { en: 'Day finished. Back on the day below.', ar: 'انتهى الدوام. يعود في اليوم المذكور.' },
-    { en: "Closed for now — the date below is the one.", ar: 'مغلق حالياً ـ التاريخ المذكور هو الموعد.' }
+    { en: 'Day finished. Back on the date shown.', ar: 'انتهى الدوام. يعود في التاريخ المذكور.' },
+    { en: "Closed for now — not back tomorrow.", ar: 'مغلق حالياً ـ لن يعود غداً.' }
   ],
   doneUnknown: [
     { en: 'Day finished. No return date yet.', ar: 'انتهى الدوام. لا يوجد موعد عودة بعد.' },
