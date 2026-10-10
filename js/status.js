@@ -9,7 +9,7 @@
 import { sb, errorMessage } from './supabase.js';
 import { toneDot } from './icons.js';
 import { STATUS_META } from './config.js';
-import { toDate, minutesBetween, fmtTime, durationText } from './utils.js';
+import { toDate, minutesBetween, fmtTime, durationText, dayKey, endOfDay } from './utils.js';
 import { getLang, t } from './i18n.js';
 
 /* ------------------------------------------------------------------ */
@@ -165,9 +165,11 @@ export function describeStatus(status, now = new Date()) {
   const isFree = status.status_type === 'available';
   const availabilityText = isFree
     ? 'Now'
-    : expectedEndAt
-      ? (expired ? `${fmtTime(expectedEndAt)} · passed` : fmtTime(expectedEndAt))
-      : 'Not stated';
+    : status.status_type === 'done'
+      ? t('board.backTomorrow')
+      : expectedEndAt
+        ? (expired ? `${fmtTime(expectedEndAt)} · passed` : fmtTime(expectedEndAt))
+        : 'Not stated';
 
   return {
     known: true,
@@ -182,7 +184,10 @@ export function describeStatus(status, now = new Date()) {
     minutesOver,
     stale,
     isFree,
-    rangeText: startedAt ? (expectedEndAt ? `${fmtTime(startedAt)} → ${fmtTime(expectedEndAt)}` : `${fmtTime(startedAt)} → open ended`) : '',
+    rangeText: !startedAt ? ''
+      : status.status_type === 'done' ? `${t('board.dayOver')} · ${fmtTime(startedAt)}`
+      : expectedEndAt ? `${fmtTime(startedAt)} → ${fmtTime(expectedEndAt)}`
+      : `${fmtTime(startedAt)} → ${t('board.openEnded')}`,
     availabilityText,
     elapsedText: startedAt ? durationText(minutesBetween(startedAt, now)) : ''
   };
@@ -260,10 +265,18 @@ export const historyTask = row =>
  * Real minutes spent on a history row. Open rows count up to `now`, which
  * is what makes "today so far" honest. The chosen duration is never used
  * as if it were actual time.
+ *
+ * An open row never counts past midnight of the day it started. A status
+ * left running overnight is a forgotten status, not a nineteen-hour job,
+ * and reading it as the latter put "23 hours in the HS building" on a
+ * report. Capping it is a guess, but it is a bounded one, and the row
+ * still shows as "still open" in the activity export.
  */
 export function actualMinutes(row, now = new Date()) {
   if (row.actual_minutes != null) return Number(row.actual_minutes);
   const started = toDate(row.started_at);
   if (!started) return 0;
-  return Math.max(0, minutesBetween(started, now));
+  const midnight = endOfDay(dayKey(started));
+  const until = now < midnight ? now : midnight;
+  return Math.max(0, minutesBetween(started, until));
 }

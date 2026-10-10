@@ -165,17 +165,17 @@
               <p class="help">Used for this update only. It is not added to the permanent list.</p>
             </div>
 
-            <div class="field">
+            <div class="field" id="st-duration-block">
               <span class="label" id="duration-label" data-i18n="admin.howLong">How long?</span>
               <div class="duration-grid" id="st-durations" role="group" aria-labelledby="duration-label"></div>
               <div class="row" style="margin-top:8px">
                 <button class="btn btn-sm btn-soft" type="button" id="st-custom-duration" data-i18n="admin.customDuration">Custom…</button>
                 <button class="btn btn-sm btn-ghost" type="button" id="st-no-duration" data-i18n="admin.noFixedTime">No fixed time</button>
               </div>
-            </div>
-            <div class="field" id="st-custom-duration-field" hidden>
-              <label class="label" for="st-custom-minutes" data-i18n="admin.minutes">Minutes</label>
-              <input class="input" id="st-custom-minutes" type="number" min="1" max="1440" step="1" inputmode="numeric" placeholder="e.g. 25">
+              <div class="field" id="st-custom-duration-field" hidden>
+                <label class="label" for="st-custom-minutes" data-i18n="admin.minutes">Minutes</label>
+                <input class="input" id="st-custom-minutes" type="number" min="1" max="1440" step="1" inputmode="numeric" placeholder="e.g. 25">
+              </div>
             </div>
 
             <!-- The computed window. The user never types a clock time. -->

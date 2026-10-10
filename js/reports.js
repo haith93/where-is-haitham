@@ -19,6 +19,7 @@ import {
   fmtDateLong, fmtDateTime, fmtTime, weekdayName, toCSV, downloadFile
 } from './utils.js';
 import { getStatusHistory, historyLocation, historyTask, actualMinutes } from './status.js';
+import { jobSheets } from './print.js';
 import { getRequestsBetween, completionMinutes, requestLocation, requestCategory, requestChannel , printJob, printJobs, isPrintRequest } from './requests.js';
 import { PRIORITY_META, REQUEST_STATUS_META, STATUS_META, CHANNELS } from './config.js';
 
@@ -117,6 +118,14 @@ export async function buildReport(fromKey, toKey, filters = {}) {
     copies: requests.reduce((sum, r) =>
       sum + printJobs(r).reduce((n, j) => n + (j.copies ?? 0), 0), 0),
     documents: requests.reduce((sum, r) => sum + printJobs(r).length, 0),
+    // Copies say how many documents were asked for; sheets say how much
+    // paper left the cupboard. Double-sided makes them differ by half.
+    sheets: requests.reduce((sum, r) =>
+      sum + printJobs(r).reduce((n, j) => n + (jobSheets(j) ?? 0), 0), 0),
+    // Jobs nobody counted the pages of, so the sheet total is a floor
+    // rather than a figure. Reported, so it is never mistaken for one.
+    jobsWithoutPages: requests.reduce((sum, r) =>
+      sum + printJobs(r).filter(j => !j.pages).length, 0),
     colourCopies: requests.reduce((sum, r) =>
       sum + printJobs(r).reduce((n, j) => n + (j.color_mode === 'color' ? (j.copies ?? 0) : 0), 0), 0)
   };
@@ -268,8 +277,11 @@ export function exportSummaryCSV(report) {
     ['Help requests', report.counts.help],
     ['Print requests', report.counts.print],
     ['Documents', report.counts.documents],
-    ['Pages copies requested', report.counts.copies],
+    ['Copies requested', report.counts.copies],
     ['Of which colour', report.counts.colourCopies],
+    ['Sheets of paper', report.counts.sheets],
+    ['Documents with no page count (sheets above are a floor)',
+     report.counts.jobsWithoutPages],
     ['Average per day', report.perDay],
     ['Average time to accept (min)', report.avgResponse ?? ''],
     ['Average time to complete (min)', report.avgCompletion ?? ''],
@@ -314,12 +326,12 @@ export function exportSummaryCSV(report) {
  * later. The title follows it as a second column rather than replacing it.
  */
 function printColumns(request, only = null) {
-  if (!isPrintRequest(request)) return ['help', '', '', '', '', '', '', '', '', '', ''];
+  if (!isPrintRequest(request)) return ['help', '', '', '', '', '', '', '', '', '', '', '', ''];
   const job = only ?? printJob(request);
   if (!job) {
     // A print request whose job row is not visible: this export was run
     // by something without admin rights. Say so rather than fabricate.
-    return ['print', '(not available)', '', '', '', '', '', '', '', '', ''];
+    return ['print', '(not available)', '', '', '', '', '', '', '', '', '', '', ''];
   }
   return [
     'print',
@@ -331,7 +343,9 @@ function printColumns(request, only = null) {
     job.paper_size,
     job.color_mode === 'color' ? 'Colour' : 'B&W',
     job.print_sides === 'double' ? 'Double-sided' : '1-sided',
+    job.pages ?? '',
     job.copies,
+    jobSheets(job) ?? '',
     job.section_snapshot ?? '',
     job.level_snapshot ?? '',
     job.grade_snapshot ?? '',
@@ -347,7 +361,7 @@ export function exportRequestsCSV(report) {
     ['Request number', 'Created', 'Requester', 'Location', 'Category', 'Channel', 'Priority',
      'Status', 'Description', 'Notes', 'Accepted', 'Started', 'Completed',
      'Minutes to accept', 'Minutes to complete',
-     'Type', 'File name', 'Title', 'Paper', 'Colour', 'Sides', 'Copies',
+     'Type', 'File name', 'Title', 'Paper', 'Colour', 'Sides', 'Pages', 'Copies', 'Sheets',
      'Section', 'Cycle', 'Grade', 'Print note'],
     // One row per DOCUMENT, not per request: a request carrying three
     // files is three things that were printed, and a report that collapsed

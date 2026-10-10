@@ -32,6 +32,7 @@ export const MAX_COPIES = 500;
 /** Documents in one request. Only a Normal request may use more than one. */
 export const MAX_FILES = 10;
 export const MAX_NOTE = 100;
+export const MAX_PAGES = 2000;
 export const MAX_TITLE = 120;
 
 /** "2.4 MB" — for the chip under the file picker. */
@@ -194,6 +195,13 @@ export async function createPrintRequest(input) {
       throw new Error(t('print.errNeedTitle'));
     }
 
+    // Optional: a document handed over on paper may not have been
+    // counted yet. Without it the paper cost is simply not reported.
+    const pages = file.pages === '' || file.pages == null ? null : Number(file.pages);
+    if (pages != null && (!Number.isInteger(pages) || pages < 1 || pages > MAX_PAGES)) {
+      throw new Error(t('print.errPages', { max: MAX_PAGES }));
+    }
+
     const copies = Number(file.copies);
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
       throw new Error(t('print.errCopies', { max: MAX_COPIES }));
@@ -213,6 +221,7 @@ export async function createPrintRequest(input) {
       upload_id:        delivery === 'upload' ? file.uploadId : null,
       delivery,
       title:            trimOrNull(file.title),
+      pages,
       copies,
       paper_size:       file.paperSize || 'A4',
       print_sides:      file.printSides === 'double' ? 'double' : 'single',
@@ -288,6 +297,13 @@ export async function adminCreatePrintRequest(input) {
       throw new Error(t('print.errNeedTitle'));
     }
 
+    // Optional: a document handed over on paper may not have been
+    // counted yet. Without it the paper cost is simply not reported.
+    const pages = file.pages === '' || file.pages == null ? null : Number(file.pages);
+    if (pages != null && (!Number.isInteger(pages) || pages < 1 || pages > MAX_PAGES)) {
+      throw new Error(t('print.errPages', { max: MAX_PAGES }));
+    }
+
     const copies = Number(file.copies);
     if (!Number.isInteger(copies) || copies < 1 || copies > MAX_COPIES) {
       throw new Error(t('print.errCopies', { max: MAX_COPIES }));
@@ -305,6 +321,7 @@ export async function adminCreatePrintRequest(input) {
       upload_id:        delivery === 'upload' ? file.uploadId : null,
       delivery,
       title:            trimOrNull(file.title),
+      pages,
       copies,
       paper_size:       file.paperSize || 'A4',
       print_sides:      file.printSides === 'double' ? 'double' : 'single',
@@ -430,6 +447,33 @@ export async function downloadPrintDocument(requestId, publicToken = null, jobId
 /* ------------------------------------------------------------------ */
 
 /** "A4 · Colour · Double-sided · 30 copies" */
+/**
+ * Sheets of paper a job costs. Mirrors public.print_sheets in SQL - if
+ * one of the two changes, change both.
+ *
+ * Double-sided halves the sheet count per copy, rounding up: a 5-page
+ * document is 3 sheets, not 2.5. Unknown page count gives null, because
+ * a guessed number on a paper-stock report is worse than a blank.
+ */
+export function sheetsFor({ pages, printSides, copies } = {}) {
+  const n = Number(pages);
+  if (!Number.isFinite(n) || n < 1) return null;
+  const perCopy = printSides === 'double' ? Math.ceil(n / 2) : n;
+  return perCopy * Math.max(1, Number(copies) || 1);
+}
+
+/** The same, from a database row. */
+export const jobSheets = job => sheetsFor({
+  pages: job?.pages, printSides: job?.print_sides, copies: job?.copies
+});
+
+/* English needs a singular form; "1 pages" is the kind of detail that
+   makes a careful tool look careless. */
+const countText = (n, key) => t(n === 1 ? `${key}1` : `${key}N`, { n });
+export const pagesText  = n => countText(n, 'print.pages');
+export const sheetsText = n => countText(n, 'print.sheets');
+export const copiesText = n => countText(n, 'print.copies');
+
 export function settingsLine(job) {
   if (!job) return '';
   const where = hasFile(job) ? [] : [deliveryLabel(job.delivery)];
@@ -438,7 +482,10 @@ export function settingsLine(job) {
     job.paper_size,
     t(job.color_mode === 'color' ? 'print.colour' : 'print.bw'),
     t(job.print_sides === 'double' ? 'print.double' : 'print.single'),
-    t('print.copiesN', { n: job.copies })
+    ...(job.pages ? [pagesText(job.pages)] : []),
+    copiesText(job.copies),
+    // The number that actually empties the paper tray.
+    ...(jobSheets(job) != null ? [sheetsText(jobSheets(job))] : [])
   ].join(' · ');
 }
 

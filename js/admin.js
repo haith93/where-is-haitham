@@ -12,7 +12,7 @@ import { icon, paintIcons } from './icons.js';
 import {
   settingsLine, downloadPrintDocument, adminCreatePrintRequest,
   uploadDocument, checkFile, fileSizeText, hasFile, deliveryLabel,
-  DELIVERY_KEYS, getPaperSizes, MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
+  DELIVERY_KEYS, getPaperSizes, MAX_FILE_BYTES, ACCEPT_ATTRIBUTE, sheetsFor, sheetsText
 } from './print.js';
 import { getGrades, sectionsOf, levelsOf, gradesOf, destinationText } from './school.js';
 import { availabilityMessage } from './messages.js';
@@ -40,7 +40,7 @@ import {
 } from './status.js';
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
-  completeRequest, rejectRequest, flagPriority, saveQueueOrder, sortQueue,
+  completeRequest, rejectRequest, flagPriority, annotateRequest, saveQueueOrder, sortQueue,
   requestLocation, requestCategory, requestChannel, printJob, printJobs, isPrintRequest, adminCreateRequest,
   pauseRequest, resumeRequest, deleteRequest, purgeRequests,
   getRequestTimeline, OPEN_STATUSES
@@ -457,6 +457,10 @@ function wireStatusForm() {
       // "Available" and "Finished" do not need a place, a task or a length.
       const relaxed = ['available', 'done', 'break', 'offsite'].includes(input.value);
       $('#duration-label').textContent = relaxed ? t('admin.howLongOpt') : t('admin.howLong');
+      // A finishing time has no length at all, so the question goes away
+      // rather than sitting there inviting an answer that is discarded.
+      if (input.value === 'done') setDuration(null);
+      $('#st-duration-block')?.toggleAttribute('hidden', input.value === 'done');
       updatePreview();
     }));
 
@@ -603,13 +607,20 @@ function setDuration(minutes, { keepCustom = false } = {}) {
  * written is stamped by the database with now(), so the two can differ by
  * a second or so and the stored value is always the authoritative one.
  */
+const chosenStatusType = () => $('#st-type input:checked')?.value ?? 'busy';
+
 function updatePreview() {
   const now = new Date();
   const rangeNode = $('#st-preview-range');
   const subNode = $('#st-preview-sub');
   if (!rangeNode) return;
 
-  if (state.duration) {
+  // Finishing for the day is a moment. Showing it as a window that
+  // starts now and never ends is what made a report count the evening.
+  if (chosenStatusType() === 'done') {
+    rangeNode.textContent = fmtTime(now);
+    subNode.textContent = t('admin.dayEndsSub');
+  } else if (state.duration) {
     const end = new Date(now.getTime() + state.duration * 60000);
     rangeNode.textContent = `${fmtTime(now)} → ${fmtTime(end)}`;
     subNode.textContent = t('admin.runsFor', { duration: durationText(state.duration) });
@@ -642,7 +653,9 @@ async function onSubmitStatus(event) {
     customLocation: locationValue === CUSTOM ? $('#st-location-custom').value : null,
     taskId: taskValue && taskValue !== CUSTOM ? taskValue : null,
     customTask: taskValue === CUSTOM ? $('#st-task-custom').value : null,
-    durationMinutes: state.duration
+    // The RPC discards it for 'done' as well; this keeps the two honest
+    // about each other rather than relying on one to clean up.
+    durationMinutes: chosenStatusType() === 'done' ? null : state.duration
   };
 
   await withBusy($('#st-submit'), 'Updating…', async () => {
@@ -858,6 +871,14 @@ function queueCardHTML(r) {
             r.flag_note ? ` — ${esc(r.flag_note)}` : ''}
         </p>` : ''}
       ${r.description ? `<p class="desc">${esc(r.description)}</p>` : ''}
+      <!-- The private note sits on the card because the whole purpose of
+           it is to be read when he reaches the request, not to be found
+           by opening a sheet. -->
+      ${r.notes ? `<p class="desc flagnotice">
+        ${icon('note')} ${esc(t('admin.yourNote'))}: ${esc(r.notes)}</p>` : ''}
+      ${r.admin_message ? `<p class="desc">
+        ${icon('chat')} ${esc(t('admin.msgLabel', { name: r.requester_name_snapshot }))}:
+        ${esc(r.admin_message)}</p>` : ''}
       ${r.status === 'paused' ? `<p class="desc" style="color:var(--urgent)">
         ${icon('pause')} ${esc(t('admin.pausedFor', { d: durationText(minutesBetween(r.paused_at, new Date()) ?? 0) }))}${
           r.pause_reason ? ` — ${esc(r.pause_reason)}` : ''}</p>` : ''}
@@ -1099,6 +1120,31 @@ async function openRequestActions(request) {
       <p class="help">${esc(t('admin.orderHint'))}</p>
     </div>`}
 
+    <!-- Two notes, two audiences. Kept apart on screen as well as in
+         the database, because the whole point of the second one is that
+         nobody else reads it. -->
+    <div class="field" style="margin-top:18px">
+      <span class="label">${esc(t('admin.notesSection'))}</span>
+
+      <label class="label" for="req-message" style="margin-top:6px">
+        ${esc(t('admin.msgLabel', { name: request.requester_name_snapshot }))}
+      </label>
+      <textarea class="textarea" id="req-message" rows="2" maxlength="300"
+                placeholder="${esc(t('admin.msgPh'))}">${esc(request.admin_message ?? '')}</textarea>
+      <p class="help">${esc(t('admin.msgHint'))}</p>
+
+      <label class="label" for="req-private" style="margin-top:12px">
+        ${icon('note')} ${esc(t('admin.privLabel'))}
+      </label>
+      <textarea class="textarea" id="req-private" rows="2" maxlength="500"
+                placeholder="${esc(t('admin.privPh'))}">${esc(request.notes ?? '')}</textarea>
+      <p class="help">${esc(t('admin.privHint'))}</p>
+
+      <button class="btn btn-sm btn-primary" type="button" id="save-notes" style="margin-top:10px">
+        ${esc(t('admin.saveNotes'))}
+      </button>
+    </div>
+
     <div id="action-timeline" style="margin-top:18px"></div>
 
     <div class="field" style="margin-top:22px">
@@ -1130,6 +1176,20 @@ async function openRequestActions(request) {
       try {
         await flagPriority(request.id, null, null);
         toastOk(t('admin.flagRemoved'));
+        await refreshQueue();
+        closeSheet('#action-sheet');
+      } catch (err) { toastError(err.message); }
+    });
+  });
+
+  $('#save-notes', body)?.addEventListener('click', async event => {
+    await withBusy(event.currentTarget, t('action.saving'), async () => {
+      try {
+        await annotateRequest(request.id, {
+          message:     $('#req-message')?.value,
+          privateNote: $('#req-private')?.value
+        });
+        toastOk(t('admin.notesSaved'));
         await refreshQueue();
         closeSheet('#action-sheet');
       } catch (err) { toastError(err.message); }
@@ -1513,6 +1573,11 @@ function paintReport(report) {
           <div class="sub">${esc(t('admin.veryUrgentSub', { n: report.counts.veryUrgent }))}</div></div>
         <div class="stat"><div class="n">${esc(durationText(report.time.workingMinutes))}</div><div class="l">${esc(t('admin.workingTime'))}</div>
           <div class="sub">${esc(t('admin.tracked', { d: durationText(report.time.trackedMinutes) }))}</div></div>
+        <div class="stat"><div class="n">${report.counts.sheets || '—'}</div>
+          <div class="l">${esc(t('print.totalSheets'))}</div>
+          <div class="sub">${esc(report.counts.jobsWithoutPages
+            ? t('admin.sheetsFloor', { n: report.counts.jobsWithoutPages })
+            : t('admin.sheetsFrom', { n: report.counts.documents }))}</div></div>
         <div class="stat"><div class="n">${report.avgCompletion != null ? esc(durationText(report.avgCompletion)) : '—'}</div>
           <div class="l">${esc(t('admin.avgCompletion'))}</div>
           <div class="sub">${report.avgResponse != null ? esc(t('admin.toAccept', { d: durationText(report.avgResponse) })) : esc(t('admin.noDataShort'))}</div></div>
@@ -2024,7 +2089,7 @@ function bpEntry(over = {}) {
     error: null,
     delivery: 'upload',
     settings: {
-      title: '', copies: 1,
+      title: '', pages: '', copies: 1,
       paperSize: bprint.papers[0]?.code ?? 'A4',
       printSides: 'single',
       section: '', level: '', gradeId: '',
@@ -2144,7 +2209,14 @@ function paintBpCards() {
         </label>
       </div>`}
 
+      <p class="help" data-bp-cost="${esc(entry.key)}">${esc(bpCostLine(entry))}</p>
+
       <div class="filecard-grid">
+        <label class="field">
+          <span class="label">${esc(t('print.pages'))}</span>
+          <input class="input" type="number" min="1" max="2000" step="1" inputmode="numeric"
+                 data-bp-set="pages" data-key="${esc(entry.key)}" value="${esc(entry.settings.pages)}">
+        </label>
         <label class="field">
           <span class="label">${esc(t('print.copies'))}</span>
           <input class="input" type="number" min="1" max="500" step="1"
@@ -2222,6 +2294,21 @@ function paintBpCards() {
   paintBpSubmit();
 }
 
+function bpCostLine(entry) {
+  const total = sheetsFor({
+    pages: entry.settings.pages,
+    printSides: entry.settings.printSides,
+    copies: entry.settings.copies
+  });
+  if (total == null) return t('print.sheetsUnknown');
+  const perCopy = sheetsFor({
+    pages: entry.settings.pages, printSides: entry.settings.printSides, copies: 1
+  });
+  return t('print.sheetCost', {
+    perCopy: sheetsText(perCopy), total: sheetsText(total)
+  });
+}
+
 function onBpSetting(event) {
   const field = event.target.closest('[data-bp-set]');
   if (!field) return;
@@ -2233,11 +2320,16 @@ function onBpSetting(event) {
 
   entry.settings[what] = field.value;
 
-  if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintBpCards(); }
+  if (what === 'printSides') { paintBpCards(); }    // the sheet count changes
+  else if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintBpCards(); }
   else if (what === 'level') { entry.settings.gradeId = ''; paintBpCards(); }
   else if (what === 'colorMode') {
     if (field.value !== 'color') entry.settings.colorPermission = null;
     paintBpCards();
+  } else if (what === 'pages' || what === 'copies') {
+    const node = field.closest('.filecard')?.querySelector('[data-bp-cost]');
+    if (node) node.textContent = bpCostLine(entry);
+    paintBpSubmit();
   } else {
     paintBpSubmit();           // typing must not move the caret
   }
@@ -2281,6 +2373,7 @@ async function onSubmitBehalfPrint(event) {
       uploadId: entry.upload?.upload_id ?? null,
       delivery: entry.delivery,
       title: entry.settings.title,
+      pages: entry.settings.pages,
       copies: Number(entry.settings.copies),
       paperSize: entry.settings.paperSize,
       printSides: entry.settings.printSides,

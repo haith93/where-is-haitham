@@ -20,7 +20,7 @@ import {
 import { getBuildings, getTasks, localName } from './data.js';
 import {
   uploadDocument, createPrintRequest, getPaperSizes, downloadPrintDocument,
-  checkFile, fileSizeText, settingsLine, publicPrintLine,
+  checkFile, fileSizeText, settingsLine, publicPrintLine, sheetsFor, sheetsText,
   deliveryLabel, DELIVERY_KEYS,
   MAX_FILE_BYTES, ACCEPT_ATTRIBUTE
 } from './print.js';
@@ -175,6 +175,13 @@ function paintHero(view, snapshot) {
 
   const timeBlock = view.startedAt ? `
     <div class="hero-time">
+      ${/* A finished day began and ended at the same moment, so printing
+            that moment twice says nothing. One box, and it is the end. */
+        view.statusType === 'done' ? `
+      <div>
+        <div class="k">${esc(t('board.finishedAt'))}</div>
+        <div class="v">${esc(fmtTime(view.startedAt))}</div>
+      </div>` : `
       <div>
         <div class="k">${esc(t('board.started'))}</div>
         <div class="v">${esc(fmtTime(view.startedAt))}</div>
@@ -182,7 +189,7 @@ function paintHero(view, snapshot) {
       <div>
         <div class="k">${esc(t('board.expectedUntil'))}</div>
         <div class="v">${view.expectedEndAt ? esc(fmtTime(view.expectedEndAt)) : esc(t('board.openEnded'))}</div>
-      </div>
+      </div>`}
       <div style="grid-column:1 / -1">
         <div class="k">${esc(t('board.availability'))}</div>
         <div class="v big">${esc(availabilityText(view))}</div>
@@ -220,6 +227,8 @@ function paintHero(view, snapshot) {
 /** Localised version of the availability line. */
 function availabilityText(view) {
   if (view.isFree) return t('board.now');
+  // The day being over is a stated answer, not a missing one.
+  if (view.statusType === 'done') return t('board.backTomorrow');
   if (!view.expectedEndAt) return t('board.notStated');
   return fmtTime(view.expectedEndAt);
 }
@@ -529,7 +538,7 @@ function wirePrintForm() {
       file: null, upload: null, progress: 100, error: null,
       delivery: 'hand',
       settings: {
-        title: '', copies: 1,
+        title: '', pages: '', copies: 1,
         paperSize: printState.papers[0]?.code ?? 'A4',
         printSides: 'single',
         section: '', level: '', gradeId: '',
@@ -655,6 +664,7 @@ async function onPickFiles(event) {
       delivery: 'upload',
       settings: {
         title: '',
+        pages: '',
         copies: 1,
         paperSize: printState.papers[0]?.code ?? 'A4',
         printSides: 'single',
@@ -731,6 +741,7 @@ function paintFileCards() {
           style="width:${entry.progress}%"></span></div>` : ''}
 
       ${extra ? `<p class="error" style="margin-top:8px">${esc(t('print.removeThisOne'))}</p>` : `
+      <p class="help" data-cost="${esc(entry.key)}">${esc(costLine(entry))}</p>
       ${attached ? '' : `
       <div class="filecard-grid is-stacked">
         <label class="field">
@@ -750,6 +761,13 @@ function paintFileCards() {
       </div>`}
 
       <div class="filecard-grid">
+        <label class="field">
+          <span class="label" data-i18n="print.pages">Pages</span>
+          <input class="input" type="number" min="1" max="2000" step="1"
+                 inputmode="numeric"
+                 data-set="pages" data-key="${esc(entry.key)}"
+                 value="${esc(entry.settings.pages)}">
+        </label>
         <label class="field">
           <span class="label" data-i18n="print.copies">Copies</span>
           <input class="input" type="number" min="1" max="500" step="1"
@@ -842,6 +860,24 @@ function paintFileCards() {
 }
 
 /** A per-file control changed. Narrowing a section clears what it contains. */
+/* What this document will cost in paper. Both figures, because the
+   per-copy one is what people sanity-check and the total is the one
+   that empties the cupboard. */
+function costLine(entry) {
+  const total = sheetsFor({
+    pages: entry.settings.pages,
+    printSides: entry.settings.printSides,
+    copies: entry.settings.copies
+  });
+  if (total == null) return t('print.sheetsUnknown');
+  const perCopy = sheetsFor({
+    pages: entry.settings.pages, printSides: entry.settings.printSides, copies: 1
+  });
+  return t('print.sheetCost', {
+    perCopy: sheetsText(perCopy), total: sheetsText(total)
+  });
+}
+
 function onFileSettingChange(event) {
   const field = event.target.closest('[data-set]');
   if (!field) return;
@@ -853,7 +889,8 @@ function onFileSettingChange(event) {
 
   entry.settings[what] = field.value;
 
-  if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintFileCards(); }
+  if (what === 'printSides') { paintFileCards(); }   // the sheet count changes
+  else if (what === 'section') { entry.settings.level = ''; entry.settings.gradeId = ''; paintFileCards(); }
   else if (what === 'level') { entry.settings.gradeId = ''; paintFileCards(); }
   else if (what === 'colorMode') {
     // Changing away from colour forgets the answer rather than keeping a
@@ -864,6 +901,12 @@ function onFileSettingChange(event) {
     // Redrawing would move the caret; only the heading needs updating.
     const head = field.closest('.filecard')?.querySelector('.filecard-name');
     if (head) head.textContent = field.value || t('print.noFileHere');
+    paintSubmitState();
+  } else if (what === 'pages' || what === 'copies') {
+    // A redraw on every keystroke would move the caret, so only the
+    // sentence underneath changes.
+    const node = field.closest('.filecard')?.querySelector('[data-cost]');
+    if (node) node.textContent = costLine(entry);
     paintSubmitState();
   } else if (what === 'note') {
     // Redrawing on every keystroke would move the caret, so only the
@@ -953,6 +996,7 @@ async function onSubmitPrint(event) {
       uploadId:        entry.upload?.upload_id ?? null,
       delivery:        entry.delivery,
       title:           entry.settings.title,
+      pages:           entry.settings.pages,
       copies:          Number(entry.settings.copies),
       paperSize:       entry.settings.paperSize,
       printSides:      entry.settings.printSides,
@@ -1044,6 +1088,8 @@ function paintMine() {
         <span class="req-sub">${icon('pin')} ${esc(requestLocation(r))} · ${esc(t('mine.sent'))} ${esc(fmtDateTime(r.created_at))}</span>
         ${r.status === 'pending' && r.people_ahead > 0
           ? `<span class="req-sub">${icon('hourglass')} ${esc(t('mine.ahead', { n: r.people_ahead }))}</span>` : ''}
+        ${r.admin_message ? `<span class="req-sub">${icon('chat')}
+          ${esc(t('mine.fromHaitham'))}: ${esc(r.admin_message)}</span>` : ''}
         ${r.priority !== 'normal'
           ? `<span class="badge badge-${esc(priority.tone)}" style="margin-top:8px">
                <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}</span>` : ''}
@@ -1073,6 +1119,9 @@ function openMyRequest(token) {
         request.print_files?.[0]?.title || requestCategory(request))}</p>
       <p class="muted">${icon('pin')} ${esc(requestLocation(request))}</p>
       ${flagBlock(request)}
+      ${request.admin_message ? `<p class="desc flagnotice">
+        ${icon('chat')} <strong>${esc(t('mine.fromHaitham'))}:</strong>
+        ${esc(request.admin_message)}</p>` : ''}
       ${printOwnerBlocks(request)}
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>

@@ -19,9 +19,10 @@ const REQUEST_COLUMNS = `
   channel, notes, created_by, paused_at, pause_reason,
   location_name_ar_snapshot, category_name_ar_snapshot,
   request_type, flagged_priority, flag_note, flagged_at,
+  admin_message,
   print_jobs (
     id, position, title, delivery, original_filename, mime_type, file_size,
-    paper_size, color_mode, color_permission, print_sides, copies,
+    paper_size, color_mode, color_permission, print_sides, copies, pages,
     section_snapshot, level_snapshot, grade_snapshot, note
   )
 `;
@@ -265,6 +266,26 @@ export async function startRequest(id, durationMinutes = null) {
     p_duration_minutes: durationMinutes ?? null
   });
   if (error) throw new Error(errorMessage(error, 'Could not start that request.'));
+  return data;
+}
+
+/**
+ * Two notes on a request, with two different audiences.
+ *
+ * `message` is for the colleague: it appears on their own request and
+ * notifies them. `privateNote` is for Haitham alone and is never sent
+ * to the requester by any reader.
+ *
+ * Both are always written, so clearing a box clears the note - there is
+ * no "leave that one alone" state to get wrong.
+ */
+export async function annotateRequest(id, { message = null, privateNote = null } = {}) {
+  const { data, error } = await sb.rpc('annotate_request', {
+    p_request_id:    id,
+    p_admin_message: trimOrNull(message),
+    p_private_note:  trimOrNull(privateNote)
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not save the note.'));
   return data;
 }
 
