@@ -2486,7 +2486,7 @@ async function onSubmitBehalfPrint(event) {
       delivery: entry.delivery,
       title: entry.settings.title,
       pages: entry.settings.pages,
-      copies: Number(entry.settings.copies),
+      copies: entry.settings.copies,   // raw; print.js reads blank as one
       paperSize: entry.settings.paperSize,
       printSides: entry.settings.printSides,
       gradeId: entry.settings.gradeId || null,

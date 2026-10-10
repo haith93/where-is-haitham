@@ -414,6 +414,9 @@ async function onSubmitRequest(event) {
       if (payload.buildingId) prefs.set('lastRequestBuilding', payload.buildingId);
 
       $('#request-form').hidden = true;
+      // The strip goes too: tabs above a "sent" panel invite a click
+      // that would reveal a form behind the confirmation.
+      $('.reqtabs').hidden = true;
       $('#rq-success').hidden = false;
       $('#rq-number').textContent = created.request_number;
       $('#rq-eta').textContent = created.people_ahead > 0
@@ -459,6 +462,11 @@ function resetRequestForm() {
 
 const MAX_PRINT_FILES = 10;
 
+/* False only when the print markup is missing - the one case where the
+   tab strip must stay hidden. Without it, the code that restores the
+   strip on every tab change would quietly undo that protection. */
+let printTabAvailable = true;
+
 const printState = {
   /** One entry per chosen document: { key, file, upload, settings, error } */
   files: [],
@@ -477,6 +485,15 @@ function showRequestTab(which) {
   const printing = which === 'print';
   const help = $('#request-form'), form = $('#print-form');
   if (!help || !form) return;
+
+  // Sending a request hides the strip and both forms to show the
+  // confirmation. Coming back to a tab is what undoes all of that -
+  // before, only the forms were restored, so the strip stayed hidden
+  // for the rest of the session and the next visitor to the sheet saw
+  // whichever form they used last with no way back to the other.
+  $('#rq-success')?.setAttribute('hidden', '');
+  if (printTabAvailable) $('.reqtabs')?.removeAttribute('hidden');
+
   help.hidden = printing;
   form.hidden = !printing;
   $$('[data-reqtab]').forEach(btn => {
@@ -512,6 +529,7 @@ function wirePrintForm() {
   // The three the tab cannot exist without.
   if (!form || !files || !file) {
     console.warn('[print] markup is from a different build; hiding the tab');
+    printTabAvailable = false;
     $('.reqtabs')?.setAttribute('hidden', '');
     form?.setAttribute('hidden', '');
     $('#request-form')?.removeAttribute('hidden');
@@ -1026,7 +1044,10 @@ async function onSubmitPrint(event) {
       delivery:        entry.delivery,
       title:           entry.settings.title,
       pages:           entry.settings.pages,
-      copies:          Number(entry.settings.copies),
+      // Raw, not Number(): blank must stay blank so print.js can read it
+      // as "one". Number('') is 0, which fails the 1-to-500 check and
+      // rejects the request over a field that is optional.
+      copies:          entry.settings.copies,
       paperSize:       entry.settings.paperSize,
       printSides:      entry.settings.printSides,
       gradeId:         entry.settings.gradeId || null,
