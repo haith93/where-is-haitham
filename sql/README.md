@@ -28,6 +28,8 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 14 | `migration-open-ended-and-print-task.sql` | Print jobs stop landing under "Printer repair"; finishing a job frees the status; no forced finish time |
 | 15 | `migration-end-of-day-notes-and-pages.sql` | A finished day is a moment with a return date; two notes per request; a page count and sheets of paper |
 
+`fix-print-request-overload.sql` removes a stale ten-argument `create_print_request` left behind by `rollback-print-per-file-colour.sql`; run migration 15 straight after it.
+
 `check-print-state.sql` and `repair-print-filing.sql` are not migrations: the first only reads, the second re-files print requests that were written before the photocopying task existed, and both are safe to run again.
 
 Numbers 9 to 12, 14 and 15 each have an undo beside them: `rollback-print-multi-file.sql` and `rollback-print-per-file-colour.sql` and `rollback-print-offline-delivery.sql` and `rollback-public-offline-delivery.sql` and `rollback-open-ended-and-print-task.sql` and `rollback-end-of-day-notes-and-pages.sql`
