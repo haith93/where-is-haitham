@@ -76,12 +76,14 @@ with checks as (
 
   -- ---- The functions the frontend calls by name -------------------
   union all
+  -- to_regprocedure, not a string compare against
+  -- pg_get_function_identity_arguments: that function includes the
+  -- parameter NAMES in its output, so comparing it to a list of types
+  -- never matches and reports a healthy function as broken.
   select 8, 'create_print_request (public form)',
-         case when exists (
-                select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-                 where n.nspname = 'public' and p.proname = 'create_print_request'
-                   and pg_get_function_identity_arguments(p.oid)
-                       = 'text, jsonb, text, text, uuid, text, text')
+         case when to_regprocedure(
+                'public.create_print_request(text, jsonb, text, text, uuid, text, text)'
+              ) is not null
               then 'OK' else 'WRONG SIGNATURE' end,
          -- Saying only "wrong" leaves you guessing. Print what is there.
          coalesce((select string_agg(
