@@ -4,6 +4,7 @@ js/env.js
 # Environment files
 .env
 .env.local
+.env.example
 *.local
 
 # OS / editor noise
