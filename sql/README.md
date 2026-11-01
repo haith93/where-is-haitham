@@ -28,12 +28,13 @@ re-run: they use `create or replace`, `add column if not exists`,
 | 14 | `migration-open-ended-and-print-task.sql` | Print jobs stop landing under "Printer repair"; finishing a job frees the status; no forced finish time |
 | 15 | `migration-end-of-day-notes-and-pages.sql` | A finished day is a moment with a return date; two notes per request; a page count and sheets of paper |
 | 16 | `migration-ready-to-collect.sql` | Printed jobs stay on a public "ready to collect" board; who is coming for them, and who actually took them |
+| 17 | `migration-collection-visible-to-sender.sql` | The person who sent the job can see whether it was collected, and by whom |
 
 `fix-print-request-overload.sql` removes a stale ten-argument `create_print_request` left behind by `rollback-print-per-file-colour.sql`, and run migration 15 straight after it. Only run it if `check-print-state.sql` row 8 actually prints a ten-argument signature; it checks first and does nothing otherwise.
 
 `check-print-state.sql` and `repair-print-filing.sql` are not migrations: the first only reads, the second re-files print requests that were written before the photocopying task existed, and both are safe to run again.
 
-Numbers 9 to 12 and 14 to 16 each have an undo beside them: `rollback-print-multi-file.sql` and `rollback-print-per-file-colour.sql` and `rollback-print-offline-delivery.sql` and `rollback-public-offline-delivery.sql` and `rollback-open-ended-and-print-task.sql` and `rollback-end-of-day-notes-and-pages.sql` and `rollback-ready-to-collect.sql`
+Numbers 9 to 12 and 14 to 17 each have an undo beside them: `rollback-print-multi-file.sql` and `rollback-print-per-file-colour.sql` and `rollback-print-offline-delivery.sql` and `rollback-public-offline-delivery.sql` and `rollback-open-ended-and-print-task.sql` and `rollback-end-of-day-notes-and-pages.sql` and `rollback-ready-to-collect.sql` and `rollback-collection-visible-to-sender.sql`
 puts every function it replaced back as it was. Run that, not git, if the
 multi-file feature is abandoned - git takes the code back and cannot take
 the database back.

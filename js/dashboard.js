@@ -1194,6 +1194,11 @@ function paintMine() {
           ? `<span class="req-sub">${icon('hourglass')} ${esc(t('mine.ahead', { n: r.people_ahead }))}</span>` : ''}
         ${r.admin_message ? `<span class="req-sub">${icon('chat')}
           ${esc(t('mine.fromHaitham'))}: ${esc(r.admin_message)}</span>` : ''}
+        ${r.collected?.length
+          ? `<span class="req-sub">${icon('check')} ${esc(t('mine.collectedBy', {
+               name: r.collected.map(c => c.name).join(', ') }))}</span>`
+          : r.ready_at
+            ? `<span class="req-sub">${icon('inbox')} ${esc(t('mine.readyNow'))}</span>` : ''}
         ${r.priority !== 'normal'
           ? `<span class="badge badge-${esc(priority.tone)}" style="margin-top:8px">
                <span aria-hidden="true">${priority.icon}</span>${esc(priority.label)}</span>` : ''}
@@ -1226,6 +1231,7 @@ function openMyRequest(token) {
       ${request.admin_message ? `<p class="desc flagnotice">
         ${icon('chat')} <strong>${esc(t('mine.fromHaitham'))}:</strong>
         ${esc(request.admin_message)}</p>` : ''}
+      ${collectionBlock(request)}
       ${printOwnerBlocks(request)}
       ${request.description ? `<p class="req-desc">${esc(request.description)}</p>` : ''}
       <p class="small faint">${esc(t('mine.sent'))} ${esc(fmtDateTime(request.created_at))}</p>
@@ -1280,7 +1286,18 @@ function openMyRequest(token) {
     type: 'button',
     text: t('mine.forget'),
     style: 'margin-top:8px',
-    onclick: () => {
+    onclick: async () => {
+      // The token on this device is the only way back to this request.
+      // Letting it go while the paper is still on the counter, with
+      // nobody recorded as having taken it, is worth one question.
+      const uncollected = !(request.collected ?? []).length
+        && OPEN_STATUSES.includes(request.status);
+      if (uncollected) {
+        const ok = await confirmAction(t('mine.forgetUncollected'), {
+          title: t('mine.forgetTitle'), confirmText: t('mine.forget'), danger: true
+        });
+        if (!ok) return;
+      }
       forgetRequest(token);
       closeSheet('#detail-sheet');
       refreshMine();
@@ -1311,6 +1328,37 @@ function flagBlock(request) {
     <div class="notice notice-info flagnotice">
       <p style="font-weight:700">${meta.icon} ${esc(t('mine.flaggedTitle', { priority: meta.label }))}</p>
       ${request.flag_note ? `<p class="small" style="margin-top:4px">${esc(request.flag_note)}</p>` : ''}
+    </div>`;
+}
+
+/**
+ * What became of the paper, for the person who asked for it.
+ *
+ * They are the one who gets asked "did it arrive?", and until now their
+ * copy of the request simply closed without saying how.
+ */
+function collectionBlock(request) {
+  const taken = request.collected ?? [];
+  const expected = request.expected_collectors ?? [];
+  if (!request.ready_at && !taken.length) return '';
+
+  const waiting = expected.filter(
+    name => !taken.some(c => String(c.name).toLowerCase() === String(name).toLowerCase()));
+
+  const lines = [
+    ...taken.map(c => `${icon('check')} ${esc(t('mine.collectedAt', {
+      name: c.name, time: fmtDateTime(c.at)
+    }))}${c.note ? ` — ${esc(c.note)}` : ''}`),
+    // Only worth saying while somebody is still expected. "Nobody yet"
+    // under a list of people who did collect would be a contradiction.
+    !taken.length ? `${icon('hourglass')} ${esc(t('mine.notCollected'))}` : '',
+    waiting.length ? `${icon('users')} ${esc(t('mine.waitingFor', { names: waiting.join(', ') }))}` : ''
+  ].filter(Boolean);
+
+  return `
+    <div class="printbox">
+      <p class="printbox-file">${icon('inbox')} ${esc(t('mine.collectionTitle'))}</p>
+      ${lines.map(line => `<p class="printbox-line">${line}</p>`).join('')}
     </div>`;
 }
 

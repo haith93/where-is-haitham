@@ -11,7 +11,7 @@
                      responses carry the user's access token.
    ===================================================================== */
 
-const VERSION = 'wih-v4.3.3';
+const VERSION = 'wih-v4.4.0';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
