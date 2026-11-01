@@ -285,8 +285,21 @@ export async function annotateRequest(id, { message = null, privateNote = null }
     p_admin_message: trimOrNull(message),
     p_private_note:  trimOrNull(privateNote)
   });
-  if (error) throw new Error(errorMessage(error, 'Could not save the note.'));
+  if (error) throw (migrationPending(error, 'Notes on a request')
+                 ?? new Error(errorMessage(error, 'Could not save the note.')));
   return data;
+}
+
+/* A whole function that does not exist yet has nothing to degrade to,
+   so say which migration is missing instead of repeating PostgREST's
+   wording at somebody who did not write it. */
+function migrationPending(error, feature) {
+  const missing = error?.code === 'PGRST202'
+    || /could not find the function/i.test(error?.message ?? '');
+  return missing
+    ? new Error(`${feature} needs a SQL migration that has not been run yet. `
+              + 'Open sql/README.md and run the newest file.')
+    : null;
 }
 
 /** Printed, and waiting on the counter for somebody to come and take it. */
@@ -295,7 +308,8 @@ export async function markReady(id, collectors = null) {
     p_request_id: id,
     p_collectors: collectors?.length ? collectors : null
   });
-  if (error) throw new Error(errorMessage(error, 'Could not mark it ready.'));
+  if (error) throw (migrationPending(error, 'Ready to collect')
+                 ?? new Error(errorMessage(error, 'Could not mark it ready.')));
   return data;
 }
 
@@ -310,7 +324,8 @@ export async function recordCollection(id, collector, note = null) {
     p_collector:  String(collector ?? '').trim(),
     p_note:       trimOrNull(note)
   });
-  if (error) throw new Error(errorMessage(error, 'Could not record the collection.'));
+  if (error) throw (migrationPending(error, 'Recording a collection')
+                 ?? new Error(errorMessage(error, 'Could not record the collection.')));
   return data;
 }
 

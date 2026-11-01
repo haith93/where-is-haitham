@@ -7,6 +7,7 @@
  * so a start or end time can never be typed by hand.
  */
 import { sb, errorMessage } from './supabase.js';
+import { rpcWithFallback } from './rpc.js';
 import { toneDot } from './icons.js';
 import { STATUS_META } from './config.js';
 import { toDate, minutesBetween, fmtTime, durationText, dayKey, endOfDay,
@@ -59,18 +60,23 @@ export async function getCurrentStatus(userId) {
 export async function updateStatus(input) {
   const payload = normaliseStatusInput(input);
 
-  const { data, error } = await sb.rpc('update_my_status', {
-    p_status_type:      payload.statusType,
-    p_building_id:      payload.buildingId,
-    p_custom_location:  payload.customLocation,
-    p_task_id:          payload.taskId,
-    p_custom_task:      payload.customTask,
-    p_duration_minutes: payload.durationMinutes,
-    p_request_id:       payload.requestId,
-    p_back_at:          payload.backAt
-  });
-  if (error) throw new Error(errorMessage(error, 'Unable to update your status. Please check your connection and try again.'));
-  return data;
+  try {
+    // p_back_at arrived with migration 15. Without it the status still
+    // posts; it simply cannot say which day he is back.
+    return await rpcWithFallback('update_my_status', {
+      p_status_type:      payload.statusType,
+      p_building_id:      payload.buildingId,
+      p_custom_location:  payload.customLocation,
+      p_task_id:          payload.taskId,
+      p_custom_task:      payload.customTask,
+      p_duration_minutes: payload.durationMinutes,
+      p_request_id:       payload.requestId,
+      p_back_at:          payload.backAt
+    }, ['p_back_at']);
+  } catch (error) {
+    throw new Error(errorMessage(error,
+      'Unable to update your status. Please check your connection and try again.'));
+  }
 }
 
 /** Big red "I am done with this" button: records the real end time. */

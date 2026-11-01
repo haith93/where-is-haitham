@@ -13,6 +13,7 @@
  * edited and this one spends paper and toner.
  */
 import { sb, errorMessage } from './supabase.js';
+import { rpcWithFallback } from './rpc.js';
 import { prefs } from './utils.js';
 import { t } from './i18n.js';
 
@@ -244,19 +245,22 @@ export async function createPrintRequest(input) {
     };
   });
 
-  const { data, error } = await sb.rpc('create_print_request', {
-    p_requester_name:  name,
-    p_files:           payload,
-    p_title:           title,
-    p_priority:        priority,
-    p_building_id:     null,
-    p_custom_location: null,
-    p_device_id:       deviceId(),
-    p_collectors:      collectors.length ? collectors : null
-  });
-
-  if (error) throw new Error(errorMessage(error, t('print.errSubmit')));
-  return data;
+  try {
+    // p_collectors arrived with migration 16. Without it the request is
+    // still a perfectly good request; nobody is named as collecting it.
+    return await rpcWithFallback('create_print_request', {
+      p_requester_name:  name,
+      p_files:           payload,
+      p_title:           title,
+      p_priority:        priority,
+      p_building_id:     null,
+      p_custom_location: null,
+      p_device_id:       deviceId(),
+      p_collectors:      collectors.length ? collectors : null
+    }, ['p_collectors']);
+  } catch (error) {
+    throw new Error(errorMessage(error, t('print.errSubmit')));
+  }
 }
 
 /* ------------------------------------------------------------------ */
