@@ -158,6 +158,7 @@ const STRINGS = {
   'board.docs1':          { en: '1 document',   ar: 'مستند واحد' },
   'board.readySince':     { en: 'ready {ago}', ar: 'جاهز {ago}' },
   'board.forWhom':        { en: 'for {names}', ar: 'لـ {names}' },
+  'board.forLabel':       { en: 'for', ar: 'لـ' },
   'board.takenBy':        { en: 'taken by {names}', ar: 'استلمها {names}' },
   'board.stillWaiting':   { en: 'still to come: {names}', ar: 'لم يستلم بعد: {names}' },
   'board.backToday':      { en: 'Later today', ar: 'لاحقاً اليوم' },

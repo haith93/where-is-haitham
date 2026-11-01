@@ -317,11 +317,13 @@ function paintReady(ready) {
     const waiting = (item.collectors ?? [])
       .filter(name => !taken.some(t2 => t2.toLowerCase() === String(name).toLowerCase()));
 
-    // Three possible lines, and only the ones that say something.
-    const people = [
-      waiting.length ? t('board.forWhom', { names: waiting.join(', ') }) : '',
-      taken.length   ? t('board.takenBy', { names: taken.join(', ') }) : ''
-    ].filter(Boolean).join(' · ');
+    // Who has already been is detail. Who still has to come belongs on
+    // the headline: a teacher scanning this board is looking for their
+    // own name, not for the name of whoever sent the job.
+    const forWhom = waiting.length
+      ? `<span class="ready-for">${esc(t('board.forLabel'))} <strong>${esc(waiting.join(', '))}</strong></span>`
+      : '';
+    const people = taken.length ? t('board.takenBy', { names: taken.join(', ') }) : '';
 
     const docs = item.documents === 1
       ? t('board.docs1') : t('board.docsN', { n: item.documents ?? 0 });
@@ -330,7 +332,7 @@ function paintReady(ready) {
       <li class="ready-item">
         <span class="ico" aria-hidden="true">${icon('check')}</span>
         <span class="grow">
-          <span class="ready-name">${esc(item.requester)}</span>
+          <span class="ready-name"><span class="ready-who">${esc(item.requester)}</span> ${forWhom}</span>
           <span class="ready-meta">
             <span class="mono">${esc(item.request_number)}</span> · ${esc(docs)}
             · ${esc(t('board.readySince', { ago: relativeTime(item.ready_at) }))}

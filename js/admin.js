@@ -994,7 +994,8 @@ function queueCardHTML(r) {
       ${r.ready_at ? `<p class="desc flagnotice">
         ${icon('check')} ${esc(t('admin.readySince', { time: fmtTime(r.ready_at) }))}${
           r.expected_collectors?.length
-            ? ` · ${esc(t('board.forWhom', { names: r.expected_collectors.join(', ') }))}` : ''}</p>` : ''}
+            ? ` · ${esc(t('board.forLabel'))} <strong>${esc(r.expected_collectors.join(', '))}</strong>`
+            : ''}</p>` : ''}
       ${r.notes ? `<p class="desc flagnotice">
         ${icon('note')} ${esc(t('admin.yourNote'))}: ${esc(r.notes)}</p>` : ''}
       ${r.admin_message ? `<p class="desc">

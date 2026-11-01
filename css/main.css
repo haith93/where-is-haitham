@@ -758,6 +758,28 @@ input[type='checkbox']:checked::after {
 }
 
 .ready-name { display: block; font-weight: 800; font-size: var(--t-h2); }
+/* The other half of that pairing, isolated for the same reason. */
+.ready-who { unicode-bidi: isolate; }
+
+/* "for Sara" sits beside the requester rather than under it, because
+   that name is the one being looked for. Lighter than the requester so
+   the two do not fight, with the name itself at full weight. */
+.ready-for {
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  /* Two names of unknown direction sit either side of a translated
+     word here. Plain Latin and plain Arabic names both resolve
+     correctly without this, but a name carrying neutral characters at
+     its edges - a bracketed section, a digit, a hyphen - can attach
+     itself to the wrong run. Isolation is the standard guard and costs
+     nothing. */
+  unicode-bidi: isolate;
+}
+/* --text, not --ink: ink is the border colour and is pure black in
+   dark mode, which made the one name this card exists to show
+   invisible against the card it sits on. */
+.ready-for strong { font-weight: 800; color: var(--text); }
 .ready-meta { display: block; font-size: var(--t-small); color: var(--text-muted); }
 
 /* ---------- One card per document --------------------------------------
