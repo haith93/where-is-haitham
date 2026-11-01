@@ -11,7 +11,7 @@
                      responses carry the user's access token.
    ===================================================================== */
 
-const VERSION = 'wih-v4.3.0';
+const VERSION = 'wih-v4.3.1';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
@@ -22,6 +22,7 @@ const SHELL = [
   './staff.html',
   './offline.html',
   './manifest.json',
+  './js/boot-recover.js',
   './css/tokens.css',
   './css/main.css',
   './css/dashboard.css',
