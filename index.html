@@ -80,6 +80,21 @@
         </div>
       </section>
 
+      <!-- Printed and waiting on the counter. This card is the whole
+           point of the board for anyone who is not Haitham: it answers
+           "is it done yet" without a telephone call. -->
+      <section class="card" id="ready-card" aria-labelledby="ready-title" hidden>
+        <div class="row-between" style="margin-bottom:12px">
+          <h2 class="card-title" id="ready-title" style="margin:0"
+              data-i18n="board.readyTitle">Ready to collect</h2>
+          <span class="badge badge-ok" id="ready-count">—</span>
+        </div>
+        <div id="ready-body"></div>
+        <p class="help" data-i18n="board.readyHint">
+          Printed and waiting. Bring your name — Haitham records who takes what.
+        </p>
+      </section>
+
       <!-- Counters -->
       <div class="counters" id="counters" hidden>
         <div class="counter"><span class="n" id="c-waiting">0</span><span class="l" data-i18n="counters.waiting">Waiting</span></div>
@@ -241,6 +256,18 @@
         <label class="label" for="pq-title" data-i18n="print.titleLabel">Title (optional)</label>
         <input class="input" id="pq-title" type="text" maxlength="120" data-i18n-ph="print.titlePh">
         <p class="help" data-i18n="print.titleHelp">Colleagues see this title. They never see the file.</p>
+      </div>
+
+      <!-- Naming the collector is what lets a third person - the teacher
+           who picks the sheets up - find the job on the board without
+           telephoning anybody. -->
+      <div class="field">
+        <label class="label" for="pq-collectors" data-i18n="print.collectors">Who will collect it?</label>
+        <textarea class="textarea" id="pq-collectors" rows="2" maxlength="300"
+                  data-i18n-ph="print.collectorsPh"></textarea>
+        <p class="help" data-i18n="print.collectorsHint">
+          Optional. One name per line — they can then find it on the board.
+        </p>
       </div>
 
       <div class="field">

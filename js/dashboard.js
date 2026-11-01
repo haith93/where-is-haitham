@@ -146,6 +146,7 @@ function paintBoard(snapshot, { silent = false } = {}) {
   paintHero(view, snapshot);
   paintServing(snapshot.serving, snapshot.next);
   paintQueue(snapshot.queue ?? []);
+  paintReady(snapshot.ready ?? []);
   paintCounters(snapshot.counts ?? {});
 
   if (!silent) {
@@ -290,6 +291,55 @@ function paintQueue(queue) {
         <span class="sr-only">${esc(status.label)}</span>
       </li>`;
   }).join('')}</ol>`;
+}
+
+/**
+ * What is printed and waiting on the counter.
+ *
+ * Names and numbers only - never a document title. A finished exam
+ * named on a public board, with the place to collect it printed beside
+ * it, is a different proposition from a queue entry.
+ */
+function paintReady(ready) {
+  const card = $('#ready-card');
+  const body = $('#ready-body');
+  if (!card || !body) return;
+
+  // Hidden entirely when empty rather than showing an empty card: the
+  // board is read at a glance from across a room.
+  card.hidden = ready.length === 0;
+  if (!ready.length) return;
+
+  $('#ready-count').textContent = t('board.readyN', { n: ready.length });
+
+  body.innerHTML = `<ul class="ready-list">${ready.map(item => {
+    const taken = (item.collected ?? []).map(c => c.name);
+    const waiting = (item.collectors ?? [])
+      .filter(name => !taken.some(t2 => t2.toLowerCase() === String(name).toLowerCase()));
+
+    // Three possible lines, and only the ones that say something.
+    const people = [
+      waiting.length ? t('board.forWhom', { names: waiting.join(', ') }) : '',
+      taken.length   ? t('board.takenBy', { names: taken.join(', ') }) : ''
+    ].filter(Boolean).join(' · ');
+
+    const docs = item.documents === 1
+      ? t('board.docs1') : t('board.docsN', { n: item.documents ?? 0 });
+
+    return `
+      <li class="ready-item">
+        <span class="ico" aria-hidden="true">${icon('check')}</span>
+        <span class="grow">
+          <span class="ready-name">${esc(item.requester)}</span>
+          <span class="ready-meta">
+            <span class="mono">${esc(item.request_number)}</span> · ${esc(docs)}
+            · ${esc(t('board.readySince', { ago: relativeTime(item.ready_at) }))}
+          </span>
+          ${people ? `<span class="ready-meta">${esc(people)}</span>` : ''}
+          <span class="ready-meta">${icon('pin')} ${esc(requestLocation(item))}</span>
+        </span>
+      </li>`;
+  }).join('')}</ul>`;
 }
 
 function paintCounters(counts) {
@@ -1038,6 +1088,8 @@ async function onSubmitPrint(event) {
   const input = {
     requesterName: $('#pq-name').value,
     title:         $('#pq-title').value,
+    collectors:    ($('#pq-collectors')?.value ?? '')
+                     .split('\n').map(x => x.trim()).filter(Boolean),
     priority,
     files: printState.files.map(entry => ({
       uploadId:        entry.upload?.upload_id ?? null,

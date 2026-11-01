@@ -173,6 +173,16 @@ export async function createPrintRequest(input) {
   if (name.length < 2) throw new Error(t('print.errName'));
   if (name.length > 120) throw new Error(t('print.errNameLong'));
 
+  // Who is coming for it. Deduplicated case-insensitively, because the
+  // board matches a collector's name against this list and "Sara" twice
+  // would ask for her twice.
+  const seen = new Set();
+  const collectors = (input.collectors ?? [])
+    .map(x => String(x ?? '').trim().replace(/\s+/g, ' '))
+    .filter(x => x && x.length <= 120)
+    .filter(x => { const k = x.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 6);
+
   const files = Array.isArray(input.files) ? input.files : [];
   if (!files.length) throw new Error(t('print.errNoFile'));
   if (files.length > MAX_FILES) throw new Error(t('print.errTooManyFiles', { max: MAX_FILES }));
@@ -241,7 +251,8 @@ export async function createPrintRequest(input) {
     p_priority:        priority,
     p_building_id:     null,
     p_custom_location: null,
-    p_device_id:       deviceId()
+    p_device_id:       deviceId(),
+    p_collectors:      collectors.length ? collectors : null
   });
 
   if (error) throw new Error(errorMessage(error, t('print.errSubmit')));

@@ -19,7 +19,7 @@ const REQUEST_COLUMNS = `
   channel, notes, created_by, paused_at, pause_reason,
   location_name_ar_snapshot, category_name_ar_snapshot,
   request_type, flagged_priority, flag_note, flagged_at,
-  admin_message,
+  admin_message, ready_at, expected_collectors,
   print_jobs (
     id, position, title, delivery, original_filename, mime_type, file_size,
     paper_size, color_mode, color_permission, print_sides, copies, pages,
@@ -286,6 +286,31 @@ export async function annotateRequest(id, { message = null, privateNote = null }
     p_private_note:  trimOrNull(privateNote)
   });
   if (error) throw new Error(errorMessage(error, 'Could not save the note.'));
+  return data;
+}
+
+/** Printed, and waiting on the counter for somebody to come and take it. */
+export async function markReady(id, collectors = null) {
+  const { data, error } = await sb.rpc('mark_request_ready', {
+    p_request_id: id,
+    p_collectors: collectors?.length ? collectors : null
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not mark it ready.'));
+  return data;
+}
+
+/**
+ * Somebody came and took it. Completes the request only when nobody
+ * expected is still to come, so the first of two teachers collecting
+ * for different sections does not close the job on the second.
+ */
+export async function recordCollection(id, collector, note = null) {
+  const { data, error } = await sb.rpc('record_collection', {
+    p_request_id: id,
+    p_collector:  String(collector ?? '').trim(),
+    p_note:       trimOrNull(note)
+  });
+  if (error) throw new Error(errorMessage(error, 'Could not record the collection.'));
   return data;
 }
 

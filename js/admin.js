@@ -41,7 +41,8 @@ import {
 } from './status.js';
 import {
   getOpenRequests, getRequestsBetween, acceptRequest, startRequest,
-  completeRequest, rejectRequest, flagPriority, annotateRequest, saveQueueOrder, sortQueue,
+  completeRequest, rejectRequest, flagPriority, annotateRequest,
+  markReady, recordCollection, saveQueueOrder, sortQueue,
   requestLocation, requestCategory, requestChannel, printJob, printJobs, isPrintRequest, adminCreateRequest,
   pauseRequest, resumeRequest, deleteRequest, purgeRequests,
   getRequestTimeline, OPEN_STATUSES
@@ -950,6 +951,10 @@ function queueCardHTML(r) {
       ${r.status === 'accepted' ? `
         <button class="btn btn-primary btn-sm" type="button" data-act="start" data-id="${esc(r.id)}">${esc(t('admin.startNow'))}</button>` : ''}
       ${r.status === 'in_progress' ? `
+        ${isPrintRequest(r) && !r.ready_at ? `
+          <button class="btn btn-primary btn-sm" type="button" data-act="ready" data-id="${esc(r.id)}">${esc(t('admin.markReady'))}</button>` : ''}
+        ${r.ready_at ? `
+          <button class="btn btn-ok btn-sm" type="button" data-act="collected" data-id="${esc(r.id)}">${esc(t('admin.collected'))}</button>` : ''}
         <button class="btn btn-ok btn-sm" type="button" data-act="complete" data-id="${esc(r.id)}">${esc(t('admin.complete'))}</button>
         <button class="btn btn-soft btn-sm" type="button" data-act="pause" data-id="${esc(r.id)}">${esc(t('admin.pause'))}</button>` : ''}
       ${r.status === 'paused' ? `
@@ -986,6 +991,10 @@ function queueCardHTML(r) {
       <!-- The private note sits on the card because the whole purpose of
            it is to be read when he reaches the request, not to be found
            by opening a sheet. -->
+      ${r.ready_at ? `<p class="desc flagnotice">
+        ${icon('check')} ${esc(t('admin.readySince', { time: fmtTime(r.ready_at) }))}${
+          r.expected_collectors?.length
+            ? ` · ${esc(t('board.forWhom', { names: r.expected_collectors.join(', ') }))}` : ''}</p>` : ''}
       ${r.notes ? `<p class="desc flagnotice">
         ${icon('note')} ${esc(t('admin.yourNote'))}: ${esc(r.notes)}</p>` : ''}
       ${r.admin_message ? `<p class="desc">
@@ -1156,6 +1165,41 @@ async function onQueueAction(action, id, button) {
     return;
   }
 
+  if (action === 'ready') {
+    // Who is coming for it is usually already on the request; this is
+    // the moment to correct it, because it is about to go on a board
+    // that strangers read.
+    const names = await promptLines(
+      t('admin.expectedLabel'), t('admin.expectedHint'),
+      (request.expected_collectors ?? []).join('\n'));
+    if (names === null) return;
+
+    await withBusy(button, t('action.working'), async () => {
+      try {
+        await markReady(id, names);
+        toastOk(t('admin.readyToast'));
+        await Promise.all([refreshQueue(), refreshCurrent()]);
+      } catch (err) { toastError(err.message); }
+    });
+    return;
+  }
+
+  if (action === 'collected') {
+    const who = await promptCollection(request);
+    if (!who) return;
+
+    await withBusy(button, t('action.working'), async () => {
+      try {
+        const result = await recordCollection(id, who.name, who.note);
+        toastOk(result?.completed
+          ? t('admin.collectedDone')
+          : t('admin.collectedWait', { names: (result?.waiting_for ?? []).join(', ') }));
+        await Promise.all([refreshQueue(), refreshCurrent()]);
+      } catch (err) { toastError(err.message); }
+    });
+    return;
+  }
+
   if (action === 'complete') {
     await withBusy(button, 'Completing…', async () => {
       try {
@@ -1180,6 +1224,93 @@ async function onQueueAction(action, id, button) {
       } catch (err) { toastError(err.message); }
     });
   }
+}
+
+/* A small sheet for a list of names, one per line. Returns an array,
+   or null when dismissed - an empty array is a real answer (nobody
+   named) and must not be confused with a cancelled dialog. */
+function promptLines(title, hint, initial = '') {
+  return new Promise(resolve => {
+    let done = false;
+    const dlg = el('dialog', { class: 'sheet' });
+    const area = el('textarea', { class: 'textarea', rows: '4' });
+    area.value = initial;
+
+    const finish = value => { done = true; resolve(value); dlg.close(); };
+    const panel = el('div', { class: 'sheet-panel' }, [
+      el('div', { class: 'sheet-grip', 'aria-hidden': 'true' }),
+      el('div', { class: 'sheet-head' }, [el('h2', { text: title })]),
+      el('p', { class: 'help', text: hint }),
+      area,
+      el('div', { class: 'stack-sm', style: 'margin-top:16px' }, [
+        el('button', {
+          class: 'btn btn-primary btn-block', type: 'button', text: t('action.save'),
+          onclick: () => finish(area.value.split('\n').map(x => x.trim()).filter(Boolean))
+        }),
+        el('button', {
+          class: 'btn btn-ghost btn-block', type: 'button', text: t('action.cancel'),
+          onclick: () => dlg.close()
+        })
+      ])
+    ]);
+    dlg.append(panel);
+    dlg.addEventListener('close', () => { if (!done) resolve(null); dlg.remove(); });
+    dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+    document.body.append(dlg);
+    dlg.showModal();
+    area.focus();
+  });
+}
+
+/* Who just walked off with it. The names already on the request become
+   one tap each, because that is the common case and typing a colleague's
+   name differently every time makes "who collected it" unanswerable. */
+function promptCollection(request) {
+  return new Promise(resolve => {
+    let done = false;
+    const taken = new Set();        // already recorded, lower-cased
+    const dlg = el('dialog', { class: 'sheet' });
+    const name = el('input', { class: 'input', type: 'text', maxlength: '120' });
+    name.placeholder = t('admin.whoCollectedPh');
+    const note = el('input', { class: 'input', type: 'text', maxlength: '200' });
+    note.placeholder = t('admin.collectNotePh');
+
+    const finish = value => { done = true; resolve(value); dlg.close(); };
+    const quick = (request.expected_collectors ?? [])
+      .filter(n => !taken.has(String(n).toLowerCase()))
+      .map(n => el('button', {
+        class: 'btn btn-soft btn-sm', type: 'button', text: n,
+        onclick: () => { name.value = n; name.focus(); }
+      }));
+
+    const panel = el('div', { class: 'sheet-panel' }, [
+      el('div', { class: 'sheet-grip', 'aria-hidden': 'true' }),
+      el('div', { class: 'sheet-head' }, [el('h2', { text: t('admin.whoCollected') })]),
+      ...(quick.length ? [el('div', { class: 'row-wrap', style: 'margin-bottom:12px' }, quick)] : []),
+      name,
+      el('p', { class: 'label', style: 'margin-top:12px', text: t('admin.collectNote') }),
+      note,
+      el('div', { class: 'stack-sm', style: 'margin-top:16px' }, [
+        el('button', {
+          class: 'btn btn-primary btn-block', type: 'button', text: t('admin.collectSave'),
+          onclick: () => {
+            if (!name.value.trim()) { name.focus(); return; }
+            finish({ name: name.value.trim(), note: note.value.trim() || null });
+          }
+        }),
+        el('button', {
+          class: 'btn btn-ghost btn-block', type: 'button', text: t('action.cancel'),
+          onclick: () => dlg.close()
+        })
+      ])
+    ]);
+    dlg.append(panel);
+    dlg.addEventListener('close', () => { if (!done) resolve(null); dlg.remove(); });
+    dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+    document.body.append(dlg);
+    dlg.showModal();
+    name.focus();
+  });
 }
 
 async function openRequestActions(request) {

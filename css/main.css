@@ -738,6 +738,28 @@ input[type='checkbox']:checked::after {
 }
 .flagnotice { border-inline-start: 8px solid var(--info-fill); }
 
+/* ---- Ready to collect -------------------------------------------
+   Read at a glance from across a room, so the name leads and the
+   detail sits under it rather than beside it. */
+.ready-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+
+.ready-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: var(--bd) solid var(--ink);
+  /* The surface, not a green fill: a wall of saturated colour is hard
+     to read and these cards can stack up on a busy morning. The tone
+     lives in the edge, as it does on a flagged request. */
+  background: var(--surface);
+  border-inline-start: 8px solid var(--ok-fill);
+  box-shadow: var(--shadow-sm);
+}
+
+.ready-name { display: block; font-weight: 800; font-size: var(--t-h2); }
+.ready-meta { display: block; font-size: var(--t-small); color: var(--text-muted); }
+
 /* ---------- One card per document --------------------------------------
    Each attached file is its own block with its own copies, paper, sides
    and class, because twenty of one thing for Grade 8 and five of another
